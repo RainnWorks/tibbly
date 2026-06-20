@@ -41,6 +41,10 @@ then jump as needed.
 
 - [`research/runelite-api/`](research/runelite-api/) — APIs we could use we haven't yet
 - [`research/community/`](research/community/) — OSRS/RuneLite user trends, pain points
+  - [`research/community/_SUMMARY.md`](research/community/_SUMMARY.md) — 1-page summary for marketing + roadmap
+  - [`research/community/pain-points.md`](research/community/pain-points.md) — 13 pain points with sourced evidence + top-50 plugin install corpus
+  - [`research/community/creators.md`](research/community/creators.md) — J1mmy / Soup / Settled / Limpwurt / B0aty profiles + outreach principles
+  - [`research/community/trends.md`](research/community/trends.md) — Leagues 6, Sailing, Varlamore, calendar opportunities
 - [`research/memory-systems/`](research/memory-systems/) — how to do durable agent memory
 - [`research/llm-providers/`](research/llm-providers/) — OpenRouter model + pricing
 - [`research/competitor/`](research/competitor/) — other AI/OSRS tools
