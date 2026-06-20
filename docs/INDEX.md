@@ -72,6 +72,11 @@ then jump as needed.
   - [`research/libraries/logging.md`](research/libraries/logging.md) — pino + pino-pretty
   - [`research/libraries/ids.md`](research/libraries/ids.md) — nanoid + uuid v7
   - [`research/libraries/time.md`](research/libraries/time.md) — date-fns
+- [`research/analytics/`](research/analytics/) — token-usage analytics at scale (RAI-37)
+  - [`research/analytics/_SUMMARY.md`](research/analytics/_SUMMARY.md) — what we mimic from Langfuse / Helicone / Vercel AI SDK
+  - [`research/analytics/langfuse.md`](research/analytics/langfuse.md) — trace/observation data model + async ingestion
+  - [`research/analytics/helicone.md`](research/analytics/helicone.md) — real-time first dashboards + cost as integer
+  - [`research/analytics/vercel-ai-sdk.md`](research/analytics/vercel-ai-sdk.md) — OTel GenAI semantic conventions
 
 ## How to use this index
 
