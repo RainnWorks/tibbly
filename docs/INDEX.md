@@ -76,6 +76,9 @@ then jump as needed.
 - [`research/memory-systems/`](research/memory-systems/) — how to do durable agent memory
 - [`research/llm-providers/`](research/llm-providers/) — OpenRouter model + pricing
 - [`research/competitor/`](research/competitor/) — other AI/OSRS tools
+  - [`research/competitor/_SUMMARY.md`](research/competitor/_SUMMARY.md) — one-page summary of the AI-for-OSRS landscape (R6 / RAI-10)
+  - [`research/competitor/landscape.md`](research/competitor/landscape.md) — 7 competitors documented with sourced quotes + URLs
+  - [`research/competitor/differentiation.md`](research/competitor/differentiation.md) — our wedge, four-quadrant view, marketing copy hooks
 - [`research/osrs-wiki/`](research/osrs-wiki/) — OSRS-themed visual asset catalog + licensing risk matrix
   - [`research/osrs-wiki/_SUMMARY.md`](research/osrs-wiki/_SUMMARY.md) — top recommendation (RuneLite BSD-2 + RuneStar CC0)
   - [`research/osrs-wiki/assets.md`](research/osrs-wiki/assets.md) — categorised catalog (250+ assets, 7 categories)
