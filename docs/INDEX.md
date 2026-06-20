@@ -32,6 +32,15 @@ then jump as needed.
 - [`architecture/MONOREPO.md`](architecture/MONOREPO.md) — layout, scripts, conventions
 - [`architecture/PROTOCOL.md`](architecture/PROTOCOL.md) — WS protocol plugin ↔ backend
 
+## Legal (RAI-34 — NEEDS LAWYER REVIEW BEFORE LAUNCH)
+
+- [`legal/PRIVACY.md`](legal/PRIVACY.md) — Privacy Policy draft
+- [`legal/TERMS.md`](legal/TERMS.md) — Terms of Service draft
+- [`legal/CONSENT_FLOW.md`](legal/CONSENT_FLOW.md) — in-plugin first-launch consent UX spec
+- [`legal/SUB_PROCESSORS.md`](legal/SUB_PROCESSORS.md) — Art. 28(2) sub-processor list
+- [`legal/DATA_RETENTION.md`](legal/DATA_RETENTION.md) — retention schedule + Stripe carve-out
+- [`legal/COOKIE_POLICY.md`](legal/COOKIE_POLICY.md) — essential-cookies-only stance
+
 ## Marketing
 
 - [`marketing/POSITIONING.md`](marketing/POSITIONING.md) — copy, pillar messages
