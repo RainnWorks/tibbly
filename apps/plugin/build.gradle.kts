@@ -34,6 +34,9 @@ dependencies {
     implementation("io.ktor:ktor-server-content-negotiation:$ktorVersion")
     implementation("io.ktor:ktor-server-sse:$ktorVersion")
     implementation("io.ktor:ktor-serialization-kotlinx-json:$ktorVersion")
+    // RAI-38: WSS transport for the production cloud-chat egress (see cloud/EgressGate.kt).
+    implementation("io.ktor:ktor-client-okhttp:$ktorVersion")
+    implementation("io.ktor:ktor-client-websockets:$ktorVersion")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.9.0")
     implementation("org.commonmark:commonmark:0.22.0")
@@ -119,6 +122,65 @@ tasks.register<JavaExec>("refreshPoiDb") {
     classpath = sourceSets["main"].runtimeClasspath
     mainClass.set("co.rowm.osrsllm.poi.PoiImporter")
     args = listOf(projectDir.absolutePath)
+}
+
+// -----------------------------------------------------------------------------
+// RAI-38: legibility-enforcement gates. Each task greps the production source
+// set and fails the build on regression. The local/ package is debug-only and
+// is deliberately excluded; see SECURITY_DESIGN.md.
+// -----------------------------------------------------------------------------
+
+val productionKotlinTree: ConfigurableFileTree = fileTree("src/main/kotlin") {
+    exclude("co/rowm/osrsllm/local/**")
+}
+
+/** Find files whose text contains any of [needles]. */
+fun findMatches(needles: List<String>): List<Pair<File, String>> =
+    productionKotlinTree.files
+        .filter { it.extension == "kt" }
+        .flatMap { f ->
+            val text = f.readText()
+            needles.mapNotNull { n -> if (text.contains(n)) f to n else null }
+        }
+
+tasks.register("checkNoHttpServer") {
+    group = "verification"
+    description = "Fails if any HTTP/Netty server-binding pattern appears in the production source set."
+    doLast {
+        val hits = findMatches(listOf("ServerSocket(", "embeddedServer(", "Netty,"))
+        if (hits.isNotEmpty()) {
+            val rendered = hits.joinToString("\n  ") { (f, n) -> "$n  ←  ${f.relativeTo(projectDir)}" }
+            throw GradleException("checkNoHttpServer: forbidden server-binding pattern found:\n  $rendered")
+        }
+    }
+}
+
+tasks.register("checkNoReflection") {
+    group = "verification"
+    description = "Fails if reflection/classloader escape hatches appear in the production source set."
+    doLast {
+        val hits = findMatches(listOf("Class.forName", "URLClassLoader"))
+        if (hits.isNotEmpty()) {
+            val rendered = hits.joinToString("\n  ") { (f, n) -> "$n  ←  ${f.relativeTo(projectDir)}" }
+            throw GradleException("checkNoReflection: forbidden reflection pattern found:\n  $rendered")
+        }
+    }
+}
+
+tasks.register("checkNoPlaintextUrls") {
+    group = "verification"
+    description = "Fails if a plaintext http:// or ws:// literal appears in the production source set."
+    doLast {
+        val hits = findMatches(listOf("http://", "ws://"))
+        if (hits.isNotEmpty()) {
+            val rendered = hits.joinToString("\n  ") { (f, n) -> "$n  ←  ${f.relativeTo(projectDir)}" }
+            throw GradleException("checkNoPlaintextUrls: plaintext URL literal found:\n  $rendered")
+        }
+    }
+}
+
+tasks.named("check") {
+    dependsOn("checkNoHttpServer", "checkNoReflection", "checkNoPlaintextUrls")
 }
 
 tasks.register<JavaExec>("runRuneLite") {
