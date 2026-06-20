@@ -1,11 +1,19 @@
-package co.rowm.osrsllm
+package co.rowm.osrsllm.plugin
 
+import co.rowm.osrsllm.GameStateStore
+import co.rowm.osrsllm.LoggingSetup
+import co.rowm.osrsllm.OsrsLlmHelperConfig
+import co.rowm.osrsllm.OsrsLlmHelperPanel
 import co.rowm.osrsllm.banktags.BankTagService
 import co.rowm.osrsllm.chat.ChatPanel
 import co.rowm.osrsllm.chat.ChatStore
 import co.rowm.osrsllm.chat.ClaudeRunner
 import co.rowm.osrsllm.chat.HarnessContext
+import co.rowm.osrsllm.cloud.BackendUrl
+import co.rowm.osrsllm.cloud.BackendWsClient
+import co.rowm.osrsllm.cloud.ConsentState
 import co.rowm.osrsllm.events.EventLogService
+import co.rowm.osrsllm.local.McpServerService
 import co.rowm.osrsllm.overlay.AiChannelService
 import co.rowm.osrsllm.overlay.AssistantOverlay
 import co.rowm.osrsllm.overlay.OverlayChatController
@@ -56,6 +64,7 @@ class OsrsLlmHelperPlugin : Plugin() {
     @Inject private lateinit var lootService: LootService
     @Inject private lateinit var hitsplatHistoryService: HitsplatHistoryService
     @Inject private lateinit var mcpServerService: McpServerService
+    @Inject private lateinit var backendWsClient: BackendWsClient
     @Inject private lateinit var widgetTracker: WidgetTracker
     @Inject private lateinit var bankTagService: BankTagService
     @Inject private lateinit var clientToolbar: ClientToolbar
@@ -125,8 +134,12 @@ class OsrsLlmHelperPlugin : Plugin() {
 
     override fun startUp() {
         LoggingSetup.configure()
-        log.info("Plugin starting (enabled={}, host={}, port={})",
-            config.enabled(), config.host(), config.port())
+        log.info("Plugin starting (developerMode={}, cloudChatEnabled={})",
+            config.developerMode(), config.cloudChatEnabled())
+
+        // Freeze consent ONCE for this plugin lifetime — see ConsentState KDoc.
+        // A mid-session config flip cannot start sending data without a plugin restart.
+        ConsentState.freeze(accepted = config.consentAccepted())
         eventBus.register(gameStateStore)
         eventBus.register(eventLogService)
         eventBus.register(xpRateService)
@@ -156,8 +169,21 @@ class OsrsLlmHelperPlugin : Plugin() {
         chatNavButton = chatBtn
         clientToolbar.addNavigation(chatBtn)
 
-        if (config.enabled()) {
-            mcpServerService.start(config.host(), config.port())
+        // Local MCP server is DEVELOPER-ONLY. The release build that ships to
+        // the RuneLite Plugin Hub does NOT bind any listening socket — the
+        // player's data only ever leaves through EgressGate (see SECURITY_DESIGN.md).
+        if (config.developerMode() && config.localMcpEnabled()) {
+            log.info("Developer mode active — starting local MCP server on {}:{}",
+                config.localMcpHost(), config.localMcpPort())
+            mcpServerService.start(config.localMcpHost(), config.localMcpPort())
+        }
+
+        // Production path: open the WSS connection to the backend if the player has
+        // accepted consent AND cloud chat is enabled. All actual sends are funnelled
+        // through EgressGate.egress() — there is no other write path.
+        if (config.consentAccepted() && config.cloudChatEnabled()) {
+            runCatching { backendWsClient.connect(BackendUrl(config.backendUrl())) }
+                .onFailure { log.warn("Backend connect failed: {}", it.message) }
         }
 
         // On-chat overlay: register slash commands (!ai / ::ai), the overlay renderer,
@@ -225,6 +251,8 @@ class OsrsLlmHelperPlugin : Plugin() {
             if (aiOwnsArrow) clientThread.invoke(Runnable { client.clearHintArrow() })
         }
         mcpServerService.stop()
+        runCatching { backendWsClient.close() }
+        ConsentState.reset()
         eventBus.unregister(gameStateStore)
         eventBus.unregister(eventLogService)
         eventBus.unregister(xpRateService)
@@ -256,11 +284,15 @@ class OsrsLlmHelperPlugin : Plugin() {
         if (event.group != "osrsllm") return
         log.info("Config changed: {} = {}", event.key, event.newValue)
         when (event.key) {
-            "enabled", "host", "port" -> mcpServerService.restartWith(
-                enabled = config.enabled(),
-                host = config.host(),
-                port = config.port(),
-            )
+            "localMcpEnabled", "localMcpHost", "localMcpPort" -> {
+                if (config.developerMode()) {
+                    mcpServerService.restartWith(
+                        enabled = config.localMcpEnabled(),
+                        host = config.localMcpHost(),
+                        port = config.localMcpPort(),
+                    )
+                }
+            }
         }
     }
 

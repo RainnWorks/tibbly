@@ -1,5 +1,6 @@
 package co.rowm.osrsllm
 
+import co.rowm.osrsllm.plugin.OsrsLlmHelperPlugin
 import net.runelite.client.RuneLite
 import net.runelite.client.externalplugins.ExternalPluginManager
 

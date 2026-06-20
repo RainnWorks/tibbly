@@ -1,5 +1,7 @@
-package co.rowm.osrsllm
+package co.rowm.osrsllm.local
 
+import co.rowm.osrsllm.GameStateStore
+import co.rowm.osrsllm.HitsplatHistorySnapshot
 import co.rowm.osrsllm.bank.ItemTagIndex
 import co.rowm.osrsllm.banktags.BankTagService
 import co.rowm.osrsllm.banktags.EquipmentLoadoutService
@@ -10,7 +12,6 @@ import co.rowm.osrsllm.market.PriceService
 import co.rowm.osrsllm.tools.OsrsTools
 import co.rowm.osrsllm.poi.PoiSearchResponse
 import co.rowm.osrsllm.poi.PoiService
-import co.rowm.osrsllm.HitsplatHistorySnapshot
 import co.rowm.osrsllm.session.HitsplatHistoryService
 import co.rowm.osrsllm.session.LootService
 import co.rowm.osrsllm.session.LootSnapshot
