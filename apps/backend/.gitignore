@@ -1,0 +1,8 @@
+# PGLite local data
+local.db
+local.db/
+*.pgdata/
+.data/
+
+# Bun build output
+dist/
