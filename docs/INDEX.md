@@ -62,7 +62,7 @@ then jump as needed.
 - [`marketing/POSITIONING.md`](marketing/POSITIONING.md) — copy, pillar messages
 - [`marketing/ASSET_CATALOG.md`](marketing/ASSET_CATALOG.md) — OSRS Wiki sprites + URLs
 - [`marketing/BRAND_VOICE.md`](marketing/BRAND_VOICE.md) — picked voice ("clever friend who read the wiki") + 5 sample exchanges *(r7 / RAI-11)*
-- [`marketing/NAME_CANDIDATES.md`](marketing/NAME_CANDIDATES.md) — Tibbly (pick) + Wikit + Scribbins with TM/domain checks *(r7 / RAI-11)*
+- [`marketing/NAME_CANDIDATES.md`](marketing/NAME_CANDIDATES.md) — Tibbly (pick) + Scribbins + Wikit with TM/domain checks *(r7 / RAI-11)*
 
 ## Research (continuously growing, owned by research agents)
 
