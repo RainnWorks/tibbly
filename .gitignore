@@ -1,14 +1,41 @@
-.gradle/
-.kotlin/
-build/
-# secrets
+# --- secrets -------------------------------------------------------------
 .env
 .env.*
 !.env.example
+
+# --- JS / Bun ------------------------------------------------------------
+node_modules/
+**/node_modules/
+dist/
+**/dist/
+.turbo/
+**/.turbo/
+*.tsbuildinfo
+**/*.tsbuildinfo
+.vite/
+**/.vite/
+
+# --- Gradle / Kotlin / JVM -----------------------------------------------
+.gradle/
+**/.gradle/
+.kotlin/
+**/.kotlin/
+build/
+**/build/
 out/
+**/out/
+bin/
+**/bin/
+
+# --- Editors -------------------------------------------------------------
 .idea/
 *.iml
 .DS_Store
 local.properties
+
+# --- Keep ----------------------------------------------------------------
 !gradle/wrapper/gradle-wrapper.jar
+!**/gradle/wrapper/gradle-wrapper.jar
+
+# --- Generated docs ------------------------------------------------------
 docs/runelite/

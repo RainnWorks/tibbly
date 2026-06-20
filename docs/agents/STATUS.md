@@ -8,7 +8,7 @@
 
 | ID | Agent | Status | Branch | Notes |
 |----|-------|--------|--------|-------|
-| A1 | Architect | pending | — | Will set up monorepo |
+| A1 | Architect | done (RAI-13) | agent/eng-infra/monorepo | Monorepo restructure committed; bun install, bun run typecheck, and apps/plugin ./gradlew shadowJar all green. Commit unsigned — see OPEN_QUESTIONS Q-7. |
 | A2 | Memory/docs steward | running (this loop) | main | Initial docs done; spawn after Stage 2 begins |
 
 ## Stage 2 — research + spec
@@ -16,7 +16,7 @@
 | ID | Agent | Status | Branch | Notes |
 |----|-------|--------|--------|-------|
 | R1 | RuneLite API explorer | pending | — | |
-| R2 | Community / market research | pending | — | |
+| R2 | Community / market research | done | agent/r2/community-pain-points | 13 pain points + creators + trends + summary; Reddit reachability flagged for next loop |
 | R3 | OSRS Wiki asset catalog | done | agent/r3/osrs-assets | 26 BSD-2 skill icons + 26 small + 3 CC0 fonts cached; licensing.md flags hard NO on wiki sprites for paid SaaS; Q-7 logged. **Use ONLY @osrs-llm-helper/osrs-assets, never wiki URLs.** |
 | R4 | Memory system research | pending | — | |
 | R5 | LLM provider research | pending | — | |

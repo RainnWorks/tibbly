@@ -18,7 +18,7 @@ audited against the live community on next research pass.
 
 Plugin install counts are a powerful evidence channel because every install
 is a real player actively choosing to download a third-party fix for a
-specific in-game pain. The top 50 plugins on the hub all sit at >=130K
+specific in-game pain. The top 50 plugins on the hub all sit at ≥130K
 installs — that is the audience we are talking to.
 
 ---
@@ -34,7 +34,7 @@ navigation. Without a guide, completion rates collapse.
   RuneScape." — OSRS Wiki, `Quest`
   https://oldschool.runescape.wiki/w/Quest
 - **Quest Helper** is the #1 most-installed RuneLite plugin at **555,505
-  installs** — more than 1.4x the next plugin (117 HD GPU at ~385K).
+  installs** — more than 1.4× the next plugin (117 HD GPU at ~385K).
   https://runelite.net/plugin-hub
 - Top-end quests like Song of the Elves require simultaneous lv70 in seven
   separate skills, and Dragon Slayer II requires 200 QP plus high combat —
@@ -408,7 +408,7 @@ engineering is the right product.)
 
 ---
 
-## Pain-point -> roadmap matrix
+## Pain-point → roadmap matrix
 
 | Pain | Marketing pillar | Product capability we lean on | New work? |
 |---|---|---|---|
