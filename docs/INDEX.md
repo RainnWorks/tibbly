@@ -31,16 +31,29 @@ then jump as needed.
 - [`architecture/TOOL_ECONOMY.md`](architecture/TOOL_ECONOMY.md) — how we keep tool context lean
 - [`architecture/MONOREPO.md`](architecture/MONOREPO.md) — layout, scripts, conventions
 - [`architecture/PROTOCOL.md`](architecture/PROTOCOL.md) — WS protocol plugin ↔ backend
+- [`architecture/DATA_FLOW.md`](architecture/DATA_FLOW.md) — Mermaid sequence diagrams of every wire crossing *(r10 / RAI-35)*
+
+## RuneLite Plugin Hub compliance *(r10 / RAI-35)*
+
+- [`runelite-hub/POLICY_SUMMARY.md`](runelite-hub/POLICY_SUMMARY.md) — allowed / borderline / forbidden, distilled
+- [`runelite-hub/SUBMISSION_CHECKLIST.md`](runelite-hub/SUBMISSION_CHECKLIST.md) — every requirement + our status
+- [`runelite-hub/PRECEDENT.md`](runelite-hub/PRECEDENT.md) — approved + rejected plugins we cite in our PR
+- [`runelite-hub/PLUGIN_DESCRIPTION.md`](runelite-hub/PLUGIN_DESCRIPTION.md) — hub listing copy + `warning=` line
+- [`runelite-hub/DATA_DISCLOSURE.md`](runelite-hub/DATA_DISCLOSURE.md) — every field that can leave the client
 
 ## Marketing
 
 - [`marketing/POSITIONING.md`](marketing/POSITIONING.md) — copy, pillar messages
 - [`marketing/ASSET_CATALOG.md`](marketing/ASSET_CATALOG.md) — OSRS Wiki sprites + URLs
+- [`marketing/BRAND_VOICE.md`](marketing/BRAND_VOICE.md) — picked voice ("clever friend who read the wiki") + 5 sample exchanges *(r7 / RAI-11)*
+- [`marketing/NAME_CANDIDATES.md`](marketing/NAME_CANDIDATES.md) — Tibbly (pick) + Wikit + Scribbins with TM/domain checks *(r7 / RAI-11)*
 
 ## Research (continuously growing, owned by research agents)
 
 - [`research/runelite-api/`](research/runelite-api/) — APIs we could use we haven't yet
 - [`research/community/`](research/community/) — OSRS/RuneLite user trends, pain points
+  - [`research/community/_SUMMARY.md`](research/community/_SUMMARY.md) — one-page pain-points + creator brief *(r2)*
+  - [`research/community/_naming-signals.md`](research/community/_naming-signals.md) — how OSRS tools are named in the wild *(r7 / RAI-11)*
 - [`research/memory-systems/`](research/memory-systems/) — how to do durable agent memory
 - [`research/llm-providers/`](research/llm-providers/) — OpenRouter model + pricing
 - [`research/competitor/`](research/competitor/) — other AI/OSRS tools
