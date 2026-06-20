@@ -30,6 +30,11 @@ const EnvSchema = z.object({
   OPENROUTER_API_KEY: z.string().min(1).optional(),
   STRIPE_SECRET_KEY: z.string().min(1).optional(),
   STRIPE_WEBHOOK_SECRET: z.string().min(1).optional(),
+  /**
+   * Comma-separated allow-list of email addresses for /admin/* routes.
+   * Empty → admin routes always 403. See `src/api/admin/usage.ts`.
+   */
+  ADMIN_EMAILS: z.string().default(""),
 });
 
 export type Env = z.infer<typeof EnvSchema>;

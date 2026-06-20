@@ -13,6 +13,8 @@
 import { Hono } from "hono";
 import { secureHeaders } from "hono/secure-headers";
 
+import { createAdminUsageRouter } from "./api/admin/usage";
+import type { CreateAdminUsageOptions } from "./api/admin/usage";
 import { env } from "./env";
 import { log } from "./lib/log";
 
@@ -24,6 +26,12 @@ export interface CreateAppOptions {
   version?: string;
   /** Override boot time (handy for tests). Defaults to module-load time. */
   bootAt?: number;
+  /**
+   * Admin analytics router config (RAI-37). Pass `{ db, adminEmails }` to
+   * enable. When omitted, /admin/* routes are NOT mounted — tests that
+   * don't care about admin can keep using the bare app.
+   */
+  admin?: CreateAdminUsageOptions | "auto";
 }
 
 export function createApp(options: CreateAppOptions = {}): Hono {
@@ -57,6 +65,11 @@ export function createApp(options: CreateAppOptions = {}): Hono {
   );
 
   app.get("/version", (c) => c.json({ version }));
+
+  if (options.admin) {
+    const adminOpts = options.admin === "auto" ? {} : options.admin;
+    app.route("/admin", createAdminUsageRouter(adminOpts));
+  }
 
   app.notFound((c) => c.json({ ok: false, error: "not_found" }, 404));
 
