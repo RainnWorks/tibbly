@@ -1,0 +1,33 @@
+{
+  "name": "@osrs-llm-helper/tooling",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Shared TypeScript, ESLint, and Prettier config for osrs-llm-helper workspaces.",
+  "type": "module",
+  "exports": {
+    "./eslint": "./eslint.config.js",
+    "./prettier": "./prettier.config.js",
+    "./tsconfig.base": "./tsconfig.base.json"
+  },
+  "files": [
+    "eslint.config.js",
+    "prettier.config.js",
+    "tsconfig.base.json",
+    "src"
+  ],
+  "scripts": {
+    "build": "echo 'tooling: no build step'",
+    "dev": "echo 'tooling: no dev step'",
+    "test": "echo 'tooling: no tests'",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@eslint/js": "^9.16.0",
+    "typescript-eslint": "^8.18.1"
+  },
+  "peerDependencies": {
+    "eslint": "^9.16.0",
+    "prettier": "^3.4.2",
+    "typescript": "^5.7.2"
+  }
+}

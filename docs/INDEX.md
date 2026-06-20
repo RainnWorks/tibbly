@@ -31,6 +31,24 @@ then jump as needed.
 - [`architecture/TOOL_ECONOMY.md`](architecture/TOOL_ECONOMY.md) — how we keep tool context lean
 - [`architecture/MONOREPO.md`](architecture/MONOREPO.md) — layout, scripts, conventions
 - [`architecture/PROTOCOL.md`](architecture/PROTOCOL.md) — WS protocol plugin ↔ backend
+- [`architecture/DATA_FLOW.md`](architecture/DATA_FLOW.md) — Mermaid sequence diagrams of every wire crossing *(r10 / RAI-35)*
+
+## RuneLite Plugin Hub compliance *(r10 / RAI-35)*
+
+- [`runelite-hub/POLICY_SUMMARY.md`](runelite-hub/POLICY_SUMMARY.md) — allowed / borderline / forbidden, distilled
+- [`runelite-hub/SUBMISSION_CHECKLIST.md`](runelite-hub/SUBMISSION_CHECKLIST.md) — every requirement + our status
+- [`runelite-hub/PRECEDENT.md`](runelite-hub/PRECEDENT.md) — approved + rejected plugins we cite in our PR
+- [`runelite-hub/PLUGIN_DESCRIPTION.md`](runelite-hub/PLUGIN_DESCRIPTION.md) — hub listing copy + `warning=` line
+- [`runelite-hub/DATA_DISCLOSURE.md`](runelite-hub/DATA_DISCLOSURE.md) — every field that can leave the client
+
+## Legal (RAI-34 — NEEDS LAWYER REVIEW BEFORE LAUNCH)
+
+- [`legal/PRIVACY.md`](legal/PRIVACY.md) — Privacy Policy draft
+- [`legal/TERMS.md`](legal/TERMS.md) — Terms of Service draft
+- [`legal/CONSENT_FLOW.md`](legal/CONSENT_FLOW.md) — in-plugin first-launch consent UX spec
+- [`legal/SUB_PROCESSORS.md`](legal/SUB_PROCESSORS.md) — Art. 28(2) sub-processor list
+- [`legal/DATA_RETENTION.md`](legal/DATA_RETENTION.md) — retention schedule + Stripe carve-out
+- [`legal/COOKIE_POLICY.md`](legal/COOKIE_POLICY.md) — essential-cookies-only stance
 
 ## Marketing
 
@@ -43,11 +61,29 @@ then jump as needed.
 
 - [`research/runelite-api/`](research/runelite-api/) — APIs we could use we haven't yet
 - [`research/community/`](research/community/) — OSRS/RuneLite user trends, pain points
+  - [`research/community/_SUMMARY.md`](research/community/_SUMMARY.md) — one-page pain-points + creator brief *(r2)*
   - [`research/community/_naming-signals.md`](research/community/_naming-signals.md) — how OSRS tools are named in the wild *(r7 / RAI-11)*
+  - [`research/community/pain-points.md`](research/community/pain-points.md) — 13 pain points with sourced evidence + top-50 plugin install corpus
+  - [`research/community/creators.md`](research/community/creators.md) — J1mmy / Soup / Settled / Limpwurt / B0aty profiles + outreach principles
+  - [`research/community/trends.md`](research/community/trends.md) — Leagues 6, Sailing, Varlamore, calendar opportunities
 - [`research/memory-systems/`](research/memory-systems/) — how to do durable agent memory
 - [`research/llm-providers/`](research/llm-providers/) — OpenRouter model + pricing
 - [`research/competitor/`](research/competitor/) — other AI/OSRS tools
 - [`research/osrs-wiki/`](research/osrs-wiki/) — OSRS Wiki imagery catalog
+- [`research/libraries/`](research/libraries/) — library scout: which npm package to use per area
+  - [`research/libraries/_SUMMARY.md`](research/libraries/_SUMMARY.md) — one-page cheat sheet of all picks
+  - [`research/libraries/llm.md`](research/libraries/llm.md) — Vercel AI SDK + @openrouter/ai-sdk-provider
+  - [`research/libraries/backend.md`](research/libraries/backend.md) — Hono on Bun
+  - [`research/libraries/db.md`](research/libraries/db.md) — Drizzle + PGLite (dev) + Postgres (prod)
+  - [`research/libraries/auth.md`](research/libraries/auth.md) — better-auth + custom device-key/pairing-code flow
+  - [`research/libraries/billing.md`](research/libraries/billing.md) — Stripe Node SDK v22
+  - [`research/libraries/react.md`](research/libraries/react.md) — Vite + React + TanStack Query/Router + Tailwind + shadcn + RHF + Zod
+  - [`research/libraries/charts.md`](research/libraries/charts.md) — recharts
+  - [`research/libraries/realtime.md`](research/libraries/realtime.md) — Bun native WS + hono/bun WS
+  - [`research/libraries/testing.md`](research/libraries/testing.md) — bun:test + vitest + Claude-in-Chrome
+  - [`research/libraries/logging.md`](research/libraries/logging.md) — pino + pino-pretty
+  - [`research/libraries/ids.md`](research/libraries/ids.md) — nanoid + uuid v7
+  - [`research/libraries/time.md`](research/libraries/time.md) — date-fns
 
 ## How to use this index
 

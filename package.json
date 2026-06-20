@@ -1,0 +1,32 @@
+{
+  "name": "osrs-llm-helper",
+  "private": true,
+  "version": "0.1.0",
+  "description": "OSRS LLM Helper — paid SaaS turning any LLM into a live in-game OSRS co-pilot. Bun workspace monorepo.",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "bun run --filter '*' dev",
+    "build": "bun run --filter '*' build",
+    "test": "bun run --filter '*' test",
+    "lint": "eslint . --max-warnings=0",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md,yml,yaml,css}\"",
+    "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md,yml,yaml,css}\"",
+    "typecheck": "bun run --filter '*' typecheck",
+    "clean": "rm -rf node_modules **/node_modules **/dist **/.turbo **/build"
+  },
+  "devDependencies": {
+    "@osrs-llm-helper/tooling": "workspace:*",
+    "@types/bun": "^1.1.14",
+    "eslint": "^9.16.0",
+    "prettier": "^3.4.2",
+    "typescript": "^5.7.2"
+  },
+  "engines": {
+    "bun": ">=1.1.0"
+  },
+  "packageManager": "bun@1.3.11"
+}
