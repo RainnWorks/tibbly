@@ -2,12 +2,15 @@
   "name": "@osrs-llm-helper/osrs-assets",
   "version": "0.0.0",
   "private": true,
-  "description": "Catalog and helpers for OSRS sprite/asset URLs used by the marketing site and dashboard.",
+  "description": "License-cleared OSRS-themed visual assets for the marketing site and dashboard.",
   "type": "module",
   "main": "./src/index.ts",
   "types": "./src/index.ts",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./skill_icons/*": "./skill_icons/*",
+    "./skill_icons_small/*": "./skill_icons_small/*",
+    "./fonts/*": "./fonts/*"
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",

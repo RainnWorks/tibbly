@@ -26,6 +26,45 @@ See `docs/agents/OPEN_QUESTIONS.md`. Top 3:
 - The plugin-to-backend WS protocol is a one-shot redesign — getting it wrong
   costs a session of rework. R6 (gaps) should scrutinize it before B3 builds.
 
+## !!  LEGAL — NEEDS LAWYER REVIEW BEFORE LAUNCH  !!
+
+> **RAI-34 deliverable. Do not publish, ship to plugin hub, take a
+> payment, or expose chat to a real user until a qualified solicitor
+> (UK / EU consumer + data protection) has reviewed the documents in
+> `docs/legal/`.**
+
+Drafts that exist as of 2026-06-21:
+
+- `docs/legal/PRIVACY.md`
+- `docs/legal/TERMS.md`
+- `docs/legal/CONSENT_FLOW.md`
+- `docs/legal/SUB_PROCESSORS.md`
+- `docs/legal/DATA_RETENTION.md`
+- `docs/legal/COOKIE_POLICY.md`
+
+**Single biggest risk:** Jagex's third-party-AI-assistant policy is
+undefined. Our product reads OSRS game state and sends it to a third-
+party LLM. If Jagex makes a moderation determination against the tool,
+every paying user could be banned. `TERMS.md` §11 disclaims that
+liability — but the enforceability of that disclaimer against UK/EU
+consumers is **not guaranteed**. Get a written legal opinion before
+taking the first payment.
+
+Other things flagged in-doc for the lawyer:
+
+- Cooling-off carve-out wording (Reg. 37 UK CCR) lives in checkout,
+  cross-referenced from `TERMS.md` §8.1 + `CONSENT_FLOW.md` §11.
+- CCPA "sale/share" determination — currently claiming "no sale"; verify.
+- Controller vs. processor designation — currently controller for
+  account data, processor for in-session pass-through to OpenRouter.
+- Cloudflare `cf_clearance` "strictly necessary" classification.
+- Children's age-gate UX (passive statement vs. explicit checkbox).
+
+Backend GDPR Art. 15 + 17 stubs landed at
+`apps/backend/src/api/me.ts` + `apps/backend/test/me.test.ts` —
+**parked behind RAI-13 (monorepo) + RAI-14 (backend skeleton)** because
+the Drizzle schema + Hono app they import don't exist yet.
+
 ## Next session's natural starting point
 
 - Approve the three open-questions defaults.

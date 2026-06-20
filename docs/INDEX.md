@@ -16,6 +16,13 @@ then jump as needed.
 - [`agents/HANDOFF.md`](agents/HANDOFF.md) — what to show the user on wake-up
 - [`agents/GAPS.md`](agents/GAPS.md) — current gap analysis *(auto-maintained)*
 
+## Apps
+
+- `apps/dashboard/` — Vite + React 18 + Tailwind v4 + TanStack Router skeleton
+  for paying users. Routes: `/`, `/pair`, `/usage`, `/accounts`, `/billing`.
+  Real backend wiring lands in RAI-27. See `apps/dashboard/README.md` if one is
+  added later; for now run `cd apps/dashboard && bun install && bun run dev`.
+
 ## Product
 
 - [`product/RAW_INSTRUCTIONS.md`](product/RAW_INSTRUCTIONS.md) — verbatim user words, source-of-truth for intent
@@ -31,24 +38,48 @@ then jump as needed.
 - [`architecture/TOOL_ECONOMY.md`](architecture/TOOL_ECONOMY.md) — how we keep tool context lean
 - [`architecture/MONOREPO.md`](architecture/MONOREPO.md) — layout, scripts, conventions
 - [`architecture/PROTOCOL.md`](architecture/PROTOCOL.md) — WS protocol plugin ↔ backend
+- [`architecture/DATA_FLOW.md`](architecture/DATA_FLOW.md) — Mermaid sequence diagrams of every wire crossing *(r10 / RAI-35)*
+
+## RuneLite Plugin Hub compliance *(r10 / RAI-35)*
+
+- [`runelite-hub/POLICY_SUMMARY.md`](runelite-hub/POLICY_SUMMARY.md) — allowed / borderline / forbidden, distilled
+- [`runelite-hub/SUBMISSION_CHECKLIST.md`](runelite-hub/SUBMISSION_CHECKLIST.md) — every requirement + our status
+- [`runelite-hub/PRECEDENT.md`](runelite-hub/PRECEDENT.md) — approved + rejected plugins we cite in our PR
+- [`runelite-hub/PLUGIN_DESCRIPTION.md`](runelite-hub/PLUGIN_DESCRIPTION.md) — hub listing copy + `warning=` line
+- [`runelite-hub/DATA_DISCLOSURE.md`](runelite-hub/DATA_DISCLOSURE.md) — every field that can leave the client
+
+## Legal (RAI-34 — NEEDS LAWYER REVIEW BEFORE LAUNCH)
+
+- [`legal/PRIVACY.md`](legal/PRIVACY.md) — Privacy Policy draft
+- [`legal/TERMS.md`](legal/TERMS.md) — Terms of Service draft
+- [`legal/CONSENT_FLOW.md`](legal/CONSENT_FLOW.md) — in-plugin first-launch consent UX spec
+- [`legal/SUB_PROCESSORS.md`](legal/SUB_PROCESSORS.md) — Art. 28(2) sub-processor list
+- [`legal/DATA_RETENTION.md`](legal/DATA_RETENTION.md) — retention schedule + Stripe carve-out
+- [`legal/COOKIE_POLICY.md`](legal/COOKIE_POLICY.md) — essential-cookies-only stance
 
 ## Marketing
 
 - [`marketing/POSITIONING.md`](marketing/POSITIONING.md) — copy, pillar messages
 - [`marketing/ASSET_CATALOG.md`](marketing/ASSET_CATALOG.md) — OSRS Wiki sprites + URLs
+- [`marketing/BRAND_VOICE.md`](marketing/BRAND_VOICE.md) — picked voice ("clever friend who read the wiki") + 5 sample exchanges *(r7 / RAI-11)*
+- [`marketing/NAME_CANDIDATES.md`](marketing/NAME_CANDIDATES.md) — Tibbly (pick) + Scribbins + Wikit with TM/domain checks *(r7 / RAI-11)*
 
 ## Research (continuously growing, owned by research agents)
 
 - [`research/runelite-api/`](research/runelite-api/) — APIs we could use we haven't yet
 - [`research/community/`](research/community/) — OSRS/RuneLite user trends, pain points
-  - [`research/community/_SUMMARY.md`](research/community/_SUMMARY.md) — 1-page summary for marketing + roadmap
+  - [`research/community/_SUMMARY.md`](research/community/_SUMMARY.md) — one-page pain-points + creator brief *(r2)*
+  - [`research/community/_naming-signals.md`](research/community/_naming-signals.md) — how OSRS tools are named in the wild *(r7 / RAI-11)*
   - [`research/community/pain-points.md`](research/community/pain-points.md) — 13 pain points with sourced evidence + top-50 plugin install corpus
   - [`research/community/creators.md`](research/community/creators.md) — J1mmy / Soup / Settled / Limpwurt / B0aty profiles + outreach principles
   - [`research/community/trends.md`](research/community/trends.md) — Leagues 6, Sailing, Varlamore, calendar opportunities
 - [`research/memory-systems/`](research/memory-systems/) — how to do durable agent memory
 - [`research/llm-providers/`](research/llm-providers/) — OpenRouter model + pricing
 - [`research/competitor/`](research/competitor/) — other AI/OSRS tools
-- [`research/osrs-wiki/`](research/osrs-wiki/) — OSRS Wiki imagery catalog
+- [`research/osrs-wiki/`](research/osrs-wiki/) — OSRS-themed visual asset catalog + licensing risk matrix
+  - [`research/osrs-wiki/_SUMMARY.md`](research/osrs-wiki/_SUMMARY.md) — top recommendation (RuneLite BSD-2 + RuneStar CC0)
+  - [`research/osrs-wiki/assets.md`](research/osrs-wiki/assets.md) — categorised catalog (250+ assets, 7 categories)
+  - [`research/osrs-wiki/licensing.md`](research/osrs-wiki/licensing.md) — per-source go/no-go, loud risk warnings, Jagex Fan Content Policy
 - [`research/libraries/`](research/libraries/) — library scout: which npm package to use per area
   - [`research/libraries/_SUMMARY.md`](research/libraries/_SUMMARY.md) — one-page cheat sheet of all picks
   - [`research/libraries/llm.md`](research/libraries/llm.md) — Vercel AI SDK + @openrouter/ai-sdk-provider
