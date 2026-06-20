@@ -173,6 +173,16 @@ original intent. Re-read whenever something feels off-mission.
 
 > I want you to start the loop right now, every 20 minutes, wake yourself up and ensure that all sub agents are moving towards their goals.
 
+## Block 26 — Be CTO, use Linear, companion vs assistant personality
+
+> I have said to you a lot about how you're going to run this and what sub agents should exist. And I think it's important to pull back a little bit on that and explain that I don't care how you do the sub agents, but I do think that we should think about what kind of agent or what sort of prompt an agent should be given to actually tackle a lot of these as individual pieces that all obviously feed into the overall goal.
+
+> What I'm gonna do is I'm gonna set up a linear for you, and I want you to use the linear MCP to create tasks, create sub tasks for each different potential agent that you've created.
+
+> Your goal is to act as CTO on this project, fundamentally driving this app towards a multi-layer big app that is going to be used for running this RuneScape LLM. It's a companion. It should feel like a friend. Or should it? You know, maybe there's a whole personality aspect to this, but I'm gonna leave it there.
+
+> Your job is to run this and ensure that the sub agents are moving correctly.
+
 ---
 
 ## Earlier (this session, before the productize pivot)

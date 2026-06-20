@@ -54,3 +54,22 @@ marketing page, backend with login. Login conditional if frictionless.
 login screen. Add `/login` route only as a recovery path (for users replacing
 their machine). Stripe Customer Portal is the billing UX.
 **Reversible?:** yes.
+
+## D-7 — Operating model: CTO + Linear MCP + companion personality lane — 2026-06-21
+
+**Context:** User said "I don't care how you do the sub agents" + "act as CTO"
++ "use the linear MCP to create tasks" + "it's a companion, should feel like
+a friend — or should it? personality aspect to this".
+**Chosen:**
+- Operate as the CTO — I own pace, agent choreography, and trade-offs.
+- Track work as Linear issues when the Linear MCP becomes available
+  (currently not loaded — placeholder: log to STATUS.md, then create issues
+  on the next loop after `ToolSearch` returns linear tools).
+- Add an explicit **personality / brand voice** task. Default position: the
+  agent has a quietly competent OSRS-veteran tone — knows the lore, makes
+  occasional callbacks ("don't be a noob"), but never gets in the way.
+  Skews slightly companion ("we're in this together") rather than tool
+  ("here is your data"). Test against power-user opinions in R2 research.
+- Branding: "RuneCanine"? "Cleverbird"? Provisional name TBD by marketing
+  agent; for now the product is `osrs-llm-helper` in docs.
+**Reversible?:** yes.
