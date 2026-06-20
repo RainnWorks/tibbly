@@ -16,7 +16,7 @@
 | ID | Agent | Status | Branch | Notes |
 |----|-------|--------|--------|-------|
 | R1 | RuneLite API explorer | pending | — | |
-| R2 | Community / market research | pending | — | |
+| R2 | Community / market research | done | agent/r2/community-pain-points | 13 pain points + creators + trends + summary; Reddit reachability flagged for next loop |
 | R3 | OSRS Wiki asset catalog | pending | — | |
 | R4 | Memory system research | pending | — | |
 | R5 | LLM provider research | pending | — | |

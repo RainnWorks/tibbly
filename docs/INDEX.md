@@ -41,10 +41,28 @@ then jump as needed.
 
 - [`research/runelite-api/`](research/runelite-api/) — APIs we could use we haven't yet
 - [`research/community/`](research/community/) — OSRS/RuneLite user trends, pain points
+  - [`research/community/_SUMMARY.md`](research/community/_SUMMARY.md) — 1-page summary for marketing + roadmap
+  - [`research/community/pain-points.md`](research/community/pain-points.md) — 13 pain points with sourced evidence + top-50 plugin install corpus
+  - [`research/community/creators.md`](research/community/creators.md) — J1mmy / Soup / Settled / Limpwurt / B0aty profiles + outreach principles
+  - [`research/community/trends.md`](research/community/trends.md) — Leagues 6, Sailing, Varlamore, calendar opportunities
 - [`research/memory-systems/`](research/memory-systems/) — how to do durable agent memory
 - [`research/llm-providers/`](research/llm-providers/) — OpenRouter model + pricing
 - [`research/competitor/`](research/competitor/) — other AI/OSRS tools
 - [`research/osrs-wiki/`](research/osrs-wiki/) — OSRS Wiki imagery catalog
+- [`research/libraries/`](research/libraries/) — library scout: which npm package to use per area
+  - [`research/libraries/_SUMMARY.md`](research/libraries/_SUMMARY.md) — one-page cheat sheet of all picks
+  - [`research/libraries/llm.md`](research/libraries/llm.md) — Vercel AI SDK + @openrouter/ai-sdk-provider
+  - [`research/libraries/backend.md`](research/libraries/backend.md) — Hono on Bun
+  - [`research/libraries/db.md`](research/libraries/db.md) — Drizzle + PGLite (dev) + Postgres (prod)
+  - [`research/libraries/auth.md`](research/libraries/auth.md) — better-auth + custom device-key/pairing-code flow
+  - [`research/libraries/billing.md`](research/libraries/billing.md) — Stripe Node SDK v22
+  - [`research/libraries/react.md`](research/libraries/react.md) — Vite + React + TanStack Query/Router + Tailwind + shadcn + RHF + Zod
+  - [`research/libraries/charts.md`](research/libraries/charts.md) — recharts
+  - [`research/libraries/realtime.md`](research/libraries/realtime.md) — Bun native WS + hono/bun WS
+  - [`research/libraries/testing.md`](research/libraries/testing.md) — bun:test + vitest + Claude-in-Chrome
+  - [`research/libraries/logging.md`](research/libraries/logging.md) — pino + pino-pretty
+  - [`research/libraries/ids.md`](research/libraries/ids.md) — nanoid + uuid v7
+  - [`research/libraries/time.md`](research/libraries/time.md) — date-fns
 
 ## How to use this index
 
