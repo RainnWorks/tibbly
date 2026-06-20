@@ -1,0 +1,21 @@
+{
+  "name": "@osrs-llm-helper/marketing",
+  "version": "0.0.0",
+  "private": true,
+  "description": "RuneScape-native marketing site: hero, pricing, demo, FAQ. React + Vite + Tailwind.",
+  "type": "module",
+  "main": "./src/index.ts",
+  "scripts": {
+    "dev": "echo 'marketing dev: Vite wired in by F2 agent'",
+    "build": "echo 'marketing build: Vite wired in by F2 agent'",
+    "test": "bun test",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@osrs-llm-helper/osrs-assets": "workspace:*"
+  },
+  "devDependencies": {
+    "@osrs-llm-helper/tooling": "workspace:*",
+    "typescript": "^5.7.2"
+  }
+}

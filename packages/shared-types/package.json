@@ -1,0 +1,22 @@
+{
+  "name": "@osrs-llm-helper/shared-types",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Types shared between the Bun backend, dashboard, marketing site, and the RuneLite plugin's WebSocket protocol.",
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "tsc -p tsconfig.json --watch",
+    "test": "bun test",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "devDependencies": {
+    "@osrs-llm-helper/tooling": "workspace:*",
+    "typescript": "^5.7.2"
+  }
+}
