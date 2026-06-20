@@ -16,6 +16,13 @@ then jump as needed.
 - [`agents/HANDOFF.md`](agents/HANDOFF.md) — what to show the user on wake-up
 - [`agents/GAPS.md`](agents/GAPS.md) — current gap analysis *(auto-maintained)*
 
+## Apps
+
+- `apps/dashboard/` — Vite + React 18 + Tailwind v4 + TanStack Router skeleton
+  for paying users. Routes: `/`, `/pair`, `/usage`, `/accounts`, `/billing`.
+  Real backend wiring lands in RAI-27. See `apps/dashboard/README.md` if one is
+  added later; for now run `cd apps/dashboard && bun install && bun run dev`.
+
 ## Product
 
 - [`product/RAW_INSTRUCTIONS.md`](product/RAW_INSTRUCTIONS.md) — verbatim user words, source-of-truth for intent
