@@ -1,0 +1,340 @@
+{
+  "pois": [
+    {
+      "type": "slayer_master",
+      "name": "Turael (Burthorpe)",
+      "x": 2931,
+      "y": 3536,
+      "plane": 0,
+      "notes": "Lowest-level master, 0 points per task, free task skipping"
+    },
+    {
+      "type": "slayer_master",
+      "name": "Spria (Draynor Village)",
+      "x": 3091,
+      "y": 3267,
+      "plane": 0,
+      "notes": "Equivalent to Turael; F2P-accessible"
+    },
+    {
+      "type": "slayer_master",
+      "name": "Mazchna (Canifis)",
+      "x": 3511,
+      "y": 3509,
+      "plane": 0,
+      "notes": "Low-level master; combat 20"
+    },
+    {
+      "type": "slayer_master",
+      "name": "Vannaka (Edgeville Dungeon)",
+      "x": 3147,
+      "y": 9914,
+      "plane": 0,
+      "notes": "Mid-level master; combat 40"
+    },
+    {
+      "type": "slayer_master",
+      "name": "Konar (Mount Karuulm)",
+      "x": 1309,
+      "y": 3785,
+      "plane": 0,
+      "notes": "Boss task locations; combat 75"
+    },
+    {
+      "type": "slayer_master",
+      "name": "Nieve (Tree Gnome Stronghold)",
+      "x": 2432,
+      "y": 3423,
+      "plane": 0,
+      "notes": "Replaced by Steve after Monkey Madness II; combat 85"
+    },
+    {
+      "type": "slayer_master",
+      "name": "Steve (Tree Gnome Stronghold)",
+      "x": 2432,
+      "y": 3423,
+      "plane": 0,
+      "notes": "Post-MM2 Nieve replacement"
+    },
+    {
+      "type": "slayer_master",
+      "name": "Aya (Burthorpe)",
+      "x": 2931,
+      "y": 3536,
+      "plane": 0,
+      "notes": "Sailing-era master; very low requirements"
+    },
+    {
+      "type": "boss_arena",
+      "name": "Corporeal Beast (Corporeal Beast Cave)",
+      "x": 3203,
+      "y": 3681,
+      "plane": 0,
+      "notes": "Spear/Halberd damage; team boss"
+    },
+    {
+      "type": "boss_arena",
+      "name": "Wintertodt (Wintertodt Camp)",
+      "x": 1630,
+      "y": 3981,
+      "plane": 0,
+      "notes": "50 firemaking; minigame-style boss"
+    },
+    {
+      "type": "boss_arena",
+      "name": "Tempoross (Ruins of Unkah)",
+      "x": 3035,
+      "y": 2850,
+      "plane": 0,
+      "notes": "35 fishing; minigame-style boss"
+    },
+    {
+      "type": "boss_arena",
+      "name": "The Inferno (Mor Ul Rek)",
+      "x": 2496,
+      "y": 5122,
+      "plane": 0,
+      "notes": "Solo only; req fire cape"
+    },
+    {
+      "type": "boss_arena",
+      "name": "Fight Caves (Mor Ul Rek)",
+      "x": 2439,
+      "y": 5172,
+      "plane": 0,
+      "notes": "Solo; rewards fire cape"
+    },
+    {
+      "type": "slayer_dungeon",
+      "name": "Smoke Devil Dungeon",
+      "x": 2412,
+      "y": 3061,
+      "plane": 0,
+      "notes": "93 slayer; access via Pollnivneach"
+    },
+    {
+      "type": "slayer_dungeon",
+      "name": "Lumbridge Swamp Caves",
+      "x": 3169,
+      "y": 3172,
+      "plane": 0,
+      "notes": "Low-level slayer + Cave goblins"
+    },
+    {
+      "type": "slayer_dungeon",
+      "name": "God Wars Dungeon entrance",
+      "x": 2918,
+      "y": 3745,
+      "plane": 0,
+      "notes": "Killcount required for each boss room"
+    },
+    {
+      "type": "slayer_dungeon",
+      "name": "Forthos Dungeon",
+      "x": 1690,
+      "y": 3570,
+      "plane": 0,
+      "notes": "A Kingdom Divided"
+    },
+    {
+      "type": "shop",
+      "name": "Lundail's Rune Shop (Mage Arena)",
+      "x": 3109,
+      "y": 10357,
+      "plane": 0,
+      "notes": "Sells law, death, blood, and elemental runes"
+    },
+    {
+      "type": "shop",
+      "name": "Ali Morrisane (Al-Kharid)",
+      "x": 3304,
+      "y": 3211,
+      "plane": 0,
+      "notes": "General store + black market events"
+    },
+    {
+      "type": "shop",
+      "name": "Brian's Archery Supplies (Rimmington)",
+      "x": 8,
+      "y": 4,
+      "plane": 0,
+      "notes": "Buckler shop"
+    },
+    {
+      "type": "shop",
+      "name": "Tyras Camp Rune Shop",
+      "x": 2185,
+      "y": 3145,
+      "plane": 0,
+      "notes": "Sells various elemental runes"
+    },
+    {
+      "type": "quest_start",
+      "name": "Cook's Assistant \u2014 Reldo",
+      "x": 3210,
+      "y": 3495,
+      "plane": 0,
+      "notes": "Kitchen, Lumbridge Castle"
+    },
+    {
+      "type": "quest_start",
+      "name": "Witch's Potion \u2014 Hetty",
+      "x": 2968,
+      "y": 3206,
+      "plane": 0,
+      "notes": "Rimmington witch's hut"
+    },
+    {
+      "type": "quest_start",
+      "name": "The Restless Ghost \u2014 Father Aereck",
+      "x": 3243,
+      "y": 3210,
+      "plane": 0,
+      "notes": "Lumbridge church"
+    },
+    {
+      "type": "quest_start",
+      "name": "Pirate's Treasure \u2014 Wydin",
+      "x": 3013,
+      "y": 3207,
+      "plane": 0,
+      "notes": "Port Sarim general store"
+    },
+    {
+      "type": "quest_start",
+      "name": "Doric's Quest \u2014 Doric",
+      "x": 2952,
+      "y": 3452,
+      "plane": 0,
+      "notes": "Northwest of Falador"
+    },
+    {
+      "type": "quest_start",
+      "name": "Black Knights' Fortress \u2014 Sir Amik Varze",
+      "x": 2960,
+      "y": 3337,
+      "plane": 0,
+      "notes": "White Knights' Castle Falador"
+    },
+    {
+      "type": "quest_start",
+      "name": "Imp Catcher \u2014 Wizard Mizgog",
+      "x": 3104,
+      "y": 3164,
+      "plane": 0,
+      "notes": "Wizards' Tower top floor"
+    },
+    {
+      "type": "quest_start",
+      "name": "Sheep Herder \u2014 Ned",
+      "x": 3099,
+      "y": 3259,
+      "plane": 0,
+      "notes": "Lumbridge"
+    },
+    {
+      "type": "quest_start",
+      "name": "Dragon Slayer I \u2014 Guildmaster",
+      "x": 3191,
+      "y": 3360,
+      "plane": 0,
+      "notes": "Champions' Guild, south Varrock"
+    },
+    {
+      "type": "quest_start",
+      "name": "Misthalin Mystery \u2014 Hairdresser",
+      "x": 2945,
+      "y": 3380,
+      "plane": 0,
+      "notes": "Falador hair salon"
+    },
+    {
+      "type": "quest_start",
+      "name": "X Marks the Spot \u2014 Charlie the Tramp",
+      "x": 3206,
+      "y": 3390,
+      "plane": 0,
+      "notes": "Lumbridge graveyard"
+    },
+    {
+      "type": "quest_start",
+      "name": "Recipe for Disaster \u2014 Reldo (RFD)",
+      "x": 3210,
+      "y": 3495,
+      "plane": 0,
+      "notes": "Lumbridge Castle kitchen"
+    },
+    {
+      "type": "quest_start",
+      "name": "Tree Gnome Village \u2014 King Bolren",
+      "x": 2542,
+      "y": 3170,
+      "plane": 0,
+      "notes": "Tree Gnome Village center"
+    },
+    {
+      "type": "quest_start",
+      "name": "The Knight's Sword \u2014 Eohric",
+      "x": 2899,
+      "y": 3564,
+      "plane": 0,
+      "notes": "Varrock Castle"
+    },
+    {
+      "type": "quest_start",
+      "name": "Prince Ali Rescue \u2014 Hassan",
+      "x": 3302,
+      "y": 3163,
+      "plane": 0,
+      "notes": "Al-Kharid palace"
+    },
+    {
+      "type": "quest_start",
+      "name": "Sea Slug \u2014 Caroline",
+      "x": 2716,
+      "y": 3302,
+      "plane": 0,
+      "notes": "Witchaven"
+    },
+    {
+      "type": "quest_start",
+      "name": "Mourning's End Part I \u2014 Lord Iorwerth",
+      "x": 2204,
+      "y": 3252,
+      "plane": 0,
+      "notes": "Iorwerth Camp, Tirannwn"
+    },
+    {
+      "type": "quest_start",
+      "name": "The Grand Tree \u2014 Glough",
+      "x": 2478,
+      "y": 3463,
+      "plane": 0,
+      "notes": "Stronghold of Gnome Village"
+    },
+    {
+      "type": "quest_start",
+      "name": "Heroes' Quest \u2014 Achietties",
+      "x": 2902,
+      "y": 3511,
+      "plane": 0,
+      "notes": "Heroes' Guild"
+    },
+    {
+      "type": "quest_start",
+      "name": "Holy Grail \u2014 King Arthur",
+      "x": 2764,
+      "y": 3515,
+      "plane": 0,
+      "notes": "Camelot throne room"
+    },
+    {
+      "type": "quest_start",
+      "name": "The Fremennik Trials \u2014 Sigli the Huntsman",
+      "x": 2660,
+      "y": 3649,
+      "plane": 0,
+      "notes": "Rellekka"
+    }
+  ]
+}

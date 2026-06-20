@@ -1,0 +1,15 @@
+{
+    "java.configuration.updateBuildConfiguration": "automatic",
+    "java.debug.settings.hotCodeReplace": "auto",
+    "java.debug.settings.console": "internalConsole",
+    "java.compile.nullAnalysis.mode": "automatic",
+    "files.exclude": {
+        "**/.gradle": true,
+        "**/build": true,
+        "**/.idea": true
+    },
+    "search.exclude": {
+        "**/.gradle": true,
+        "**/build": true
+    }
+}
