@@ -1,0 +1,5 @@
+# Placeholder docker-compose for local dev stack.
+# Backend Core agent (B1) will replace this with a real compose file
+# wiring Postgres + the Bun backend together.
+version: "3.9"
+services: {}

@@ -1,0 +1,23 @@
+{
+  "name": "@osrs-llm-helper/backend",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Bun + Hono backend: chat orchestration over OpenRouter, Stripe billing, RuneLite WebSocket bridge.",
+  "type": "module",
+  "main": "./src/index.ts",
+  "scripts": {
+    "dev": "bun run --watch src/index.ts",
+    "start": "bun run src/index.ts",
+    "build": "bun build src/index.ts --target=bun --outdir=dist",
+    "test": "bun test",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@osrs-llm-helper/shared-types": "workspace:*"
+  },
+  "devDependencies": {
+    "@osrs-llm-helper/tooling": "workspace:*",
+    "@types/bun": "^1.1.14",
+    "typescript": "^5.7.2"
+  }
+}

@@ -8,7 +8,7 @@
 
 | ID | Agent | Status | Branch | Notes |
 |----|-------|--------|--------|-------|
-| A1 | Architect | pending | — | Will set up monorepo |
+| A1 | Architect | done (RAI-13) | agent/eng-infra/monorepo | Monorepo restructure committed; bun install, bun run typecheck, and apps/plugin ./gradlew shadowJar all green. Commit unsigned — see OPEN_QUESTIONS Q-7. |
 | A2 | Memory/docs steward | running (this loop) | main | Initial docs done; spawn after Stage 2 begins |
 
 ## Stage 2 — research + spec
