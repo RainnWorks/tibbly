@@ -1,16 +1,33 @@
 import { describe, expect, test } from "bun:test";
 import {
-  ASSETS, FONTS, isForbiddenAssetUrl, SKILLS, SKILL_ICONS, SKILL_ICONS_SMALL,
+  ASSETS,
+  FONTS,
+  FONTS_LIST,
+  isForbiddenAssetUrl,
+  SKILLS,
+  SKILL_ICONS,
+  SKILL_ICONS_LIST,
+  SKILL_ICONS_SMALL,
 } from "./index";
 
 describe("@osrs-llm-helper/osrs-assets", () => {
   test("exports 26 skill icons", () => {
     expect(SKILLS.length).toBe(26);
-    expect(SKILL_ICONS.length).toBe(26);
+    expect(SKILL_ICONS_LIST.length).toBe(26);
     expect(SKILL_ICONS_SMALL.length).toBe(26);
   });
+  test("exports record-keyed SKILL_ICONS for named skills", () => {
+    expect(SKILL_ICONS.attack.id).toBe("skill_icon_attack");
+    expect(SKILL_ICONS.magic.id).toBe("skill_icon_magic");
+    expect(SKILL_ICONS.slayer.id).toBe("skill_icon_slayer");
+  });
   test("exports 3 fonts", () => {
-    expect(FONTS.length).toBe(3);
+    expect(FONTS_LIST.length).toBe(3);
+  });
+  test("exports a CSS font stack", () => {
+    expect(FONTS.heading).toBeTruthy();
+    expect(FONTS.body).toBeTruthy();
+    expect(FONTS.mono).toBeTruthy();
   });
   test("every asset has provenance metadata", () => {
     for (const asset of ASSETS) {

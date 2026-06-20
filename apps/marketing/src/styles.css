@@ -1,0 +1,43 @@
+@import "tailwindcss";
+
+@theme {
+  --color-osrs-bg: #0f0a06;
+  --color-osrs-surface: #1a1410;
+  --color-osrs-border: #3a2f1f;
+  --color-osrs-gold: #ffcc00;
+  --color-osrs-gold-dim: #c8b675;
+  --color-osrs-text: #f4e9c1;
+  --color-osrs-muted: #a08a5a;
+  --color-osrs-danger: #b22222;
+  --color-osrs-success: #5a8a3a;
+
+  --font-heading:
+    "IM Fell English SC", "Trajan Pro", "Cinzel", Georgia, "Times New Roman",
+    serif;
+  --font-body:
+    "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --font-mono:
+    "JetBrains Mono", "Fira Code", ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+:root {
+  color-scheme: dark;
+}
+
+html,
+body {
+  background: var(--color-osrs-bg);
+  color: var(--color-osrs-text);
+  font-family: var(--font-body);
+  margin: 0;
+  padding: 0;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  font-family: var(--font-heading);
+  color: var(--color-osrs-gold);
+}
