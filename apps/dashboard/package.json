@@ -1,0 +1,22 @@
+{
+  "name": "@osrs-llm-helper/dashboard",
+  "version": "0.0.0",
+  "private": true,
+  "description": "React + Vite dashboard for paying users: usage chart, account binding, Stripe portal.",
+  "type": "module",
+  "main": "./src/index.ts",
+  "scripts": {
+    "dev": "echo 'dashboard dev: Vite wired in by F1 agent'",
+    "build": "echo 'dashboard build: Vite wired in by F1 agent'",
+    "test": "bun test",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@osrs-llm-helper/shared-types": "workspace:*",
+    "@osrs-llm-helper/osrs-assets": "workspace:*"
+  },
+  "devDependencies": {
+    "@osrs-llm-helper/tooling": "workspace:*",
+    "typescript": "^5.7.2"
+  }
+}

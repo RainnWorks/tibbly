@@ -1,0 +1,13 @@
+{
+  "name": "@osrs-llm-helper/plugin",
+  "version": "0.1.0",
+  "private": true,
+  "description": "RuneLite plugin (Kotlin + Gradle). Builds via `./gradlew shadowJar`. Lives in the workspace for orchestration only — no TypeScript build.",
+  "scripts": {
+    "build": "./gradlew shadowJar",
+    "dev": "./gradlew runRuneLite",
+    "test": "./gradlew test",
+    "typecheck": "echo 'plugin: Kotlin module — typecheck handled by gradle'",
+    "lint": "echo 'plugin: Kotlin module — lint handled by gradle (ktlint TBD)'"
+  }
+}
