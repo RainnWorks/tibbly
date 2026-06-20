@@ -1,0 +1,8 @@
+node_modules
+dist
+build
+.turbo
+apps/plugin
+*.lock
+bun.lock
+bun.lockb

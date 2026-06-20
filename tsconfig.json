@@ -1,0 +1,15 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true
+  },
+  "include": [],
+  "references": [
+    { "path": "./apps/backend" },
+    { "path": "./apps/dashboard" },
+    { "path": "./apps/marketing" },
+    { "path": "./packages/shared-types" },
+    { "path": "./packages/osrs-assets" },
+    { "path": "./packages/tooling" }
+  ]
+}
