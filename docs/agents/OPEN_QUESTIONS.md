@@ -36,3 +36,35 @@ Default off. Privacy first.
 **Picked default:** trust the plugin-reported player name; the user can
 nuke a binding from the dashboard. We can later add a verification step
 (plugin posts a one-time string to chat-message that the backend reads).
+
+## Q-7 — Brand voice: companion vs alternatives — 2026-06-21 (R7 / RAI-11)
+**Picked default:** **"the clever friend who already read the wiki"** —
+warm-but-calm companion, dry-witted, lore-literate, never sycophantic,
+never AI-disclaims, sparingly sarcastic. Closer to Settled's documentary
+calm than J1mmy's comedy. No proper name for the helper; the product name
+itself stands in. Full spec + 5 sample exchanges in
+`docs/marketing/BRAND_VOICE.md`.
+**Other options considered:**
+(a) Co-pilot — rejected as corporate / OSRS-foreign;
+(b) Scribe — rejected as too passive;
+(c) Wiki on tap — rejected as too narrow to justify a subscription;
+(d) Irritated wiki nerd — rejected as alienating to beginners;
+(e) Loyal NPC follower — rejected as too pet-like for the Iron-tier buyer.
+**Confirm with Tom:** is "calm + dry, rare ribbing" the right register, or
+do we want a warmer/cuddlier register? Do we ever give the helper a proper
+first name (e.g. "Tibbly says…") or keep it nameless?
+
+## Q-8 — Product name: Tibbly (with Scribbins + Wikit as fallbacks) — 2026-06-21 (R7 / RAI-11)
+**Picked default:** **Tibbly**. Invented two-syllable NPC-grammar word,
+verbable ("ask Tibbly"), zero Jagex IP overlap, `github.com/tibbly` is free.
+Risks: `tibbly.com` is taken by an art seller (different commercial class,
+weak conflict — acquire or use `tibbly.app`/`tibbly.gg`/`gettibbly.com`).
+**WebSearch was unavailable this loop, so the USPTO TESS check has NOT
+been formally run — Tom must re-run before any logo/brand spend.**
+Fallbacks ranked: (1) **Scribbins** — invented, lore-flavored, low collision,
+spelling tax; (2) **Wikit** — short and sticky, but matches a prior
+personal-wiki software and `github.com/wikit` is taken.
+Full TM + domain + GitHub matrix in `docs/marketing/NAME_CANDIDATES.md`.
+**Why not asked:** legal/branding call. Tom can override on wake-up;
+nothing downstream is hard-coded to "Tibbly" yet — placeholder
+`osrs-llm-helper` is still in code, swap happens in marketing copy first.

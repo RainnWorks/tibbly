@@ -36,11 +36,14 @@ then jump as needed.
 
 - [`marketing/POSITIONING.md`](marketing/POSITIONING.md) — copy, pillar messages
 - [`marketing/ASSET_CATALOG.md`](marketing/ASSET_CATALOG.md) — OSRS Wiki sprites + URLs
+- [`marketing/BRAND_VOICE.md`](marketing/BRAND_VOICE.md) — picked voice ("clever friend who read the wiki") + 5 sample exchanges *(r7 / RAI-11)*
+- [`marketing/NAME_CANDIDATES.md`](marketing/NAME_CANDIDATES.md) — Tibbly (pick) + Scribbins + Wikit with TM/domain checks *(r7 / RAI-11)*
 
 ## Research (continuously growing, owned by research agents)
 
 - [`research/runelite-api/`](research/runelite-api/) — APIs we could use we haven't yet
 - [`research/community/`](research/community/) — OSRS/RuneLite user trends, pain points
+  - [`research/community/_naming-signals.md`](research/community/_naming-signals.md) — how OSRS tools are named in the wild *(r7 / RAI-11)*
 - [`research/memory-systems/`](research/memory-systems/) — how to do durable agent memory
 - [`research/llm-providers/`](research/llm-providers/) — OpenRouter model + pricing
 - [`research/competitor/`](research/competitor/) — other AI/OSRS tools
