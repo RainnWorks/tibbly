@@ -137,3 +137,17 @@ attempt was wiped twice this way.
 `git worktree` (or in a fully isolated `worktree` agent), not just a
 branch on the shared checkout. Worth fixing in the spawner before the
 next overnight.
+
+## Q-18 — Reach out to Jagex for explicit SaaS approval? — 2026-06-21 (R3)
+**Picked default:** ship with mitigations; do NOT proactively contact Jagex
+Legal. Rationale: RuneLite has operated under Jagex's tolerated-not-licensed
+posture for ~10 years; a paid SaaS plugin operates in the same grey zone.
+Proactive contact risks a "no" that locks us out before launch. Better: ship
+with strong RuneLite-parity defence (only BSD-2 and CC0 assets, "not
+affiliated with Jagex" disclaimer everywhere, no wiki sprites in the paid
+product) and monitor for cease-and-desist signals. Resolves Q-4 above.
+**Other options:**
+(a) ask Jagex Legal directly; or
+(b) launch via RuneLite Plugin Hub first.
+**Why not asked:** legal posture call — Tom can override on wake-up.
+See docs/research/osrs-wiki/licensing.md for full risk breakdown.
