@@ -1,0 +1,57 @@
+@import "tailwindcss";
+
+/**
+ * OSRS-vibe placeholder theme — dark slate background, gold accent.
+ * The "real" RuneStar typeface will be wired in once packages/osrs-assets
+ * ships its font catalog. Until then we degrade gracefully to the
+ * system mono stack so headings still feel chunky / pixelated.
+ */
+@theme {
+  --color-osrs-bg: #0b0a08;
+  --color-osrs-panel: #1a1410;
+  --color-osrs-panel-border: #3a2f1f;
+  --color-osrs-gold: #f5c542;
+  --color-osrs-gold-soft: #c8b675;
+  --color-osrs-rune: #67e8f9;
+  --color-osrs-danger: #ef4444;
+  --color-osrs-success: #84cc16;
+
+  --font-osrs-display: "RuneScape", "Press Start 2P", "ui-monospace", "SFMono-Regular", monospace;
+  --font-osrs-body: "Inter", "ui-sans-serif", "system-ui", sans-serif;
+}
+
+:root {
+  color-scheme: dark;
+}
+
+html,
+body {
+  min-height: 100%;
+  background: var(--color-osrs-bg);
+  color: #f8eccb;
+  font-family: var(--font-osrs-body);
+  -webkit-font-smoothing: antialiased;
+}
+
+#root {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Reusable display heading utility — used by route titles */
+.font-osrs {
+  font-family: var(--font-osrs-display);
+  letter-spacing: 0.02em;
+}
+
+/* Subtle parchment-rune divider, OSRS interface inspired */
+.osrs-divider {
+  height: 1px;
+  background: linear-gradient(
+    to right,
+    transparent,
+    var(--color-osrs-panel-border),
+    transparent
+  );
+}
