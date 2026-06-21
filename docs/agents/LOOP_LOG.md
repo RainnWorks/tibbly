@@ -77,3 +77,59 @@
 2. Close RAI-16 in Linear (PR-less retroactive — comment + state flip).
 3. Tackle whichever of M3.5 / M2.2 / Lighthouse fits the time budget.
 4. Update STATUS.md once at least one of the above completes.
+
+## Loop M+2 — 2026-06-21 (RAI-5 catalog harvest + STATUS rebuild)
+
+### Read
+`NORTH_STAR.md`, `GAPS.md`, `HANDOFF.md`, `OPEN_QUESTIONS.md`,
+`INDEX.md`. Verified cron `8e5a4446` still firing.
+
+### Worked on
+- Reviewed RAI-5 catalog agent's PR #29 (100+ tools, 776 lines), merged.
+- Marked RAI-5 Done in Linear.
+- Pulled the additive subset of catalog §6 into PR #31 — added
+  RAIDS / LEAGUES / FARMING / APPEARANCE / AMBIENT / PETS to
+  `ToolFamily.kt`. Deferred PARTY→SOCIAL + FISHING/QUEST_ITEMS folds.
+- Fixed CLAUDE.md "72 MCP tools" typo → "72 game-state tools + 1 meta-tool".
+- Rebuilt `STATUS.md` as a live milestone board (resolved GAPS A5).
+
+### Spawned
+- Top-5 RAI-5 unblockers agent in worktree
+  `agent/rai-5-unblockers/top-5-tools`.
+
+### Merged
+- PR #29 — RAI-5 full catalog
+- PR #31 — RAI-5 follow-up (additive families)
+- PR #32 — HANDOFF refresh
+- PR #33 — STATUS.md rebuild
+
+### In flight at loop close
+- PR #34 — M3.5 `/v1/me` GDPR rewrite, opened but NOT merged.
+- RAI-5 unblockers agent still running.
+
+## Loop M+2.5 — 2026-06-21 (Tom woke up, pivot)
+
+Mid-loop Tom returned and gave significant product direction:
+- Dashboard reads as LLM slop visually + conceptually
+- Most user-facing account mgmt → in RuneLite, not web
+- Hide token spend from users entirely
+- Build internal Tibbly ops platform (user search, ban, refund)
+- Apply taste-skill (mirrored to `.claude/skills/taste-skill/SKILL.md`)
+
+Memories saved:
+- `project-dashboard-pivot-2026-06-21`
+- `feedback-hide-token-spend-from-users`
+- `feedback-taste-skill-no-llm-slop`
+
+Pivot logged as D-8 in `DECISION_LOG.md` + Q-19/Q-20/Q-21 in
+`OPEN_QUESTIONS.md`. Asked Tom three questions; no answer yet so I'm
+queuing the pivot work and continuing on safe documentation tasks.
+
+### Next loop should
+1. Check for Tom's response to Q-19/Q-20/Q-21 before starting
+   irreversible pivot work.
+2. Pick up RAI-5 unblockers PR if it lands; merge if clean.
+3. Skip user-dashboard improvement work — Tom may scrap that whole
+   surface.
+4. Safe deepening: marketing copy review, additional backend tests,
+   documentation polish, taste-skill pre-flight checklist study.

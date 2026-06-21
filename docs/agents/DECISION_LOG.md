@@ -55,6 +55,82 @@ login screen. Add `/login` route only as a recovery path (for users replacing
 their machine). Stripe Customer Portal is the billing UX.
 **Reversible?:** yes.
 
+## D-8 — Product pivot: dashboard de-prioritised; backend becomes Tibbly ops console; hide token-spend from users — 2026-06-21 (loop M+2/M+3 boundary)
+
+**Context:** Tom reviewed the overnight build on the morning of 2026-06-21
+and called the user dashboard "LLM slop" visually + conceptually:
+
+- "the backend for managing the subscription doesnt really work
+  colour/font wise, it reads a lot like LLM slop"
+- "you probably should be gated on the whole thing"
+- "token spend isnt interesting to them. the users don't understand
+  what token spend is and nor should they have to. That's something
+  that we need."
+- "I want an observability backend platform for us to manage the users,
+  ban people, et cetera, as we might need to manage the platform itself."
+- "realistically all of that should probably just be done in the
+  RuneLite UI. The backend if it exists needs to be very interactive
+  and basically allow for or enhance the experience as opposed to be
+  something that users have to manage themselves separately."
+- Pointed at https://github.com/Leonxlnx/taste-skill ("go and use this
+  guy") for the design fix.
+
+**Chosen:**
+
+1. **User-facing dashboard de-prioritised.** Most account management
+   (pair, switch OSRS account, see subscription, see usage proxy)
+   moves into RuneLite plugin panels in a follow-up. The web app at
+   `apps/dashboard` is repurposed as **Tibbly's internal ops console**.
+2. **Token-spend visibility removed from user UI.** Players see
+   tier-aware proxies — "23/30 messages used today", "subscription
+   active — renews on Dec 14", "out of messages — upgrade or wait
+   until tomorrow". Iron tier shows no scary counter at all unless we
+   actually hit a cap. Internal ops keeps the raw token math.
+3. **Whole-site auth wall on the web app.** No public marketing-style
+   pages mixed with the ops console; if you can see it, you're already
+   on the `ADMIN_EMAILS` allow-list.
+4. **Ops console feature set:** user search/list, ban toggle,
+   refund/credit-grant action, paying-customer debug view, plus the
+   existing RAI-37 analytics (cost / funnel / errors / realtime).
+5. **Taste-skill applies to every UI commit going forward.** Mirrored
+   to `.claude/skills/taste-skill/SKILL.md`. Declare design read +
+   3 dials (DESIGN_VARIANCE / MOTION_INTENSITY / VISUAL_DENSITY)
+   before writing UI code. Pre-flight checklist before shipping.
+   Hard bans: no Inter default, no em-dashes, no 3-equal-card grids,
+   no beige+brass+oxblood, no fake div screenshots, no hand-rolled
+   icon paths.
+6. **Marketing page stays public.** Only the dashboard/ops gets the
+   auth wall.
+7. **Plugin-side work continues unblocked.** The RAI-5 catalog
+   unblockers agent (in flight at this writing) is plugin-tool work
+   and unaffected by the pivot.
+
+**What this does NOT change:**
+
+- `/v1/me` (GDPR Art. 15 / Art. 17) endpoints stay — legal/compliance
+  requirement regardless of who consumes them. PR #34 is the rewrite.
+- `/v1/pairing`, `/v1/usage`, `/v1/accounts`, `/v1/billing` endpoints
+  stay on the backend; their consumers shift from the web dashboard
+  to RuneLite plugin panels.
+- The marketing site (`apps/marketing`) brand + copy + asset choices.
+- The plugin's hub-compliance posture.
+
+**Reversible?:** Mostly. The token-spend hide is a copy-only change
+in the user-facing copy; the underlying meter is unchanged. The
+dashboard → ops re-cast is a route-by-route rename; the existing
+component tree is mostly reusable. The plugin-account-panel work is
+new code but cleanly separable. The taste-skill discipline is
+forward-going only.
+
+**Open questions for Tom (queued in OPEN_QUESTIONS.md as Q-19 to Q-21):**
+
+- Q-19: name of the re-cast `apps/dashboard` — keep the name, rename
+  to `apps/ops`, or split into a separate package?
+- Q-20: PR #34 (me.ts rewrite) — merge-and-forget for compliance, or
+  pause until the plugin-side panel design lands?
+- Q-21: precedence on plugin account panel vs ops console — which one
+  ships first?
+
 ## D-7 — Operating model: CTO + Linear MCP + companion personality lane — 2026-06-21
 
 **Context:** User said "I don't care how you do the sub agents" + "act as CTO"

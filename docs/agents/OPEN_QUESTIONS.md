@@ -138,6 +138,43 @@ attempt was wiped twice this way.
 branch on the shared checkout. Worth fixing in the spawner before the
 next overnight.
 
+## Q-19 — Name of the re-cast web app — 2026-06-21 (loop M+3, pivot D-8)
+**Picked default:** keep `apps/dashboard` (rename in place rather than
+move). Lowest churn — directories stay, internal naming references
+update over time. Document the user-vs-ops semantic split in the
+README.
+**Other options:**
+(a) rename directory to `apps/ops` for clarity (touches every Vite +
+TanStack Router + tsconfig path);
+(b) split into two packages (`apps/dashboard` for any retained
+user-facing surface, `apps/ops` for internal). Premature.
+**Why not asked:** lowest-regret default while Tom decides.
+
+## Q-20 — PR #34 (`/v1/me` rewrite) — merge-and-forget for compliance, or pause? — 2026-06-21 (loop M+3, pivot D-8)
+**Picked default:** **pause** — keep open, do NOT auto-merge. The
+endpoints are legal-compliance hygiene and will be needed regardless,
+but the plugin-side consumer might want a different request shape
+(e.g. push-export-to-email rather than streaming attachment). Better
+to land it once the plugin panel design firms up. Tom's call.
+**Other options:**
+(a) merge now — straight GDPR ground-clearing, costs nothing if the
+endpoint shape changes later;
+(b) close + redesign — wasteful since the schema mapping is correct.
+
+## Q-21 — Plugin account panel vs ops console — which ships first? — 2026-06-21 (loop M+3, pivot D-8)
+**Picked default:** **ops console first**. Reasoning:
+- Tom said the ops platform is what *Tibbly needs* (verbatim: "I want
+  an observability backend platform for us to manage the users, ban
+  people..."). That's an active operational need; without it Tom has
+  no way to handle a paying-customer issue.
+- The plugin account panel is a player-experience improvement; it
+  matters more pre-launch, but launch isn't imminent.
+- Ops console is a contained re-cast of an existing app; plugin panel
+  is new Swing UI in the Kotlin codebase.
+**Other options:**
+(a) plugin account panel first — better player experience but ops blind;
+(b) parallel via two agents — risky scope without Tom's review.
+
 ## Q-18 — Reach out to Jagex for explicit SaaS approval? — 2026-06-21 (R3)
 **Picked default:** ship with mitigations; do NOT proactively contact Jagex
 Legal. Rationale: RuneLite has operated under Jagex's tolerated-not-licensed
