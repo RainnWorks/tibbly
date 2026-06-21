@@ -1,6 +1,52 @@
 # Tom's wake-up briefing — 2026-06-21 morning
 
-*Refresh: loop M+3 (post-pivot). Tom is awake and gave product direction. First file to read on next pickup. 90 seconds, then jump in.*
+*Refresh: loop M+10. Strategic-thread swarm in flight; PRs landing every ~20 min. First file to read on next pickup. 90 seconds, then jump in.*
+
+## Where we are right now (loop M+10)
+
+**Cron `8e5a4446`** firing every 20 min, healthy.
+
+**Currently in flight (7 strategic deep-dive agents):**
+
+1. **Marketing IA synthesiser** — reads PRs #46/47/48/49 (all 4 proposals merged-to-input, held open as quorum inputs) and produces canonical `docs/marketing/IA.md`.
+2. **Embodied solo companion entity** (`docs/product/EMBODIED_COMPANION.md`) — your "client-side character that follows the player" idea. Visual archetype, personality + memory system, technical architecture, 5-7 week roadmap.
+3. **Social companion fabric** (`docs/product/SOCIAL_COMPANION.md`) — your "companions can see + semi-interact with each other" addition. S0–S4 interaction tiers, network effects, permission system, safety classifier.
+4. **Mobile companion research** (`docs/research/community/mobile-companion.md`) — what OSRS mobile apps exist + the specific app you watched a video about + Tibbly mobile MVP shape.
+5. **Licensing split** (`docs/architecture/LICENSING.md` + `REPO_SPLIT.md` + D-10) — captures your decision: MIT plugin, proprietary backend, CC-BY protocol spec; lays out the repo-split migration.
+6. **RuneLite BYOK config** — `OsrsLlmHelperConfig.kt` extension + `:checkNoKeyLeak` Gradle guard + tests + `DATA_DISCLOSURE.md` update. DirectChatRunner deferred to a follow-up PR.
+7. **Model platform step 1** — live OpenRouter catalog ingester + `model_catalog` schema + ops `/catalog` route + D-9 ("no hardcoded model ids").
+
+**Recently landed today** (in approximate order, all on `main`):
+
+- PR #34 — `/v1/me` GDPR (Art. 15 export + Art. 17 erasure)
+- PR #35 — pivot docs (D-8 + Q-19/20/21 + taste-skill mirror)
+- PR #36 — first batch of RAI-5 Tier 0 unblockers (4 tools)
+- PR #37 — `apps/dashboard` → `apps/ops` rename
+- PR #38 — `get_farming_summary` + `get_farming_patches` (5th unblocker, split for token budget)
+- PR #39 — HANDOFF refresh
+- PR #40 — plugin Tibbly account panel inside RuneLite (no raw tokens)
+- PR #41 — me.test.ts fix (caught the `ANY(array)` PGLite bug)
+- PR #42 — marketing token-spend strip
+- PR #43 — full ops console re-cast with taste-skill applied
+- PR #44 — marketing Stripe Checkout CTAs wired
+- PR #45 — hub release strategy + 3-tier value model
+- PRs #46/47/48/49 — 4 marketing IA proposals (open, fed into synthesiser)
+
+**Open questions awaiting your call** (full text in `OPEN_QUESTIONS.md`):
+
+- Q-22 / Q-23 / Q-24 — hub strategy follow-ups (start BYOK build now? when to start 12-week hub clock? rebrand before submission?)
+- Q-25 / Q-26 / Q-27 — repo split decisions (in flight via licensing agent)
+- Q-28 through Q-31 — embodied companion (in flight via deep-dive agent)
+- Q-32 through Q-35 — social companion fabric (in flight)
+
+**Live-counter strategic threads since you last engaged:**
+
+- "Where did we land on open/closed source?" → MIT plugin, proprietary backend, CC-BY protocol. Captured as D-10 (in flight).
+- "Mobile companion?" → research agent in flight, identifying the YouTube-app you mentioned + sketching Tibbly mobile MVP.
+- "Client-side entity that follows your character" → solo deep-dive in flight.
+- "Companions can see + interact socially" → social fabric deep-dive in flight.
+
+
 
 ## ⚠️ Pivot landed — 2026-06-21 loop M+2 → M+3
 
