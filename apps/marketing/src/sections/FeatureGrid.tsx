@@ -5,63 +5,72 @@ import prayerIcon from "@osrs-llm-helper/osrs-assets/skill_icons/prayer.png";
 import constructionIcon from "@osrs-llm-helper/osrs-assets/skill_icons/construction.png";
 import attackIcon from "@osrs-llm-helper/osrs-assets/skill_icons/attack.png";
 import thievingIcon from "@osrs-llm-helper/osrs-assets/skill_icons/thieving.png";
+import slayerIcon from "@osrs-llm-helper/osrs-assets/skill_icons/slayer.png";
+import herbloreIcon from "@osrs-llm-helper/osrs-assets/skill_icons/herblore.png";
 
 type Feature = {
   readonly title: string;
   readonly skill: SkillIconKey;
   readonly iconUrl: string;
-  readonly headline: string;
-  readonly detail: string;
+  readonly copy: string;
 };
 
+/*
+ * 4x2 inventory grid (eight cells, no empty cells).
+ *
+ * Per the canonical IA (docs/marketing/IA.md §2.6): reframe the FeatureGrid
+ * as a literal OSRS inventory: square cells, hairline gold-on-warm-brown
+ * border, one skill icon top-left of each cell, one line of plain copy
+ * describing what the tool actually does.
+ */
 const FEATURES: readonly Feature[] = [
   {
     title: "Tile marking",
     skill: "magic",
     iconUrl: magicIcon,
-    headline: "Where to stand. Lit up.",
-    detail:
-      "Vorkath corner, Zulrah rotation tile, Akkha squares — Tibbly tags the exact tile and the camera handles the rest. No grid math at 3am.",
+    copy: "Tags the exact stand-here tile for boss rotations and clue steps.",
   },
   {
     title: "NPC highlights",
     skill: "ranged",
     iconUrl: rangedIcon,
-    headline: "The right NPC, glowing.",
-    detail:
-      "Master Crafter? Random emote-clue rando? Tibbly outlines them in gold so you stop running past them like it's your first quest.",
+    copy: "Outlines the NPC the wiki step actually wants, in gold.",
   },
   {
     title: "Quest data",
     skill: "prayer",
     iconUrl: prayerIcon,
-    headline: "Knows what's next.",
-    detail:
-      "All 180 quests, all their forks, all their hidden prereqs. Tibbly walks you from start to cape — using the items already in your bank.",
+    copy: "All 180 quests, every fork, every hidden prereq, walked end to end.",
   },
   {
     title: "Bank prep",
     skill: "construction",
     iconUrl: constructionIcon,
-    headline: "Your loadout, on demand.",
-    detail:
-      'Ask "bank for Bandos" and Tibbly builds the gear set from what you own, names the substitute when a piece is missing, and tells you the gp gap.',
+    copy: "Builds your gear set from what you own. Names the substitute when a piece is missing.",
   },
   {
     title: "Gear advice",
     skill: "attack",
     iconUrl: attackIcon,
-    headline: "Yes or no, first word.",
-    detail:
-      "Fang over rapier at 80 attack? Tibbly answers yes-or-no in the first word, names the one exception, then gets out of your way.",
+    copy: "Yes or no in the first word, with the one exception called out.",
   },
   {
     title: "Clue solver",
     skill: "thieving",
     iconUrl: thievingIcon,
-    headline: "Emote, anagram, cryptic — all of it.",
-    detail:
-      'Reads the scroll, picks the NPC, marks the spot. Tells you the emote. Tells you "the bald guy with the broom" so you don\'t have to guess.',
+    copy: "Reads emote, anagram, cryptic. Names the NPC. Marks the tile.",
+  },
+  {
+    title: "Slayer plan",
+    skill: "slayer",
+    iconUrl: slayerIcon,
+    copy: "Reads the task. Picks the cannon spot. Calls the prayer flick.",
+  },
+  {
+    title: "Potion lookups",
+    skill: "herblore",
+    iconUrl: herbloreIcon,
+    copy: "Tells you the herb, the secondary, the level, and the price gap.",
   },
 ];
 
@@ -75,36 +84,39 @@ export function FeatureGrid() {
       <div className="mx-auto max-w-6xl">
         <div className="mb-14 text-center">
           <p className="mb-3 font-mono text-xs uppercase tracking-[0.4em] text-osrs-gold-dim">
-            What Tibbly does
+            inventory
           </p>
-          <h2 className="text-3xl md:text-4xl">Six in-client superpowers.</h2>
+          <h2 className="text-3xl text-osrs-gold md:text-4xl">
+            Eight live tools.
+          </h2>
           <p className="mx-auto mt-3 max-w-2xl text-osrs-text/80">
-            Every feature runs from live game state. No screenshots, no
-            copy-paste, no API keys.
+            Each cell reads live game state and answers in one move. No
+            screenshots. No copy-paste.
           </p>
         </div>
         <ul
-          className="grid gap-6 md:grid-cols-2 lg:grid-cols-3"
+          className="mx-auto grid grid-cols-2 gap-px border border-osrs-border bg-osrs-border sm:max-w-4xl md:grid-cols-4"
           data-testid="feature-grid-list"
         >
           {FEATURES.map((feature) => (
             <li
               key={feature.title}
-              className="feature-card group relative border border-osrs-border bg-osrs-surface p-6 transition hover:border-osrs-gold-dim"
+              className="feature-card group relative aspect-square bg-osrs-surface p-4 transition hover:bg-osrs-parchment/60"
             >
-              <div className="feature-icon mb-5 flex h-14 w-14 items-center justify-center border border-osrs-border bg-osrs-bg">
+              <div className="feature-icon mb-3 flex h-9 w-9 items-center justify-center border border-osrs-border bg-osrs-bg">
                 <img
                   src={feature.iconUrl}
                   alt=""
-                  className="h-9 w-9"
+                  className="h-6 w-6"
                   aria-hidden="true"
                 />
               </div>
-              <h3 className="mb-1 text-xl text-osrs-gold">{feature.title}</h3>
-              <p className="mb-3 font-mono text-xs uppercase tracking-widest text-osrs-gold-dim">
-                {feature.headline}
+              <h3 className="mb-2 text-sm leading-tight text-osrs-gold">
+                {feature.title}
+              </h3>
+              <p className="text-xs leading-snug text-osrs-text/85">
+                {feature.copy}
               </p>
-              <p className="text-sm text-osrs-text/85">{feature.detail}</p>
             </li>
           ))}
         </ul>

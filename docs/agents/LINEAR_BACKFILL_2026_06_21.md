@@ -1,0 +1,33 @@
+# Linear backfill — 2026-06-21
+
+On 2026-06-21 Tom called out that I'd drifted from "Linear is source-of-truth" earlier in the day — a stretch of strategic and engineering PRs (roughly #27 onwards) shipped without backing Linear issues. This file is the audit-trail record of the retroactive backfill: the 15 issues I created in the `Rainnworks` team / `OSRS LLM Helper — Productize` project to close that gap.
+
+All 15 issues were created at `state: Done` (they are resolved), `priority: 2 (High)`, with a description + a follow-up comment listing the shipped PR URLs.
+
+Note on numbering: Linear allocated `RAI-48` to an unrelated record between two of these creations, so this backfill spans RAI-42 → RAI-57 with RAI-48 absent from the list below.
+
+| # | Linear | Title | Summary |
+|---|---|---|---|
+| 1 | [RAI-42](https://linear.app/rainnworks/issue/RAI-42) | Strategic pivot D-8: dashboard → ops + hide token-spend + apply taste-skill | The 2026-06-21 product redirect; user dashboard de-prioritised, web app becomes Tibbly's internal ops console, token-spend stripped from user UI, taste-skill applied to every UI commit. Shipped via PRs #35, #37, #42, #43. |
+| 2 | [RAI-43](https://linear.app/rainnworks/issue/RAI-43) | Hub release strategy + 3-tier value model | How we get into the RuneLite Plugin Hub. ScapeGPT precedent; 3-tier value floor (Tools-only / BYOK / Cloud paid). Q-22/23/24 queued. Shipped via PR #45. |
+| 3 | [RAI-44](https://linear.app/rainnworks/issue/RAI-44) | Licensing split (D-10): MIT plugin, proprietary backend, CC-BY protocol | Hybrid licensing decision. MIT plugin for hub-audit trust, proprietary backend for USP, CC-BY 4.0 wire protocol. Per-subtree LICENSE migration plan + Q-25/26/27. Shipped via PR #53. |
+| 4 | [RAI-45](https://linear.app/rainnworks/issue/RAI-45) | Embodied solo companion entity spec | Client-side overlay sprite that follows the player, has personality + memory, learns over time. 4205-word spec, 4 starter archetypes, 5–7 week roadmap. Q-28/29/30/31 queued. Shipped via PR #52. |
+| 5 | [RAI-46](https://linear.app/rainnworks/issue/RAI-46) | Social companion fabric spec | Extension on the solo companion — companions see + interact with each other across players. S0–S4 tiers, cost model, permission system, safety classifier. Q-32/33/34/35 queued. Shipped via PR #55. |
+| 6 | [RAI-47](https://linear.app/rainnworks/issue/RAI-47) | Mobile companion research + Tibbly Pocket MVP shape | OSRS mobile companion landscape (likely SlayerScape) + Tibbly Pocket MVP shape: Expo + React Native, 4–6 weeks, free addon to subscription, MIT-licensed. Shipped via PR #56. |
+| 7 | [RAI-49](https://linear.app/rainnworks/issue/RAI-49) | Marketing IA quorum + canonical synthesis | 4 design proposals (Voice / Conversion / Objections / Visual) synthesised into one canonical IA. Dial settings 7/4/5. Pixel `runescape_bold` H1, Inter Tight body, no-automation as hero second sentence. Shipped via PRs #46/47/48/49 (closed as inputs), #54 (synthesis), #62 (implementation). |
+| 8 | [RAI-50](https://linear.app/rainnworks/issue/RAI-50) | Plugin Tibbly account panel inside RuneLite | Swing sidebar surfacing tier-aware "messages left today" proxy (server computes; UI never sees raw tokens). GDPR export/delete actions. Stripe portal link. Backend `/v1/account/summary` + `/v1/account/usage-proxy`. `:checkAccountPanelNoRawTokens` Gradle guard. Shipped via PR #40. |
+| 9 | [RAI-51](https://linear.app/rainnworks/issue/RAI-51) | Backend /v1/me GDPR endpoints (Art. 15 export + Art. 17 erasure) | Rewrite of parked stub against real schema. Soft-delete `users.deletedAt` + null email + Stripe customer PII detach. Anonymise `events.user_id`. Mock-Stripe + 8 leak-guard tests. Found + fixed real `ANY(array)` PGLite bug. Shipped via PRs #34, #41. |
+| 10 | [RAI-52](https://linear.app/rainnworks/issue/RAI-52) | Marketing Stripe Checkout endpoint + wired CTAs | New `POST /v1/billing/checkout/:tier` (anonymous entry point). Wired marketing `PricingTiers` buttons to Stripe Checkout. Dev stub returns `status: dev_stub`. 10 tests green. Shipped via PR #44. |
+| 11 | [RAI-53](https://linear.app/rainnworks/issue/RAI-53) | Plugin BYOK config fields + :checkNoKeyLeak Gradle guard | New `ChatMode` enum (Cloud / 3x BYO / ToolsOnly) + `byoApiKey` (secret) + `byoModel` + `byoTelemetryOptIn`. `:checkNoKeyLeak` grep guard added to `:check` chain. 13-case `OsrsLlmHelperConfigTest`. Shipped via PR #51. |
+| 12 | [RAI-54](https://linear.app/rainnworks/issue/RAI-54) | Plugin DirectChatRunner — BYOK runtime for Anthropic/OpenAI/OpenRouter | Sealed `ByoProvider` hierarchy (3 providers). `EgressGate` host allow-list (3 hosts only). Empty-key short-circuit before any network call. 29 tests + `sk-LEAK-DIRECTRUNNER-SENTINEL` audit shield. 199/199 plugin tests pass. Shipped via PR #58. |
+| 13 | [RAI-55](https://linear.app/rainnworks/issue/RAI-55) | Model platform step 1: live OpenRouter catalog ingester + ops /catalog view | New `model_catalog` Drizzle table + migration. Nightly + on-demand refresh. Ops console `/catalog` view with diff-since-yesterday. D-9 ("no hardcoded model ids") captured. 191/191 backend + 12/12 ops tests. Shipped via PR #57. |
+| 14 | [RAI-56](https://linear.app/rainnworks/issue/RAI-56) | Marketing IA implementation Phase 1+2 (copy/structure + type/palette) | Implementation of canonical IA from PR #54. New `TrustStrip` + `FreeTierStrip`. 4×2 inventory `FeatureGrid`. 3 visible tiers + Iron footnote. Pixel `runescape_bold` H1 + Inter Tight body. 52/56 pre-flight pass, 21/21 tests. Shipped via PR #62. |
+| 15 | [RAI-57](https://linear.app/rainnworks/issue/RAI-57) | Adversarial review hat infrastructure + wave 1 (hub maintainer / security skeptic / strategic consistency) | Per Tom's directive: every PR gets adversarial reviewers from different perspectives. Memory captured; 10 review-hat profiles documented. Wave 1 found 2 critical hub blockers + currency split + 23 strategic consistency findings. Shipped via PRs #59, #60, #61. |
+
+## Process notes
+
+- Issues created via `mcp__linear-server__save_issue`; completion comments via `mcp__linear-server__save_comment`.
+- Team: `Rainnworks` (`fb27f727-fc41-4e33-962b-92178068a1ae`). Project: `OSRS LLM Helper — Productize` (`b76ec2b8-eb05-4305-b341-3faccd3ea3c5`).
+- All 15 are `priority: 2 (High)` and `state: Done` because they're already shipped.
+- In-flight fix agents (auth fix, hub blockers fix, strategic consistency fix, code-quality research) are deliberately NOT in this backfill — those agents create their own Linear issues as part of their briefs.
+- RAI-1 through RAI-38 were already in Linear before this backfill and were not touched.

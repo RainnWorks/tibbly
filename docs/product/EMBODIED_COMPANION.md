@@ -5,6 +5,13 @@ Owner: product (Tom)
 Last updated: 2026-06-21
 Related: HUB_RELEASE_STRATEGY.md, DATA_FLOW.md, LICENSING.md, REPO_SPLIT.md
 
+Repo names below reference the post-split layout defined in
+`docs/architecture/REPO_SPLIT.md` (`RainnWorks/tibbly-plugin` for the
+open-source plugin, `RainnWorks/tibbly-platform` for the proprietary
+backend + ops + marketing monorepo). The original repo
+`RainnWorks/osrs-llm-helper` is the pre-split monorepo and will be
+archived per Q-26.
+
 ## 1. Concept articulation
 
 Tibbly today is a chat sidebar. The proposal in this doc is to give Tibbly a body inside the RuneLite client: a small, hand-drawn companion that walks alongside your character, watches the same world you watch, and speaks to you through a speech bubble above its head. It is rendered entirely by the open-source RuneLite plugin as a screen overlay. It cannot click, cannot move your character, cannot read pixels off other peoples screens, and never touches the game client itself. It is a presence, not an automation.
@@ -142,7 +149,7 @@ The classifier does not break the magic because it never speaks in a voice that 
 
 ## 6. Technical architecture
 
-Plugin-side, all open MIT under the existing RainnWorks/osrs-llm-helper-plugin repo as defined in REPO_SPLIT.md.
+Plugin-side, all open MIT under `RainnWorks/tibbly-plugin` as defined in REPO_SPLIT.md.
 
 - `EmbodiedCompanionRenderer.kt`, new file, around 300 lines. Subscribes to the existing per-tick overlay update path and draws the companion sprite at the calculated world tile, with sub-tile interpolation so the motion is smooth rather than tile-jumpy. Uses the existing RuneLite Overlay and OverlayManager APIs. No new dependencies.
 - `CompanionPathfinder.kt`, new file, around 400 lines. A local A-star against the walkable scene mesh that the client already maintains. Exposes `nextWalkTile(currentTile, playerTile)` and `teleportTo(playerTile)`. Recomputes the path when the player moves, with a one-tick debounce.
@@ -151,7 +158,7 @@ Plugin-side, all open MIT under the existing RainnWorks/osrs-llm-helper-plugin r
 - Speech bubble and anchored chat panel are Swing components drawn on top of the canvas. Same approach the sidebar already uses.
 - All outbound traffic still goes through the existing `EgressGate`. One new outbound payload type, `CompanionInteractionEvent`, that carries the players chat and a small context envelope (tile coordinates, current interface mode, last examined object id, archetype hint). No additional egress surface area.
 
-Backend-side, closed proprietary under the existing rowm/osrs-llm-helper-backend repo as defined in REPO_SPLIT.md.
+Backend-side, closed proprietary under `RainnWorks/tibbly-platform` as defined in REPO_SPLIT.md.
 
 - `companion_profile` table on the existing Postgres, keyed by `user_id` and `osrs_account_id`. Schema above.
 - `companion_interactions` event log, append-only, indexed by `user_id` and `created_at`. Cheap to write, cheap to summarize nightly. Retention 90 days by default, configurable by the player in dashboard.

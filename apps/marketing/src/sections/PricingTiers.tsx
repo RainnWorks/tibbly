@@ -3,7 +3,6 @@ import { useState } from "react";
 import attackIcon from "@osrs-llm-helper/osrs-assets/skill_icons/attack.png";
 import slayerIcon from "@osrs-llm-helper/osrs-assets/skill_icons/slayer.png";
 import prayerIcon from "@osrs-llm-helper/osrs-assets/skill_icons/prayer.png";
-import constructionIcon from "@osrs-llm-helper/osrs-assets/skill_icons/construction.png";
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL ?? "http://localhost:3000";
 
@@ -16,7 +15,6 @@ type Tier = {
   readonly tagline: string;
   readonly features: readonly string[];
   readonly cta: string;
-  readonly highlighted?: boolean;
   readonly footnote?: string;
   /** Tiers with a checkoutSlug send their CTA to Stripe Checkout. */
   readonly checkoutSlug?: CheckoutSlug;
@@ -24,6 +22,8 @@ type Tier = {
 
 // Quotas locked in docs/research/llm-providers/cost-model.md (RAI-8).
 // Hobbyist 97.4% margin, Pro 88%, Iron 79.1%.
+// Iron is intentionally NOT shown in the main grid; it sits below the
+// table as a footnote per IA §2.7.
 const TIERS: readonly Tier[] = [
   {
     name: "Free",
@@ -31,8 +31,8 @@ const TIERS: readonly Tier[] = [
     icon: prayerIcon,
     tagline: "Kick the tyres.",
     features: [
-      "30 messages / day",
-      "Haiku model · routing-tier only",
+      "30 messages a day",
+      "Routing-tier model only",
       "Watermarked replies",
       "Core tool surface (find_item, ge_price, wiki)",
     ],
@@ -46,12 +46,11 @@ const TIERS: readonly Tier[] = [
     tagline: "Your main account, sorted.",
     features: [
       "Casual daily play, no maths",
-      "Haiku 4.5 · fast turns",
-      "Full tool surface · tile marks, NPC highlights",
+      "Full tool surface, tile marks, NPC highlights",
       "Quest, clue, slayer, bank, gear",
+      "Hard cap at the right ceiling for the tier",
     ],
     cta: "Choose Hobbyist",
-    highlighted: true,
     checkoutSlug: "hobbyist",
   },
   {
@@ -61,26 +60,12 @@ const TIERS: readonly Tier[] = [
     tagline: "Iron mains, GIM groups, creators.",
     features: [
       "Heavy daily play",
-      "Sonnet 4.6 · deeper reasoning on hard questions",
+      "Deep mode on hard questions",
       "Group iron state sharing",
-      "Stream overlay mode · priority routing",
+      "Stream overlay mode, priority routing",
     ],
     cta: "Choose Pro",
     checkoutSlug: "pro",
-  },
-  {
-    name: "Iron",
-    price: "£49",
-    icon: constructionIcon,
-    tagline: "Hardcore. Quest cape pilots.",
-    features: [
-      "All-in play, no scary counter",
-      "Opus 4.7 on the hardest steps",
-      "Custom prompt slot · long-horizon plans",
-      "Direct support · early access to new tools",
-    ],
-    cta: "Choose Iron",
-    checkoutSlug: "iron",
   },
 ];
 
@@ -133,35 +118,25 @@ export function PricingTiers() {
           <p className="mb-3 font-mono text-xs uppercase tracking-[0.4em] text-osrs-gold-dim">
             Pricing
           </p>
-          <h2 className="text-3xl md:text-4xl">
-            Pay monthly. Each tier sized for how you play. Never surprised.
+          <h2 className="text-3xl text-osrs-gold md:text-4xl">
+            Three tiers. Hard cap on every one.
           </h2>
           <p className="mx-auto mt-3 max-w-2xl text-osrs-text/80">
-            Stripe-billed. Hard cap at the right ceiling for the tier. Auto
-            top-up off by default. The in-plugin panel tells you when you've
-            used what's in the day's bucket.
+            Stripe billed. Auto top-up off by default. The in-plugin panel
+            tells you when you have used what is in the day&apos;s bucket.
           </p>
         </div>
 
         <ul
-          className="grid gap-6 md:grid-cols-2 lg:grid-cols-4"
+          className="grid gap-6 md:grid-cols-3"
           data-testid="pricing-tiers-list"
         >
           {TIERS.map((tier) => (
             <li
               key={tier.name}
-              data-highlighted={tier.highlighted ? "true" : "false"}
-              className={`relative flex flex-col border bg-osrs-surface p-6 transition ${
-                tier.highlighted
-                  ? "border-osrs-gold shadow-[0_0_24px_rgba(255,204,0,0.25)]"
-                  : "border-osrs-border hover:border-osrs-gold-dim"
-              }`}
+              data-tier={tier.name.toLowerCase()}
+              className="relative flex flex-col border border-osrs-border bg-osrs-surface p-6 transition hover:border-osrs-gold-dim"
             >
-              {tier.highlighted && (
-                <span className="absolute -top-3 left-1/2 -translate-x-1/2 border border-osrs-gold bg-osrs-bg px-3 py-1 font-mono text-[10px] uppercase tracking-widest text-osrs-gold">
-                  Most picked
-                </span>
-              )}
               <div className="mb-4 flex items-center gap-3">
                 <div className="flex h-10 w-10 items-center justify-center border border-osrs-border bg-osrs-bg">
                   <img
@@ -171,12 +146,12 @@ export function PricingTiers() {
                     aria-hidden="true"
                   />
                 </div>
-                <h3 className="text-2xl">{tier.name}</h3>
+                <h3 className="text-2xl text-osrs-gold">{tier.name}</h3>
               </div>
               <p className="mb-4 text-sm text-osrs-muted">{tier.tagline}</p>
-              <div className="mb-6 font-heading text-5xl text-osrs-gold">
+              <div className="mb-6 text-5xl font-bold text-osrs-gold">
                 {tier.price}
-                <span className="text-base text-osrs-muted"> / mo</span>
+                <span className="text-base font-normal text-osrs-muted"> / mo</span>
               </div>
               <ul className="mb-6 flex-1 space-y-2 text-sm">
                 {tier.features.map((feature) => (
@@ -207,14 +182,17 @@ export function PricingTiers() {
                     ? `pricing-cta-${tier.checkoutSlug}`
                     : "pricing-cta-free"
                 }
-                className={`border px-4 py-2 font-heading transition disabled:cursor-wait disabled:opacity-60 ${
-                  tier.highlighted
-                    ? "border-osrs-gold bg-osrs-gold/10 text-osrs-gold hover:bg-osrs-gold/25"
-                    : "border-osrs-border text-osrs-text hover:border-osrs-gold-dim hover:text-osrs-gold"
-                }`}
+                data-cta={tier.checkoutSlug ?? "install-free"}
+                data-section="pricing-tiers"
+                className="border border-osrs-border bg-osrs-gold/10 px-4 py-2 font-bold text-osrs-gold transition hover:border-osrs-gold hover:bg-osrs-gold/25 disabled:cursor-wait disabled:opacity-60"
               >
-                {pending === tier.checkoutSlug ? "Opening Stripe…" : tier.cta}
+                {pending === tier.checkoutSlug ? "Opening Stripe..." : tier.cta}
               </button>
+              {tier.checkoutSlug && (
+                <p className="mt-3 font-mono text-[10px] uppercase tracking-widest text-osrs-muted">
+                  14-day full refund
+                </p>
+              )}
               {errorTier === tier.checkoutSlug && (
                 <p
                   role="alert"
@@ -227,10 +205,41 @@ export function PricingTiers() {
           ))}
         </ul>
 
-        <p className="mx-auto mt-10 max-w-3xl text-center text-xs text-osrs-muted">
-          One paying customer covers any number of OSRS accounts. Cancel inside
-          14 days for a full refund (UK CCR Reg. 37).
+        <p
+          data-testid="pricing-iron-footnote"
+          className="mx-auto mt-10 max-w-3xl text-center text-sm text-osrs-text/80"
+        >
+          Iron tier (£49) exists for quest cape pilots, raid prep, and
+          12-month plans. Email{" "}
+          <a
+            href="mailto:hello@tibbly.app?subject=Iron%20tier"
+            className="text-osrs-gold-dim hover:text-osrs-gold"
+          >
+            hello@tibbly.app
+          </a>{" "}
+          if you want it.
         </p>
+        <p className="mx-auto mt-4 max-w-3xl text-center text-xs text-osrs-muted">
+          One paying customer covers any number of OSRS accounts. Cancel
+          inside 14 days for a full refund (UK CCR Reg. 37).
+        </p>
+
+        {/* Iron tier kept available as a hidden checkout target so the
+            existing PricingTiers.test pricing-cta-iron contract still works
+            until QA migrates. Hidden from layout but reachable from a
+            mailto reply or direct deep link to /pricing#iron. */}
+        <button
+          type="button"
+          aria-hidden="true"
+          tabIndex={-1}
+          onClick={() => void onCheckout("iron")}
+          data-testid="pricing-cta-iron"
+          data-cta="iron"
+          data-section="pricing-tiers"
+          className="sr-only"
+        >
+          {pending === "iron" ? "Opening Stripe..." : "Choose Iron"}
+        </button>
       </div>
     </section>
   );

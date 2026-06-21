@@ -25,11 +25,37 @@ export function formatMicroUsd(microUsd: number): string {
   })}`;
 }
 
-/** USD cents -> "$19.00". */
+/** USD cents -> "$19.00". Retained for spend formatting; revenue uses pence. */
 export function formatUsdCents(cents: number): string {
   const usd = cents / 100;
   if (!Number.isFinite(usd)) return "$0.00";
   return `$${usd.toLocaleString("en-US", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
+}
+
+/** Pence GBP -> "£19.00". Revenue + tier price formatter per D-11. */
+export function formatPence(pence: number): string {
+  const gbp = pence / 100;
+  if (!Number.isFinite(gbp)) return "£0.00";
+  return `£${gbp.toLocaleString("en-GB", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
+}
+
+/**
+ * Stripe invoice amounts: smallest-unit integer in an arbitrary currency
+ * carried on the invoice itself. Renders with the right symbol.
+ */
+export function formatStripeMinor(amount: number, currency: string): string {
+  const code = (currency ?? "gbp").toLowerCase();
+  if (code === "gbp") return formatPence(amount);
+  if (code === "usd") return formatUsdCents(amount);
+  if (!Number.isFinite(amount)) return `${code.toUpperCase()} 0.00`;
+  const major = amount / 100;
+  return `${code.toUpperCase()} ${major.toLocaleString("en-GB", {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   })}`;

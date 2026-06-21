@@ -101,7 +101,7 @@ Source: https://github.com/runelite/runelite/wiki/Rejected-or-Rolled-Back-Featur
 - Auto-typing chat messages or programmatically inserting chatbox text.
 
 ### Data & privacy
-- **"Plugins exposing player information via HTTP"** — *this is the line PR #11453 was rejected against. Our current `McpServerService` design violates it. MUST be replaced with outbound WebSocket egress before submission.*
+- **"Plugins exposing player information via HTTP"** — *this is the line PR #11453 was rejected against. The original `McpServerService` design violated it. Replaced with outbound WSS egress (`cloud/EgressGate`) and the local listener class is now excluded from the shipped jar entirely via `shadowJar` excludes + `:checkLocalNotInJar` (RAI-40).*
 - Crowdsourcing player location / gear / names (anti-griefing).
 - Hiscores for personal bests (data is easily spoofed).
 - ID-based plugins that take user input (moderation surface).
@@ -132,7 +132,7 @@ Source: https://github.com/runelite/runelite/wiki/Rejected-or-Rolled-Back-Featur
   precedent plugin uses it. Flagged in OPEN_QUESTIONS.)
 - Java reflection (without justification).
 - JNI / external program execution.
-- `ProcessBuilder` of any kind — explicitly called out in PR #11453.
+- `ProcessBuilder` of any kind — explicitly called out in PR #11453. Removed from this plugin in RAI-40 and enforced going forward by the `:checkNoSubprocess` Gradle gate.
 - Runtime code download.
 
 ### Operational
