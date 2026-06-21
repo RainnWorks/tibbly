@@ -17,6 +17,8 @@ import { createAdminUsageRouter } from "./api/admin/usage";
 import type { CreateAdminUsageOptions } from "./api/admin/usage";
 import { createPairingRouter } from "./api/pairing";
 import type { CreatePairingRouterOptions } from "./api/pairing";
+import { createStripeWebhookRouter } from "./api/webhooks/stripe";
+import type { StripeWebhookDeps } from "./api/webhooks/stripe";
 import { env } from "./env";
 import { log } from "./lib/log";
 
@@ -40,6 +42,12 @@ export interface CreateAppOptions {
    * so the bare app stays DB-free.
    */
   pairing?: CreatePairingRouterOptions;
+  /**
+   * Stripe webhook router (RAI-19). Pass the meter + db to mount
+   * `POST /api/webhooks/stripe`. Omitted in dev/test by default so a
+   * missing webhook secret doesn't crash boot.
+   */
+  stripeWebhook?: StripeWebhookDeps;
 }
 
 export function createApp(options: CreateAppOptions = {}): Hono {
@@ -81,6 +89,10 @@ export function createApp(options: CreateAppOptions = {}): Hono {
 
   if (options.pairing) {
     app.route("/v1/pairing", createPairingRouter(options.pairing));
+  }
+
+  if (options.stripeWebhook) {
+    app.route("/api/webhooks", createStripeWebhookRouter(options.stripeWebhook));
   }
 
   app.notFound((c) => c.json({ ok: false, error: "not_found" }, 404));

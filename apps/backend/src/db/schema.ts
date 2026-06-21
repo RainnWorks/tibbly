@@ -501,6 +501,27 @@ export type TokenBalance = typeof tokenBalances.$inferSelect;
 export type NewTokenBalance = typeof tokenBalances.$inferInsert;
 
 /* -------------------------------------------------------------------------- */
+/* processed_stripe_events                                                     */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Idempotency log for Stripe webhook deliveries (RAI-19).
+ *
+ * Stripe retries failed deliveries up to 3 days; the same `event.id` may
+ * therefore land more than once. The webhook handler does an INSERT-OR-NOTHING
+ * against this table before crediting tokens; a double-replay returns "already
+ * processed" and credits exactly zero. PK on `event_id` enforces the contract.
+ */
+export const processedStripeEvents = pgTable("processed_stripe_events", {
+  eventId: text("event_id").primaryKey(),
+  eventType: text("event_type").notNull(),
+  processedAt: timestamp("processed_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export type ProcessedStripeEvent = typeof processedStripeEvents.$inferSelect;
+export type NewProcessedStripeEvent = typeof processedStripeEvents.$inferInsert;
+
+/* -------------------------------------------------------------------------- */
 /*  Raw event log (RAI-37 analytics)                                          */
 /* -------------------------------------------------------------------------- */
 

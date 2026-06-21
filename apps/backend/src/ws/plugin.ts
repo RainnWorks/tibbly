@@ -65,6 +65,24 @@ export interface DeviceLookup {
 export interface BalanceMeter {
   /** Current remaining token balance for the user (raw token count). */
   getBalanceTokens(userId: string): Promise<number>;
+  /**
+   * Pre-flight gate (RAI-20). Called BEFORE we open the OpenRouter stream
+   * with a rough estimate of how many tokens the turn will burn. Implementations
+   * must atomically reject when the balance can't cover the estimate; on
+   * rejection they emit `chat.cap_hit` so analytics can count caps without
+   * the chat path having to wire its own bus.
+   *
+   * Returning `null` means "blocked"; the WS handler will surface
+   * `balance_exhausted` to the client and abort the turn.
+   *
+   * Returning `{ balanceTokens }` means "go ahead" with the new (reserved)
+   * balance — `applyTurnCost` reconciles the actual usage after.
+   */
+  ensureCanSpend?(args: {
+    userId: string;
+    chatId: string;
+    estimatedTokens: number;
+  }): Promise<{ balanceTokens: number } | null>;
   /** Decrement after a turn finishes. Idempotency: per turn-id. */
   applyTurnCost(args: {
     userId: string;
@@ -73,6 +91,8 @@ export interface BalanceMeter {
     promptTokens: number;
     completionTokens: number;
     costMicroUsd: number;
+    /** Tokens already taken via `ensureCanSpend`; pass 0 if no pre-debit. */
+    preDebited?: number;
   }): Promise<{ balanceTokens: number }>;
 }
 
@@ -263,6 +283,35 @@ export function pluginWsHandler(deps: PluginWsDeps): {
       payload: { chatId: msg.chatId, contentLen: msg.content.length },
     });
 
+    // Pre-flight balance gate (RAI-20). We reserve a conservative estimate
+    // before the OpenRouter request opens — better to reject early than to
+    // burn LLM tokens we can't bill for. The estimate is intentionally low:
+    // the post-call `applyTurnCost` reconciles the actual usage (clamped at
+    // zero so a mid-flight call can still finish).
+    const PREFLIGHT_ESTIMATE_TOKENS = 1;
+    let preDebited = 0;
+    if (deps.balanceMeter.ensureCanSpend) {
+      const reserved = await deps.balanceMeter.ensureCanSpend({
+        userId: identity.userId,
+        chatId: msg.chatId,
+        estimatedTokens: PREFLIGHT_ESTIMATE_TOKENS,
+      });
+      if (reserved === null) {
+        sendError(ws, "rate_limited", "balance_exhausted");
+        send(ws, {
+          type: "assistant_message_done",
+          chatId: msg.chatId,
+          promptTokens: 0,
+          completionTokens: 0,
+          costMicroUsd: 0,
+          balanceTokens: 0,
+        });
+        sm.endTurn();
+        return;
+      }
+      preDebited = PREFLIGHT_ESTIMATE_TOKENS;
+    }
+
     // Build the tool dispatcher — every LLM tool call we register a pending
     // promise here, then send a `tool_call_request` for the plugin to fulfil.
     const dispatch = async (params: {
@@ -358,6 +407,7 @@ export function pluginWsHandler(deps: PluginWsDeps): {
       promptTokens: usage.promptTokens,
       completionTokens: usage.completionTokens,
       costMicroUsd,
+      preDebited,
     });
 
     send(ws, {
