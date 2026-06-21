@@ -23,7 +23,7 @@ import javax.swing.SwingUtilities
  */
 class StickyChatWindow(
     private val store: ChatStore,
-    private val runner: ClaudeRunner,
+    private val runner: ChatBackend,
     private val onClose: () -> Unit,
 ) {
 

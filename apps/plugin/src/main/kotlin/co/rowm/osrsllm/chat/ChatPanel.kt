@@ -37,7 +37,7 @@ import javax.swing.text.html.HTMLEditorKit
 
 class ChatPanel(
     private val store: ChatStore,
-    private val runner: ClaudeRunner,
+    private val runner: ChatBackend,
     // Pass `false` to disable PluginPanel's auto-scroll wrapper. We own the layout
     // (BorderLayout) and have our own JScrollPane around the messages list, so the
     // outer auto-wrap would just nest scrollbars.

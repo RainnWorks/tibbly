@@ -46,6 +46,9 @@ dependencies {
     testImplementation("net.runelite:client:$runeLiteVersion")
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.jetbrains.kotlin:kotlin-test")
+    // RAI-22: in-process Ktor WS server for CloudChatRunner round-trip tests.
+    // Test scope only — `:checkNoHttpServer` excludes test sources by design.
+    testImplementation("io.ktor:ktor-server-websockets:$ktorVersion")
 }
 
 java {
@@ -179,8 +182,66 @@ tasks.register("checkNoPlaintextUrls") {
     }
 }
 
+// -----------------------------------------------------------------------------
+// RAI-36: secretsScan. Fails the build on anything that looks like a leaked
+// credential in src/main/. Tests can hold stub credentials (they need them
+// for the in-process WS fixtures and for the consent / payload tests), so
+// src/test/ is intentionally NOT scanned. The patterns below are the union
+// of (a) project-specific names from .env (OPENROUTER_API_KEY, JWT signing
+// secrets), (b) common cloud-provider prefixes that almost never appear
+// inside source on purpose (OpenAI sk-..., AWS AKIA..., Google AIza...,
+// GitHub gh{p,o,u,s,r}_..., Slack xox{b,p,a,r}-...), and (c) loose generic
+// patterns like password= / api_key= that catch homegrown leaks.
+//
+// On a match the build fails with the file path and the matched pattern
+// (NOT the secret value — we don't want to copy the literal into the
+// build log). Wired into :check.
+// -----------------------------------------------------------------------------
+
+val secretsScanTree: ConfigurableFileTree = fileTree("src/main") {
+    include("**/*.kt", "**/*.java", "**/*.properties", "**/*.yml", "**/*.yaml")
+}
+
+/** Patterns that, if matched in src/main/, almost certainly indicate a leaked secret. */
+val secretsPatterns: List<Pair<String, Regex>> = listOf(
+    "OPENROUTER_API_KEY literal" to Regex("""OPENROUTER_API_KEY\s*=\s*["']?[A-Za-z0-9_\-]{16,}"""),
+    "OpenAI/Anthropic-style key (sk-...)" to Regex("""\bsk-(?:proj-|live-|ant-)?[A-Za-z0-9]{20,}"""),
+    "AWS access key id (AKIA...)" to Regex("""\bAKIA[0-9A-Z]{16}\b"""),
+    "Google API key (AIza...)" to Regex("""\bAIza[0-9A-Za-z_\-]{35}\b"""),
+    "GitHub token (ghp_/gho_/ghu_/ghs_/ghr_)" to Regex("""\bgh[pousr]_[0-9A-Za-z]{20,}"""),
+    "Slack token (xoxb/xoxp/xoxa/xoxr)" to Regex("""\bxox[baprs]-[0-9A-Za-z\-]{10,}"""),
+    "JWT-shaped token" to Regex("""\beyJ[A-Za-z0-9_\-]{8,}\.[A-Za-z0-9_\-]{8,}\.[A-Za-z0-9_\-]{8,}"""),
+    "Stripe live secret (sk_live_)" to Regex("""\bsk_live_[A-Za-z0-9]{16,}"""),
+    "Generic password=<value>" to Regex("""(?i)\bpassword\s*=\s*["'][^"'\s]{6,}["']"""),
+    "Generic api_key=<value>" to Regex("""(?i)\bapi_?key\s*=\s*["'][^"'\s]{12,}["']"""),
+)
+
+tasks.register("secretsScan") {
+    group = "verification"
+    description = "Fails if a credential-shaped string appears in src/main/."
+    doLast {
+        val findings = mutableListOf<String>()
+        secretsScanTree.files.forEach { f ->
+            val text = f.readText()
+            secretsPatterns.forEach { (label, pattern) ->
+                if (pattern.containsMatchIn(text)) {
+                    findings.add("$label  ←  ${f.relativeTo(projectDir)}")
+                }
+            }
+        }
+        if (findings.isNotEmpty()) {
+            throw GradleException(
+                "secretsScan: credential-shaped string(s) found in src/main/.\n" +
+                    "If this is a false positive, refactor the literal out of source " +
+                    "(e.g. read from env via System.getenv) and re-run.\n  " +
+                    findings.joinToString("\n  "),
+            )
+        }
+    }
+}
+
 tasks.named("check") {
-    dependsOn("checkNoHttpServer", "checkNoReflection", "checkNoPlaintextUrls")
+    dependsOn("checkNoHttpServer", "checkNoReflection", "checkNoPlaintextUrls", "secretsScan")
 }
 
 tasks.register<JavaExec>("runRuneLite") {

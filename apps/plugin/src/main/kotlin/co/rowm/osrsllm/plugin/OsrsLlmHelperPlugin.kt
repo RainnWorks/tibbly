@@ -5,16 +5,23 @@ import co.rowm.osrsllm.LoggingSetup
 import co.rowm.osrsllm.OsrsLlmHelperConfig
 import co.rowm.osrsllm.OsrsLlmHelperPanel
 import co.rowm.osrsllm.banktags.BankTagService
+import co.rowm.osrsllm.chat.ChatBackendSelector
 import co.rowm.osrsllm.chat.ChatPanel
 import co.rowm.osrsllm.chat.ChatStore
 import co.rowm.osrsllm.chat.ClaudeRunner
 import co.rowm.osrsllm.chat.HarnessContext
+import co.rowm.osrsllm.chat.LocalClaudeBackend
 import co.rowm.osrsllm.cloud.BackendUrl
 import co.rowm.osrsllm.cloud.BackendWsClient
+import co.rowm.osrsllm.cloud.CloudChatBackend
+import co.rowm.osrsllm.cloud.CloudChatRunner
 import co.rowm.osrsllm.cloud.ConfigManagerDeviceKeyStore
 import co.rowm.osrsllm.cloud.ConsentState
+import co.rowm.osrsllm.cloud.ContextRouter
 import co.rowm.osrsllm.cloud.DeviceKey
+import co.rowm.osrsllm.cloud.EgressGate
 import co.rowm.osrsllm.cloud.PairingFlow
+import co.rowm.osrsllm.cloud.StubToolDispatcher
 import co.rowm.osrsllm.events.EventLogService
 import co.rowm.osrsllm.local.McpServerService
 import co.rowm.osrsllm.overlay.AiChannelService
@@ -69,6 +76,8 @@ class OsrsLlmHelperPlugin : Plugin() {
     @Inject private lateinit var mcpServerService: McpServerService
     @Inject private lateinit var backendWsClient: BackendWsClient
     @Inject private lateinit var pairingFlow: PairingFlow
+    @Inject private lateinit var egressGate: EgressGate
+    @Inject private lateinit var contextRouter: ContextRouter
     @Inject private lateinit var widgetTracker: WidgetTracker
     @Inject private lateinit var bankTagService: BankTagService
     @Inject private lateinit var clientToolbar: ClientToolbar
@@ -107,6 +116,8 @@ class OsrsLlmHelperPlugin : Plugin() {
     private var managedNavButton: NavigationButton? = null
     private var managedPanel: co.rowm.osrsllm.managed.ManagedVisualsPanel? = null
     private val chatStore = ChatStore()
+    private var cloudChatRunner: CloudChatRunner? = null
+    private var cloudChatBackend: CloudChatBackend? = null
     private val claudeRunner = ClaudeRunner(
         mcpUrlSupplier = {
             runCatching {
@@ -162,7 +173,15 @@ class OsrsLlmHelperPlugin : Plugin() {
         navButton = button
         clientToolbar.addNavigation(button)
 
-        val chat = ChatPanel(chatStore, claudeRunner)
+        // Build the chat-panel backend. The local subprocess path stays the DEFAULT;
+        // cloud is only consulted when `cloudChatEnabled` is on AND the WSS link is up.
+        val backendSelector = ChatBackendSelector(
+            localBackend = LocalClaudeBackend(claudeRunner),
+            cloudBackendSupplier = {
+                if (config.cloudChatEnabled() && backendWsClient.isConnected()) cloudChatBackend else null
+            },
+        )
+        val chat = ChatPanel(chatStore, backendSelector)
         chatPanel = chat
         val chatBtn = NavigationButton.builder()
             .tooltip("OSRS LLM Chat")
@@ -182,11 +201,63 @@ class OsrsLlmHelperPlugin : Plugin() {
             mcpServerService.start(config.localMcpHost(), config.localMcpPort())
         }
 
-        // Production path: open the WSS connection to the backend if the player has
-        // accepted consent AND cloud chat is enabled. All actual sends are funnelled
-        // through EgressGate.egress() — there is no other write path.
+        // Production path: open the WSS connection to the backend and start the chat
+        // runner if the player has accepted consent AND cloud chat is enabled. All
+        // actual sends are funnelled through EgressGate.egress() — there is no other
+        // write path. See `apps/plugin/SECURITY_DESIGN.md`.
         if (config.consentAccepted() && config.cloudChatEnabled()) {
-            runCatching { backendWsClient.connect(BackendUrl(config.backendUrl())) }
+            val runner = CloudChatRunner(
+                transport = backendWsClient,
+                egressGate = egressGate,
+                toolDispatcher = StubToolDispatcher(),
+                authSupplier = {
+                    CloudChatRunner.AuthFrame(
+                        deviceKey = deviceKeyForAuth(),
+                        playerName = runCatching { client.localPlayer?.name }.getOrNull(),
+                        pluginVersion = "0.1.0",
+                    )
+                },
+                backendUrlSupplier = { BackendUrl(config.backendUrl()) },
+                consentSupplier = {
+                    ConsentState.snapshot()
+                        ?: ConsentState.freeze(accepted = config.consentAccepted())
+                },
+                cloudChatEnabledSupplier = { config.cloudChatEnabled() },
+                callbacks = object : CloudChatRunner.Callbacks {
+                    override fun onError(code: String, message: String) {
+                        log.warn("Cloud chat error: code={} msg={}", code, message)
+                    }
+                    override fun onAuthenticated(authOk: co.rowm.osrsllm.cloud.InboundMessage.AuthOk) {
+                        log.info("Cloud chat authenticated: tier={} balance={}",
+                            authOk.tier, authOk.balanceTokens)
+                    }
+                    override fun onConnectionStateChanged(state: CloudChatRunner.ConnectionState) {
+                        log.info("Cloud chat connection state: {}", state)
+                    }
+                },
+            )
+            cloudChatRunner = runner
+            cloudChatBackend = CloudChatBackend(
+                runner = runner,
+                routerSupplier = { contextRouter },
+                snapshotSupplier = {
+                    runCatching {
+                        if (::gameStateStore.isInitialized && ::eventLogService.isInitialized) {
+                            HarnessContext.build(
+                                store = gameStateStore,
+                                eventLog = eventLogService,
+                                widgets = if (::widgetTracker.isInitialized) widgetTracker else null,
+                                bankTags = if (::bankTagService.isInitialized) bankTagService else null,
+                                slayer = if (::slayerIntegration.isInitialized) slayerIntegration else null,
+                                xpTracker = if (::xpTrackerIntegration.isInitialized) xpTrackerIntegration else null,
+                                clueScroll = if (::clueScrollIntegration.isInitialized) clueScrollIntegration else null,
+                                party = if (::partyIntegration.isInitialized) partyIntegration else null,
+                            )
+                        } else null
+                    }.getOrNull()
+                },
+            )
+            runCatching { runner.start() }
                 .onFailure { log.warn("Backend connect failed: {}", it.message) }
         }
 
@@ -255,6 +326,9 @@ class OsrsLlmHelperPlugin : Plugin() {
             if (aiOwnsArrow) clientThread.invoke(Runnable { client.clearHintArrow() })
         }
         mcpServerService.stop()
+        runCatching { cloudChatRunner?.stop() }
+        cloudChatRunner = null
+        cloudChatBackend = null
         runCatching { backendWsClient.close() }
         ConsentState.reset()
         eventBus.unregister(gameStateStore)
@@ -303,6 +377,21 @@ class OsrsLlmHelperPlugin : Plugin() {
     @Provides
     fun provideConfig(configManager: ConfigManager): OsrsLlmHelperConfig =
         configManager.getConfig(OsrsLlmHelperConfig::class.java)
+
+    /**
+     * Resolve (or lazily generate) the long-lived per-install device key used to
+     * authenticate against the backend. Stored under RuneLite config so the plugin
+     * keeps the same identity across restarts. NEVER logged.
+     */
+    @Inject private lateinit var configManager: ConfigManager
+    private fun deviceKeyForAuth(): String {
+        val existing = runCatching { configManager.getConfiguration("osrsllm", "deviceKey") }.getOrNull()
+        if (!existing.isNullOrBlank()) return existing
+        val generated = java.util.UUID.randomUUID().toString().replace("-", "") +
+            java.util.UUID.randomUUID().toString().replace("-", "").take(8)
+        runCatching { configManager.setConfiguration("osrsllm", "deviceKey", generated) }
+        return generated
+    }
 
     @Provides @Singleton
     fun provideChatStore(): ChatStore = chatStore

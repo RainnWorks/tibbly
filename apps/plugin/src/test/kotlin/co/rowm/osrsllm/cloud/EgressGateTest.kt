@@ -39,7 +39,7 @@ class EgressGateTest {
         ConsentState.reset()
         val consent = ConsentState.freeze(accepted = false)
         val gate = EgressGate(transport = BackendWsClient(), auditLog = auditLog)
-        val payload = OutboundPayload.SessionHeartbeat(sessionId = "s", clientUptimeMs = 1)
+        val payload = OutboundPayload.SessionHeartbeat(clientUptimeMs = 1)
         try {
             gate.egress(payload, consent = consent, cloudChatEnabled = true)
             fail("expected IllegalArgumentException")
@@ -57,7 +57,7 @@ class EgressGateTest {
         ConsentState.reset()
         val consent = ConsentState.freeze(accepted = true)
         val gate = EgressGate(transport = BackendWsClient(), auditLog = auditLog)
-        val payload = OutboundPayload.SessionHeartbeat(sessionId = "s", clientUptimeMs = 1)
+        val payload = OutboundPayload.SessionHeartbeat(clientUptimeMs = 1)
         try {
             gate.egress(payload, consent = consent, cloudChatEnabled = false)
             fail("expected IllegalArgumentException")
@@ -76,7 +76,7 @@ class EgressGateTest {
         val consent = ConsentState.freeze(accepted = true)
         // BackendWsClient has currentSession() == null until connect() is called.
         val gate = EgressGate(transport = BackendWsClient(), auditLog = auditLog)
-        val payload = OutboundPayload.SessionHeartbeat(sessionId = "s", clientUptimeMs = 1)
+        val payload = OutboundPayload.SessionHeartbeat(clientUptimeMs = 1)
         try {
             gate.egress(payload, consent = consent, cloudChatEnabled = true)
             fail("expected IllegalStateException")
@@ -111,7 +111,6 @@ class EgressGateTest {
         val expected = setOf(
             "SessionHello",
             "ChatUserMessage",
-            "ChatStatePreamble",
             "ToolResult",
             "ChatCancel",
             "SessionHeartbeat",
