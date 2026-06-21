@@ -24,13 +24,18 @@ import javax.inject.Singleton
  * sealed deserialisation will throw — the panel surfaces "couldn't load"
  * rather than rendering a stale UI.
  *
- * # Auth
+ * # Auth (RAI-39)
  *
- * Until the WSS session token rotation lands, we authenticate this REST surface
- * by sending the SHA-256 of the device key as an `x-device-key` header AND as
- * the bearer token. The backend treats the latter as the `userId` while the
- * session-cookie auth path comes online — see [_auth.ts] in the backend.
- * The raw device key NEVER leaves the plugin; only the transport hash does.
+ * We send the SHA-256 of the device key as an `Authorization: Bearer` token.
+ * The backend argon2-verifies it against `devices.device_key_hash`
+ * (the SAME value it stored at pairing time, since the pairing payload
+ * is the SHA-256 too). The `x-device-key` header is a non-authoritative
+ * hint used by `/v1/account/summary` to mark `(this RuneLite)` on the
+ * paired-device list.
+ *
+ * The raw device key NEVER leaves the plugin; only the SHA-256 transport
+ * hash does. Audit C1/C3 closed: backend no longer treats the bearer as
+ * a raw userId — it verifies it as a real credential.
  *
  * Sensitive fields (raw email, Stripe customer id, balance tokens) are
  * stripped server-side before they reach the wire, so this DTO surface is

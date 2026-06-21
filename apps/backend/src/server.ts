@@ -9,6 +9,7 @@
  */
 import type { WebSocketHandler } from "bun";
 
+import { warnIfDevHeadersOn } from "./api/_auth";
 import { createApp } from "./app";
 import { createTokenMeter } from "./billing/meter";
 import { meterToBalancePort } from "./billing/ws-adapter";
@@ -51,12 +52,21 @@ const balanceMeter: BalanceMeter = useRealMeter ? meterToBalancePort(meter) : de
 
 // RAI-19: mount the Stripe webhook router when keys are configured.
 // RAI-21: mount the public presence router for /v1/presence.
+// RAI-39: mount admin login alongside the admin gate so the ops_session
+//   JWT cookie is the only trust root; without this mount the dashboard
+//   has no way to issue a cookie and the admin surface stays locked.
 const app = createApp({
   admin: "auto",
+  adminLogin: "auto",
   presence: { tracker: presenceTracker },
   adminCatalog: { db },
   ...(useRealMeter ? { stripeWebhook: { db, meter, bus: getDefaultBus() } } : {}),
 });
+
+// RAI-39: announce the dev-headers escape hatch at boot. Critical in
+// production — the middleware ignores `x-dev-user-id` there, but a
+// misconfigured image deserves a loud diagnostic.
+warnIfDevHeadersOn();
 
 // RAI-17: plugin↔backend chat WebSocket. RAI-15/RAI-20 will replace the
 // dev stubs with the real device + balance impls.

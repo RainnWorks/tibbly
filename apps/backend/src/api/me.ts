@@ -36,7 +36,7 @@ import {
   tokenBalances,
   events,
 } from "../db/schema";
-import { requireUser, type AuthedVars } from "./_auth";
+import { requireUserWith, type AuthedVars, type DeviceKeyCache } from "./_auth";
 import { getStripe } from "../billing/stripe";
 import { log } from "../lib/log";
 
@@ -45,6 +45,8 @@ export interface CreateMeRouterOptions {
   db?: DbClient;
   /** Override Stripe client; defaults to `getStripe()`. Tests pass a stub. */
   stripe?: Stripe;
+  /** Optional shared device-key cache; defaults to a per-router cache. */
+  deviceKeyCache?: DeviceKeyCache;
 }
 
 export function createMeRouter(options: CreateMeRouterOptions = {}): Hono<{
@@ -54,7 +56,7 @@ export function createMeRouter(options: CreateMeRouterOptions = {}): Hono<{
   const stripeClient = options.stripe ?? null;
 
   const app = new Hono<{ Variables: AuthedVars }>();
-  app.use("*", requireUser);
+  app.use("*", requireUserWith({ db, ...(options.deviceKeyCache ? { cache: options.deviceKeyCache } : {}) }));
 
   /**
    * GET /v1/me/export — every row attributable to the caller, in one JSON.

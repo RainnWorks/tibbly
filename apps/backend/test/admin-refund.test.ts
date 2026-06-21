@@ -1,5 +1,5 @@
 /**
- * Contract for POST /admin/users/:id/refund.
+ * Contract for POST /admin/users/:id/refund (RAI-39 auth migration).
  *
  * Uses a fake Stripe object that records the call. In dev without
  * STRIPE_SECRET_KEY the production wiring substitutes a `dev_stub`
@@ -10,6 +10,7 @@ import { eq } from "drizzle-orm";
 
 import { createApp } from "../src/app";
 import { events as eventsTable, users } from "../src/db/schema";
+import { OPS_SESSION_SECRET, opsSessionCookieHeader } from "./_auth-fixture";
 import { makeTestDb, type TestDbHandle } from "./_db-fixture";
 import type { StripeAdminLike } from "../src/api/admin/users";
 
@@ -46,18 +47,27 @@ function makeFakeStripe() {
   return { fake, calls };
 }
 
+async function adminHeaders(): Promise<Record<string, string>> {
+  return { ...(await opsSessionCookieHeader(ADMIN)), "content-type": "application/json" };
+}
+
 describe("POST /admin/users/:id/refund", () => {
   it("requires chargeId and reason", async () => {
     await handle.db.insert(users).values([{ id: "u1" }]);
     const { fake } = makeFakeStripe();
     const app = createApp({
-      adminUsers: { db: handle.db, adminEmails: [ADMIN], stripe: fake },
+      adminUsers: {
+        db: handle.db,
+        adminEmails: [ADMIN],
+        jwtSecret: OPS_SESSION_SECRET,
+        stripe: fake,
+      },
     });
 
     const res1 = await app.fetch(
       new Request("http://localhost/admin/users/u1/refund", {
         method: "POST",
-        headers: { "x-admin-email": ADMIN, "content-type": "application/json" },
+        headers: await adminHeaders(),
         body: JSON.stringify({}),
       }),
     );
@@ -66,7 +76,7 @@ describe("POST /admin/users/:id/refund", () => {
     const res2 = await app.fetch(
       new Request("http://localhost/admin/users/u1/refund", {
         method: "POST",
-        headers: { "x-admin-email": ADMIN, "content-type": "application/json" },
+        headers: await adminHeaders(),
         body: JSON.stringify({ chargeId: "ch_1" }),
       }),
     );
@@ -77,13 +87,18 @@ describe("POST /admin/users/:id/refund", () => {
     await handle.db.insert(users).values([{ id: "u1" }]);
     const { fake, calls } = makeFakeStripe();
     const app = createApp({
-      adminUsers: { db: handle.db, adminEmails: [ADMIN], stripe: fake },
+      adminUsers: {
+        db: handle.db,
+        adminEmails: [ADMIN],
+        jwtSecret: OPS_SESSION_SECRET,
+        stripe: fake,
+      },
     });
 
     const res = await app.fetch(
       new Request("http://localhost/admin/users/u1/refund", {
         method: "POST",
-        headers: { "x-admin-email": ADMIN, "content-type": "application/json" },
+        headers: await adminHeaders(),
         body: JSON.stringify({
           chargeId: "ch_test_1",
           amountUsdCents: 1900,
@@ -106,18 +121,23 @@ describe("POST /admin/users/:id/refund", () => {
       .from(eventsTable)
       .where(eq(eventsTable.type, "billing.refund_issued"));
     expect(ev).toHaveLength(1);
+    expect((ev[0]!.payload as { by: string }).by).toBe(ADMIN);
   });
 
   it("marks isDevStub=true when the stub Stripe is used", async () => {
     await handle.db.insert(users).values([{ id: "u1" }]);
     const app = createApp({
-      adminUsers: { db: handle.db, adminEmails: [ADMIN] }, // no stripe -> stub
+      adminUsers: {
+        db: handle.db,
+        adminEmails: [ADMIN],
+        jwtSecret: OPS_SESSION_SECRET,
+      },
     });
 
     const res = await app.fetch(
       new Request("http://localhost/admin/users/u1/refund", {
         method: "POST",
-        headers: { "x-admin-email": ADMIN, "content-type": "application/json" },
+        headers: await adminHeaders(),
         body: JSON.stringify({
           chargeId: "ch_dev_1",
           amountUsdCents: 100,

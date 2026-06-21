@@ -17,7 +17,7 @@ import { Hono } from "hono";
 
 import type { DbClient } from "../db/client";
 import { users } from "../db/schema";
-import { requireUser, type AuthedVars } from "./_auth";
+import { requireUserWith, type AuthedVars, type DeviceKeyCache } from "./_auth";
 
 export interface StripeBillingPortalLike {
   billingPortal: {
@@ -35,6 +35,8 @@ export interface CreateBillingPortalRouterOptions {
   stripe: StripeBillingPortalLike;
   /** Where Stripe sends the user back after the portal session. */
   returnUrl?: string;
+  /** Optional shared device-key cache; defaults to a per-router cache. */
+  deviceKeyCache?: DeviceKeyCache;
 }
 
 export function createBillingPortalRouter(
@@ -43,7 +45,7 @@ export function createBillingPortalRouter(
   const { db, stripe, returnUrl } = options;
   const app = new Hono<{ Variables: AuthedVars }>();
 
-  app.use("*", requireUser);
+  app.use("*", requireUserWith({ db, ...(options.deviceKeyCache ? { cache: options.deviceKeyCache } : {}) }));
 
   app.post("/portal", async (c) => {
     const userId = c.var.userId;

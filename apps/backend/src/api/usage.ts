@@ -15,10 +15,12 @@ import { Hono } from "hono";
 
 import type { DbClient } from "../db/client";
 import { subscriptions, tokenBalances, usageRecords } from "../db/schema";
-import { requireUser, type AuthedVars } from "./_auth";
+import { requireUserWith, type AuthedVars, type DeviceKeyCache } from "./_auth";
 
 export interface CreateUsageRouterOptions {
   db: DbClient;
+  /** Optional shared device-key cache; defaults to a per-router cache. */
+  deviceKeyCache?: DeviceKeyCache;
 }
 
 export interface UsageDailyPoint {
@@ -39,7 +41,7 @@ export function createUsageRouter(options: CreateUsageRouterOptions): Hono<{ Var
   const { db } = options;
   const app = new Hono<{ Variables: AuthedVars }>();
 
-  app.use("*", requireUser);
+  app.use("*", requireUserWith({ db, ...(options.deviceKeyCache ? { cache: options.deviceKeyCache } : {}) }));
 
   app.get("/summary", async (c) => {
     const userId = c.var.userId;

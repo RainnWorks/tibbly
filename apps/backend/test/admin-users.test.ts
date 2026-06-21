@@ -1,8 +1,8 @@
 /**
- * Contract for /admin/users/* (ops console).
+ * Contract for /admin/users/* (ops console, RAI-39 auth migration).
  *
  * Covers:
- *   - auth gate (mirrors admin-usage.test.ts pattern)
+ *   - auth gate (ops_session JWT cookie; legacy header rejected)
  *   - GET /admin/users: empty list, filter by status, search by email
  *   - GET /admin/users/:id: full payload, 404 path
  */
@@ -18,6 +18,7 @@ import {
   tokenBalances,
   users,
 } from "../src/db/schema";
+import { OPS_SESSION_SECRET, opsSessionCookieHeader } from "./_auth-fixture";
 import { makeTestDb, type TestDbHandle } from "./_db-fixture";
 
 let handle: TestDbHandle;
@@ -32,21 +33,33 @@ afterEach(async () => {
 
 function app() {
   return createApp({
-    adminUsers: { db: handle.db, adminEmails: [ADMIN] },
+    adminUsers: { db: handle.db, adminEmails: [ADMIN], jwtSecret: OPS_SESSION_SECRET },
   });
 }
 
+async function adminCookie(): Promise<Record<string, string>> {
+  return opsSessionCookieHeader(ADMIN);
+}
+
 describe("/admin/users auth gate", () => {
-  it("401s without the admin header", async () => {
+  it("401s without any auth", async () => {
     const res = await app().fetch(new Request("http://localhost/admin/users"));
     expect(res.status).toBe(401);
   });
 
-  it("401s when email is not in the allow-list", async () => {
+  it("401s when the OLD x-admin-email header is sent (audit C2 closed)", async () => {
     const res = await app().fetch(
       new Request("http://localhost/admin/users", {
-        headers: { "x-admin-email": "evil@example.com" },
+        headers: { "x-admin-email": ADMIN },
       }),
+    );
+    expect(res.status).toBe(401);
+  });
+
+  it("401s when the cookie email is not in the allow-list", async () => {
+    const cookie = await opsSessionCookieHeader("evil@example.com");
+    const res = await app().fetch(
+      new Request("http://localhost/admin/users", { headers: cookie }),
     );
     expect(res.status).toBe(401);
   });
@@ -55,9 +68,7 @@ describe("/admin/users auth gate", () => {
 describe("GET /admin/users", () => {
   it("returns empty rows + zero total on empty DB", async () => {
     const res = await app().fetch(
-      new Request("http://localhost/admin/users", {
-        headers: { "x-admin-email": ADMIN },
-      }),
+      new Request("http://localhost/admin/users", { headers: await adminCookie() }),
     );
     const body = (await res.json()) as { rows: unknown[]; total: number };
     expect(res.status).toBe(200);
@@ -87,9 +98,7 @@ describe("GET /admin/users", () => {
     ]);
 
     const res = await app().fetch(
-      new Request("http://localhost/admin/users", {
-        headers: { "x-admin-email": ADMIN },
-      }),
+      new Request("http://localhost/admin/users", { headers: await adminCookie() }),
     );
     const body = (await res.json()) as {
       rows: Array<{
@@ -118,7 +127,7 @@ describe("GET /admin/users", () => {
     ]);
     const res = await app().fetch(
       new Request("http://localhost/admin/users?status=banned", {
-        headers: { "x-admin-email": ADMIN },
+        headers: await adminCookie(),
       }),
     );
     const body = (await res.json()) as { rows: Array<{ id: string }>; total: number };
@@ -133,7 +142,7 @@ describe("GET /admin/users", () => {
     ]);
     const res = await app().fetch(
       new Request("http://localhost/admin/users?q=other", {
-        headers: { "x-admin-email": ADMIN },
+        headers: await adminCookie(),
       }),
     );
     const body = (await res.json()) as { rows: Array<{ id: string }> };
@@ -146,7 +155,7 @@ describe("GET /admin/users/:id", () => {
   it("404s on unknown id", async () => {
     const res = await app().fetch(
       new Request("http://localhost/admin/users/missing", {
-        headers: { "x-admin-email": ADMIN },
+        headers: await adminCookie(),
       }),
     );
     expect(res.status).toBe(404);
@@ -190,7 +199,7 @@ describe("GET /admin/users/:id", () => {
 
     const res = await app().fetch(
       new Request("http://localhost/admin/users/u1", {
-        headers: { "x-admin-email": ADMIN },
+        headers: await adminCookie(),
       }),
     );
     expect(res.status).toBe(200);
