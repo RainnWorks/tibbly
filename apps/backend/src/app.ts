@@ -17,6 +17,8 @@ import { createAdminUsageRouter } from "./api/admin/usage";
 import type { CreateAdminUsageOptions } from "./api/admin/usage";
 import { createPairingRouter } from "./api/pairing";
 import type { CreatePairingRouterOptions } from "./api/pairing";
+import { createPresenceRouter } from "./api/presence";
+import type { CreatePresenceRouterOptions } from "./api/presence";
 import { env } from "./env";
 import { log } from "./lib/log";
 
@@ -40,6 +42,11 @@ export interface CreateAppOptions {
    * so the bare app stays DB-free.
    */
   pairing?: CreatePairingRouterOptions;
+  /**
+   * Presence router config (RAI-21). Pass `{ tracker }` to mount the
+   * public `/v1/presence` endpoint. Omit when the bare app is fine.
+   */
+  presence?: CreatePresenceRouterOptions;
 }
 
 export function createApp(options: CreateAppOptions = {}): Hono {
@@ -81,6 +88,10 @@ export function createApp(options: CreateAppOptions = {}): Hono {
 
   if (options.pairing) {
     app.route("/v1/pairing", createPairingRouter(options.pairing));
+  }
+
+  if (options.presence) {
+    app.route("/v1/presence", createPresenceRouter(options.presence));
   }
 
   app.notFound((c) => c.json({ ok: false, error: "not_found" }, 404));
