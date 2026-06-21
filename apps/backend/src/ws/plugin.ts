@@ -47,6 +47,7 @@ import {
   type RunStreamResult,
 } from "../llm/openrouter";
 import { ProtocolStateMachine, type AuthedIdentity } from "./protocol-state-machine";
+import type { CompanionService } from "./companion";
 
 /**
  * The minimum surface area the WS handler needs from the database / billing
@@ -186,12 +187,20 @@ export interface PluginWsDeps {
    * live plugin sessions without coupling to this module.
    */
   presence?: PresenceHook;
+  /**
+   * Optional embodied-companion service (RAI-67). When supplied, the WS
+   * handler dispatches `companion_trigger`,
+   * `companion_interaction_event`, and `companion_memory_hint` frames to
+   * it. When absent, those frames produce a clean `malformed` error so an
+   * older deployment doesn't silently drop them.
+   */
+  companion?: CompanionService;
 }
 
 /**
  * Per-socket data — Bun WS passes this to every handler callback.
  */
-interface SocketData {
+export interface SocketData {
   sm: ProtocolStateMachine;
   /** Connection id for log correlation; opaque to the client. */
   connId: string;
@@ -481,6 +490,93 @@ export function pluginWsHandler(deps: PluginWsDeps): {
     send(ws, { type: "pong" });
   }
 
+  async function handleCompanionTrigger(
+    ws: ServerWebSocket<SocketData>,
+    msg: Extract<ClientToServer, { type: "companion_trigger" }>,
+  ): Promise<void> {
+    const identity = ws.data.sm.getIdentity();
+    if (!identity) {
+      sendError(ws, "unauthenticated", "auth required before companion_trigger");
+      return;
+    }
+    if (!deps.companion) {
+      sendError(ws, "malformed", "companion service not enabled");
+      return;
+    }
+    void deps.eventLogger.logEvent({
+      userId: identity.userId,
+      kind: "ws.companion_trigger",
+      payload: { triggerType: msg.triggerType },
+    });
+    try {
+      const line = await deps.companion.handleTrigger(identity, msg);
+      if (line) send(ws, line);
+    } catch (err) {
+      log.warn({ err: (err as Error).message }, "ws: companion_trigger failed");
+      sendError(ws, "internal", "companion trigger failed");
+    }
+  }
+
+  async function handleCompanionInteraction(
+    ws: ServerWebSocket<SocketData>,
+    msg: Extract<ClientToServer, { type: "companion_interaction_event" }>,
+  ): Promise<void> {
+    const identity = ws.data.sm.getIdentity();
+    if (!identity) {
+      sendError(ws, "unauthenticated", "auth required before companion_interaction_event");
+      return;
+    }
+    if (!deps.companion) {
+      sendError(ws, "malformed", "companion service not enabled");
+      return;
+    }
+    void deps.eventLogger.logEvent({
+      userId: identity.userId,
+      kind: "ws.companion_interaction_event",
+      payload: { eventType: msg.eventType },
+    });
+    try {
+      const ack = await deps.companion.handleInteraction(identity, msg);
+      if (ack) send(ws, ack);
+    } catch (err) {
+      log.warn(
+        { err: (err as Error).message },
+        "ws: companion_interaction_event failed",
+      );
+      sendError(ws, "internal", "companion interaction failed");
+    }
+  }
+
+  async function handleCompanionMemoryHint(
+    ws: ServerWebSocket<SocketData>,
+    msg: Extract<ClientToServer, { type: "companion_memory_hint" }>,
+  ): Promise<void> {
+    const identity = ws.data.sm.getIdentity();
+    if (!identity) {
+      sendError(ws, "unauthenticated", "auth required before companion_memory_hint");
+      return;
+    }
+    if (!deps.companion) {
+      sendError(ws, "malformed", "companion service not enabled");
+      return;
+    }
+    void deps.eventLogger.logEvent({
+      userId: identity.userId,
+      kind: "ws.companion_memory_hint",
+      payload: { evidenceCount: msg.evidenceProbeIds.length },
+    });
+    try {
+      const ack = await deps.companion.handleMemoryHint(identity, msg);
+      send(ws, ack);
+    } catch (err) {
+      log.warn(
+        { err: (err as Error).message },
+        "ws: companion_memory_hint failed",
+      );
+      sendError(ws, "internal", "companion memory hint failed");
+    }
+  }
+
   const websocket: WebSocketHandler<SocketData> = {
     open(ws): void {
       // RAI-21 — count this session in the public presence feed. We use
@@ -527,6 +623,15 @@ export function pluginWsHandler(deps: PluginWsDeps): {
             return;
           case "ping":
             handlePing(ws);
+            return;
+          case "companion_trigger":
+            await handleCompanionTrigger(ws, result.value);
+            return;
+          case "companion_interaction_event":
+            await handleCompanionInteraction(ws, result.value);
+            return;
+          case "companion_memory_hint":
+            await handleCompanionMemoryHint(ws, result.value);
             return;
         }
       } catch (err) {

@@ -128,6 +128,48 @@ The `EgressGate` will reject any other host.
 | Chat messages typed in-game by the user | We don't read `ChatMessage` events for transmission; only for our own UI to show context. We could lift this restriction *only* if we add a per-feature opt-in. |
 | Friends-list and clan-chat member names | Not in scope (Wise Old Man does this; we don't need to). |
 
+## E2. Embodied companion (RAI-67)
+
+The embodied-companion feature adds three plugin → backend frames and one
+backend → plugin frame on the existing authenticated WS link. No new
+network destination, no new identifiers leave the client. All frames are
+gated by the same master cloud-chat toggle in section G.
+
+| #   | Field                              | When                                           | Why                                                                          | User control                                                                            |
+|-----|------------------------------------|------------------------------------------------|------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------|
+| E2a | `companion_trigger.triggerType`    | Plugin fires when a trigger condition matches  | Backend needs to know which trigger (login / death / hover_examine / ...)    | Cloud chat off → never sent. Per-trigger toggle in plugin config (RAI-68 follow-up).    |
+| E2b | `companion_trigger.contextSnapshot`| Same                                           | Free-form snapshot the plugin pre-renders into a 1-2 sentence "right now"    | Cloud chat off → never sent. The snapshot only carries data already covered by B+D.      |
+| E2c | `companion_interaction_event`      | Player clicks the sprite / names it / etc.     | Backend updates `companion_profile` (nickname, style notes, forget command)  | The player explicitly performed the UI action.                                          |
+| E2d | `companion_memory_hint`            | Plugin flags an in-game beat as memorable      | Backend queues it for end-of-session memory extraction                       | Cloud chat off → never sent. Plugin-side allow-list for which probes ship as evidence.  |
+| E2e | `companion_line` (server → plugin) | Backend reply containing the proactive line    | The plugin renders the text in the speech bubble                              | N/A; this is data flowing TO the plugin.                                                |
+
+Backend-side state introduced:
+
+- `companion_profile` (one row per `(user_id, osrs_account_id)`) — stores
+  the visual starter pick, personality archetype, optional nickname, and
+  the cumulative voice-style notes (capped at 20).
+- `companion_memories` — up to ~50 single-sentence beats per profile,
+  each with a decaying weight; rows below the weight floor are
+  soft-forgotten.
+
+Privacy posture:
+
+- Memories are scoped per `(user_id, osrs_account_id)`. A user with
+  multiple OSRS characters keeps a separate companion per character; the
+  backend never blends state across characters even when they share a
+  billing principal.
+- The `/v1/me` GDPR export (Art. 15) returns both companion tables.
+- The `/v1/me` GDPR delete (Art. 17) cascades through both tables.
+- The in-game `forget` command is the friendly per-session version of
+  Art. 17 — it soft-marks recent memories without touching the rest of
+  the account.
+
+The LLM call that synthesises each `companion_line` runs against the
+cheap-tier model via `chooseCheapModel(tier)`; the end-of-session
+extraction reads `model_catalog` for the cheapest non-retired Anthropic
+model. No model id is hardcoded (D-9). Companion paths never use Opus,
+regardless of billing tier.
+
 ## F. Retention and use, backend side
 
 | Field | Retained | Used for | TTL |
@@ -137,6 +179,8 @@ The `EgressGate` will reject any other host.
 | Token-usage counters per device key | Yes | Stripe billing | Forever (anonymised after account delete) |
 | IP address | Logged for rate-limit, not persisted past 24h | Abuse | 24h |
 | OSRS player name binding → Stripe customer | Yes | Multi-account billing | Until user unbinds |
+| `companion_profile` rows | Yes | Personality + nickname + style notes for the embodied companion | Until user unbinds (Art. 17 cascade) |
+| `companion_memories` rows | Yes | One-sentence beats the companion can recall on future sessions | Weighted decay, soft-forgotten when weight < 0.1; Art. 17 cascade |
 
 ## G. User controls (in plugin config)
 

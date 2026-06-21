@@ -34,7 +34,7 @@ export interface PresenceWsOptions {
   broadcastIntervalMs?: number;
 }
 
-interface PresenceSocketData {
+export interface PresenceSocketData {
   /** No per-socket state today; placeholder for future region filters. */
   subscribedAt: number;
 }

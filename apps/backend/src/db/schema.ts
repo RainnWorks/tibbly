@@ -42,6 +42,7 @@ import { sql } from "drizzle-orm";
 import {
   bigint,
   date,
+  doublePrecision,
   index,
   integer,
   jsonb,
@@ -761,3 +762,167 @@ export const modelCatalog = pgTable(
 
 export type ModelCatalogRow = typeof modelCatalog.$inferSelect;
 export type NewModelCatalogRow = typeof modelCatalog.$inferInsert;
+
+/* -------------------------------------------------------------------------- */
+/*  companion_profile + companion_memories (RAI-67 embodied companion brain)  */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Per-OSRS-account personality + relationship state for the embodied
+ * Tibbly companion. Spec: `docs/product/EMBODIED_COMPANION.md` §5.
+ *
+ * The companion is the relationship product. The visual gets the player to
+ * install; the companion's persistent personality + memory is what makes
+ * them renew. This row is the durable side of that personality.
+ *
+ * Scoping: `(user_id, osrs_account_id)` is the natural key. A single billing
+ * user with multiple OSRS characters keeps a separate companion per
+ * character so the companion never leaks one account's state into another.
+ * `osrs_account_id` is nullable for the "device key only" identity path
+ * (pre-pairing), where the companion is bound to the device until the
+ * player attaches a character; the unique index treats NULL as a distinct
+ * key, which Postgres does by default.
+ *
+ * `personality_archetype` is one of the four authored voices in
+ * `src/companion/archetypes.ts`. `starter_archetype` is the visual form the
+ * player picked at install (hooded humanoid / fox / wisp / golem) — stored
+ * server-side so the dashboard and any future cross-device install both
+ * see the same companion. `companion_name` is the player-given nickname;
+ * the prompt builder substitutes it when present, otherwise renders the
+ * companion's voice with no proper-noun ceremony.
+ *
+ * `voice_style_notes` is the cumulative list of explicit player corrections
+ * ("call me Boaty", "stop with the wiki references"). Capped at 20 in the
+ * WS handler — older entries are dropped to keep the system-prompt prefix
+ * tight per `docs/architecture/TOOL_ECONOMY.md`.
+ */
+export const companionProfile = pgTable(
+  "companion_profile",
+  {
+    id: text("id").primaryKey().$defaultFn(newId),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    /** Nullable so the device-only identity path can have a companion. */
+    osrsAccountId: text("osrs_account_id").references(() => osrsAccounts.id, {
+      onDelete: "set null",
+    }),
+    /** Visual form the player picked: hooded / fox / wisp / golem. */
+    starterArchetype: text("starter_archetype").notNull(),
+    /**
+     * Authored voice id — one of the four in `src/companion/archetypes.ts`:
+     * `dry_wiki_veteran`, `soft_confused_friend`, `sardonic_veteran`,
+     * `earnest_helper`.
+     */
+    personalityArchetype: text("personality_archetype").notNull(),
+    /** Player-given nickname; null until set via `name_companion`. */
+    companionName: text("companion_name"),
+    /**
+     * Cumulative explicit style corrections, capped at 20 newest by the WS
+     * handler. The end-of-night refinement job in `voice-adaptation.ts`
+     * compacts contradictions.
+     */
+    voiceStyleNotes: jsonb("voice_style_notes")
+      .$type<string[]>()
+      .notNull()
+      .default(sql`'[]'::jsonb`),
+    /**
+     * Whole-day counter. Incremented at end-of-session if the UTC calendar
+     * day rolled over since `last_session_ended_at`. Hidden from players
+     * (the Stardew-style heart meter stays implicit).
+     */
+    relationshipAgeDays: integer("relationship_age_days").notNull().default(0),
+    lastSessionEndedAt: timestamp("last_session_ended_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    /**
+     * Natural key. Postgres treats NULL as distinct in unique indexes, so
+     * pre-pairing rows keyed by `(userId, null)` collapse to one per user.
+     * The application enforces "at most one anonymous companion per user"
+     * by upserting via this index.
+     */
+    uniqueIndex("companion_profile_user_account_unique").on(t.userId, t.osrsAccountId),
+    index("companion_profile_user_idx").on(t.userId),
+  ],
+);
+
+export type CompanionProfile = typeof companionProfile.$inferSelect;
+export type NewCompanionProfile = typeof companionProfile.$inferInsert;
+
+/**
+ * One memorable beat extracted from a chat session.
+ *
+ * Lifecycle (see `src/companion/extract-memories.ts` +
+ * `src/companion/decay-memories.ts`):
+ *   1. `extract-memories.ts` runs at session end. A cheap-tier LLM reads the
+ *      transcript + game-state probes + plugin-fired `CompanionMemoryHint`
+ *      events, returns a Zod-validated list of memories. Each insert sets
+ *      `first_seen_at` and `last_referenced_at` to now and `weight` to the
+ *      extractor's score (0.1-5.0).
+ *   2. The system-prompt builder pulls the highest-weight non-forgotten
+ *      memories on every proactive line. When a memory is read it gets
+ *      `last_referenced_at = now()`.
+ *   3. Nightly decay halves `weight` on rows untouched for 30 days. When
+ *      `weight < 0.1` the row is soft-forgotten (`forgotten_at = now()`).
+ *
+ * `body` is capped at 160 chars — one sentence — so the prompt builder can
+ * afford to include 5-10 memories without blowing the token budget.
+ *
+ * `evidence` is a structured pointer back to the game-state probes that
+ * justified the memory ("vorkath_pb tool returned 1m17s"). The companion
+ * never reveals raw evidence in chat, but it lets future audits + the
+ * /tibbly forget command verify what's actually remembered.
+ *
+ * Privacy: memories are bound to a profile, which is bound to a single
+ * user. The cascade in `me.ts` drops both tables on `DELETE /v1/me`.
+ */
+export const companionMemories = pgTable(
+  "companion_memories",
+  {
+    id: text("id").primaryKey().$defaultFn(newId),
+    profileId: text("profile_id")
+      .notNull()
+      .references(() => companionProfile.id, { onDelete: "cascade" }),
+    body: text("body").notNull(),
+    /**
+     * One of: `pve_progress`, `goal`, `preference`, `chat_history`,
+     * `milestone`. Kept as text (not pgEnum) so the extractor can add
+     * categories without a migration; the extractor's Zod schema is the
+     * canonical list.
+     */
+    category: text("category").notNull(),
+    /**
+     * Float because decay halves the value repeatedly and we want a smooth
+     * gradient. Range 0.1-5.0 at insert; decay can drop it below 0.1, at
+     * which point the row gets forgotten.
+     */
+    weight: doublePrecision("weight").notNull().default(1.0),
+    /**
+     * Justification breadcrumbs the extractor attached. Free-form jsonb so
+     * a new probe type doesn't need a migration — schema enforced at the
+     * Zod boundary in `extract-memories.ts`.
+     */
+    evidence: jsonb("evidence")
+      .$type<{ probe: string; value: unknown }[]>()
+      .notNull()
+      .default(sql`'[]'::jsonb`),
+    firstSeenAt: timestamp("first_seen_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    lastReferencedAt: timestamp("last_referenced_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    /** Soft-delete; the decay job sets this when weight drops below 0.1. */
+    forgottenAt: timestamp("forgotten_at", { withTimezone: true }),
+  },
+  (t) => [
+    index("companion_memories_profile_idx").on(t.profileId),
+    index("companion_memories_weight_idx").on(t.weight),
+    index("companion_memories_last_referenced_idx").on(t.lastReferencedAt),
+  ],
+);
+
+export type CompanionMemory = typeof companionMemories.$inferSelect;
+export type NewCompanionMemory = typeof companionMemories.$inferInsert;

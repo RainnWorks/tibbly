@@ -118,12 +118,98 @@ export const ClientPingMsg = z.object({
   clientUptimeMs: z.number().int().nonnegative().optional(),
 });
 
+/* -------------------------------------------------------------------------- */
+/*  Embodied companion (RAI-67)                                               */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Snapshot the plugin packs alongside any companion event. Free-form (the
+ * shape of "what is the player doing right now" is itself a moving
+ * target). The backend treats it as opaque context for the LLM.
+ *
+ * Two conventional fields are documented:
+ *   - `summary`     — short human-readable "right now" string the plugin
+ *                     pre-renders ("standing in the Lumbridge bank with
+ *                     a full inventory and 27 sharks").
+ *   - `triggerType` — discriminator the prompt builder reads (e.g.
+ *                     "player_death", "login", "hover_examine").
+ *
+ * Everything else flows through untouched.
+ */
+export const CompanionSnapshot = z.record(z.string(), z.unknown());
+
+/**
+ * The plugin asks the backend for a proactive line. The backend pulls
+ * the companion profile + recent memories, builds the archetype prompt,
+ * runs a short LLM turn, and ships back a `CompanionLine` frame.
+ *
+ * Mirrors `OutboundPayload.CompanionTrigger` in the plugin.
+ */
+export const ClientCompanionTriggerMsg = z.object({
+  type: z.literal("companion_trigger"),
+  /**
+   * Trigger discriminator. The plugin owns the set; the backend treats
+   * unknown values as generic "say something appropriate". Conventional
+   * values: `player_death`, `login`, `level_up`, `hover_examine`,
+   * `quest_complete`, `pet_drop`, `pb`, `bank_idle`.
+   */
+  triggerType: z.string().min(1).max(64),
+  /** Per-trigger snapshot of game state the backend reads opaquely. */
+  contextSnapshot: CompanionSnapshot,
+});
+
+/**
+ * Player did something to the companion through the UI (clicked the
+ * sprite, gave it a name, posted a style note, etc.). The backend mutates
+ * the companion profile and answers with a normal `CompanionLine` if a
+ * response is appropriate.
+ *
+ * Mirrors `OutboundPayload.CompanionInteractionEvent`.
+ */
+export const ClientCompanionInteractionEventMsg = z.object({
+  type: z.literal("companion_interaction_event"),
+  /**
+   * One of: `clicked_companion`, `name_companion`, `style_note`, `forget`.
+   * Unknown values are no-ops on the backend side.
+   */
+  eventType: z.string().min(1).max(64),
+  /**
+   * Event-specific payload. Shape depends on `eventType`. Common shapes:
+   *   - `name_companion` → `{ name: "<player-chosen nickname>" }`
+   *   - `style_note`     → `{ note: "<short style instruction>" }`
+   *   - `forget`         → `{ scope?: "last_session" | "all" }`
+   *   - `clicked_companion` → `{ snapshot: <CompanionSnapshot> }`
+   */
+  payload: z.record(z.string(), z.unknown()).optional(),
+});
+
+/**
+ * The plugin marks a moment as memorable. The backend queues it for the
+ * end-of-session extraction job rather than storing it directly — the
+ * extractor decides what's worth keeping.
+ *
+ * Mirrors `OutboundPayload.CompanionMemoryHint`.
+ */
+export const ClientCompanionMemoryHintMsg = z.object({
+  type: z.literal("companion_memory_hint"),
+  /** One-line description of the memorable moment from the plugin's POV. */
+  memorableEvent: z.string().min(1).max(400),
+  /**
+   * Probe ids the plugin already fired, in case the extractor wants to
+   * dereference them later. Opaque string ids.
+   */
+  evidenceProbeIds: z.array(z.string().min(1).max(128)).max(32).default([]),
+});
+
 export const ClientToServer = z.discriminatedUnion("type", [
   ClientAuthMsg,
   ClientUserMessageMsg,
   ClientToolCallResultMsg,
   ClientCancelMsg,
   ClientPingMsg,
+  ClientCompanionTriggerMsg,
+  ClientCompanionInteractionEventMsg,
+  ClientCompanionMemoryHintMsg,
 ]);
 export type ClientToServer = z.infer<typeof ClientToServer>;
 export type ClientAuthMsg = z.infer<typeof ClientAuthMsg>;
@@ -131,6 +217,12 @@ export type ClientUserMessageMsg = z.infer<typeof ClientUserMessageMsg>;
 export type ClientToolCallResultMsg = z.infer<typeof ClientToolCallResultMsg>;
 export type ClientCancelMsg = z.infer<typeof ClientCancelMsg>;
 export type ClientPingMsg = z.infer<typeof ClientPingMsg>;
+export type ClientCompanionTriggerMsg = z.infer<typeof ClientCompanionTriggerMsg>;
+export type ClientCompanionInteractionEventMsg = z.infer<
+  typeof ClientCompanionInteractionEventMsg
+>;
+export type ClientCompanionMemoryHintMsg = z.infer<typeof ClientCompanionMemoryHintMsg>;
+export type CompanionSnapshot = z.infer<typeof CompanionSnapshot>;
 
 // ─── server → client ──────────────────────────────────────────────────────
 
@@ -217,6 +309,41 @@ export const ServerPongMsg = z.object({
   type: z.literal("pong"),
 });
 
+/**
+ * A single proactive companion utterance (RAI-67). One frame = one line
+ * the plugin renders in the speech bubble above the sprite. We do not
+ * stream this one chunk at a time — proactive lines are 60-150 tokens out
+ * and shipping them as a single frame keeps the plugin renderer simple.
+ *
+ * `sourceTrigger` echoes the trigger the plugin sent so the renderer can
+ * choose the right anchor animation (point at NPC, head-tilt, etc.).
+ */
+export const ServerCompanionLineMsg = z.object({
+  type: z.literal("companion_line"),
+  text: z.string().min(1).max(2000),
+  sourceTrigger: z.string().min(1).max(64).optional(),
+  /** Final token + cost telemetry so the dashboard meter stays accurate. */
+  promptTokens: z.number().int().nonnegative().default(0),
+  completionTokens: z.number().int().nonnegative().default(0),
+  costMicroUsd: z.number().int().nonnegative().default(0),
+  balanceTokens: z.number().int().nonnegative().default(0),
+});
+
+/**
+ * Companion event acknowledgement (RAI-67). Sent in response to
+ * `companion_interaction_event` or `companion_memory_hint` when the
+ * backend mutated state. Lets the plugin update its local UI (e.g. show
+ * "name saved" tick) without round-tripping a full line.
+ */
+export const ServerCompanionAckMsg = z.object({
+  type: z.literal("companion_ack"),
+  /** Echoes the event that produced the ack. */
+  eventType: z.string().min(1).max(64),
+  ok: z.boolean(),
+  /** Optional short note ("nickname saved", "forgot last session", etc.). */
+  note: z.string().max(400).optional(),
+});
+
 export const ServerToClient = z.discriminatedUnion("type", [
   ServerAuthOkMsg,
   ServerAuthErrorMsg,
@@ -225,6 +352,8 @@ export const ServerToClient = z.discriminatedUnion("type", [
   ServerAssistantDoneMsg,
   ServerErrorMsg,
   ServerPongMsg,
+  ServerCompanionLineMsg,
+  ServerCompanionAckMsg,
 ]);
 export type ServerToClient = z.infer<typeof ServerToClient>;
 export type ServerAuthOkMsg = z.infer<typeof ServerAuthOkMsg>;
@@ -234,6 +363,8 @@ export type ServerAssistantDeltaMsg = z.infer<typeof ServerAssistantDeltaMsg>;
 export type ServerAssistantDoneMsg = z.infer<typeof ServerAssistantDoneMsg>;
 export type ServerErrorMsg = z.infer<typeof ServerErrorMsg>;
 export type ServerPongMsg = z.infer<typeof ServerPongMsg>;
+export type ServerCompanionLineMsg = z.infer<typeof ServerCompanionLineMsg>;
+export type ServerCompanionAckMsg = z.infer<typeof ServerCompanionAckMsg>;
 
 // ─── helpers ──────────────────────────────────────────────────────────────
 

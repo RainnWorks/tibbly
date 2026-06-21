@@ -23,6 +23,8 @@ import type Stripe from "stripe";
 import { createApp } from "../src/app";
 import {
   chats,
+  companionMemories,
+  companionProfile,
   devices,
   events,
   messages,
@@ -110,6 +112,25 @@ async function seedSurroundingRows(userId: string): Promise<{ chatId: string; me
     userId,
     payload: {},
   });
+  // RAI-67: companion profile + a memory. The cascade tests assert both
+  // tables vanish on delete; the export tests assert both show up.
+  const profileId = "cpf_xxxxxxxxxxxxxxxxxx";
+  await handle.db.insert(companionProfile).values({
+    id: profileId,
+    userId,
+    starterArchetype: "hooded_humanoid",
+    personalityArchetype: "dry_wiki_veteran",
+    companionName: "Tibbly",
+    voiceStyleNotes: ["Call me Boaty.", "No spoilers."],
+    relationshipAgeDays: 17,
+  });
+  await handle.db.insert(companionMemories).values({
+    id: "cmem_xxxxxxxxxxxxxxxxxx",
+    profileId,
+    body: "PB at Vorkath in 1:17.",
+    category: "pve_progress",
+    weight: 4.5,
+  });
   return { chatId, messageId };
 }
 
@@ -155,8 +176,10 @@ describe("/v1/me", () => {
       messages: unknown[];
       toolCalls: unknown[];
       usageRecords: unknown[];
+      companionProfiles: { id: string; companionName: string | null }[];
+      companionMemories: { id: string; body: string }[];
     };
-    expect(body.exportVersion).toBe(2);
+    expect(body.exportVersion).toBe(3);
     expect(body.user.id).toBe(seeded.userId);
     // seedDevice adds 1 device, seedSurroundingRows adds 1 more.
     expect(body.devices).toHaveLength(2);
@@ -165,6 +188,11 @@ describe("/v1/me", () => {
     expect(body.messages).toHaveLength(1);
     expect(body.toolCalls).toHaveLength(1);
     expect(body.usageRecords).toHaveLength(1);
+    // RAI-67: companion rows in the export.
+    expect(body.companionProfiles).toHaveLength(1);
+    expect(body.companionProfiles[0]!.companionName).toBe("Tibbly");
+    expect(body.companionMemories).toHaveLength(1);
+    expect(body.companionMemories[0]!.body).toContain("Vorkath");
   });
 
   it("DELETE /v1/me soft-deletes the user, nulls email, and cascades user-owned rows", async () => {
@@ -217,6 +245,15 @@ describe("/v1/me", () => {
     expect(usageAfter).toHaveLength(0);
     expect(balanceAfter).toHaveLength(0);
     expect(subscriptionsAfter).toHaveLength(0);
+
+    // RAI-67: companion cascade — both tables empty.
+    const profilesAfter = await handle.db
+      .select()
+      .from(companionProfile)
+      .where(eq(companionProfile.userId, seeded.userId));
+    expect(profilesAfter).toHaveLength(0);
+    const memoriesAfter = await handle.db.select().from(companionMemories);
+    expect(memoriesAfter).toHaveLength(0);
   });
 
   it("DELETE /v1/me anonymises events.user_id rather than dropping the row", async () => {

@@ -35,6 +35,8 @@ import {
   subscriptions,
   tokenBalances,
   events,
+  companionProfile,
+  companionMemories,
 } from "../db/schema";
 import { requireUserWith, type AuthedVars, type DeviceKeyCache } from "./_auth";
 import { getStripe } from "../billing/stripe";
@@ -84,6 +86,7 @@ export function createMeRouter(options: CreateMeRouterOptions = {}): Hono<{
       userUsage,
       userSubscriptions,
       userBalance,
+      userCompanionProfiles,
     ] = await Promise.all([
       db.select().from(devices).where(eq(devices.userId, userId)),
       db.select().from(osrsAccounts).where(eq(osrsAccounts.userId, userId)),
@@ -112,10 +115,22 @@ export function createMeRouter(options: CreateMeRouterOptions = {}): Hono<{
         .select()
         .from(tokenBalances)
         .where(eq(tokenBalances.userId, userId)),
+      db.select().from(companionProfile).where(eq(companionProfile.userId, userId)),
     ]);
 
+    // The companion memories cascade is keyed off the profile id, not the
+    // user id, so it needs a second query.
+    const profileIds = userCompanionProfiles.map((p) => p.id);
+    const userCompanionMemories =
+      profileIds.length === 0
+        ? []
+        : await db
+            .select()
+            .from(companionMemories)
+            .where(inArray(companionMemories.profileId, profileIds));
+
     const payload = {
-      exportVersion: 2,
+      exportVersion: 3,
       generatedAt: new Date().toISOString(),
       notice:
         "This is the data we hold about you. Device keys are stored as " +
@@ -134,6 +149,11 @@ export function createMeRouter(options: CreateMeRouterOptions = {}): Hono<{
       usageRecords: userUsage,
       subscriptions: userSubscriptions,
       tokenBalance: userBalance[0] ?? null,
+      // RAI-67: embodied-companion personality + memory rows. Scoped per
+      // (user_id, osrs_account_id); a single user with multiple OSRS
+      // characters surfaces one profile row per character.
+      companionProfiles: userCompanionProfiles,
+      companionMemories: userCompanionMemories,
     };
 
     c.header(
@@ -222,6 +242,22 @@ export function createMeRouter(options: CreateMeRouterOptions = {}): Hono<{
         await tx.delete(messages).where(inArray(messages.chatId, chatIds));
         await tx.delete(chats).where(eq(chats.userId, userId));
       }
+
+      // RAI-67: embodied-companion cascade. Memories → profiles. The
+      // schema's ON DELETE CASCADE FKs would handle this implicitly when
+      // the user row is removed, but we delete explicitly here so the
+      // audit log reads in the same shape as the rest of the cascade.
+      const userProfileRows = await tx
+        .select({ id: companionProfile.id })
+        .from(companionProfile)
+        .where(eq(companionProfile.userId, userId));
+      const userProfileIds = userProfileRows.map((p) => p.id);
+      if (userProfileIds.length > 0) {
+        await tx
+          .delete(companionMemories)
+          .where(inArray(companionMemories.profileId, userProfileIds));
+      }
+      await tx.delete(companionProfile).where(eq(companionProfile.userId, userId));
 
       await tx.delete(usageRecords).where(eq(usageRecords.userId, userId));
       await tx.delete(tokenBalances).where(eq(tokenBalances.userId, userId));
