@@ -8,6 +8,13 @@
       "when": 1782000893288,
       "tag": "0000_merged_schema",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1782010000000,
+      "tag": "0001_processed_stripe_events",
+      "breakpoints": true
     }
   ]
 }

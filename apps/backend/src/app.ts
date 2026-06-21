@@ -15,6 +15,8 @@ import { secureHeaders } from "hono/secure-headers";
 
 import { createAdminUsageRouter } from "./api/admin/usage";
 import type { CreateAdminUsageOptions } from "./api/admin/usage";
+import { createStripeWebhookRouter } from "./api/webhooks/stripe";
+import type { StripeWebhookDeps } from "./api/webhooks/stripe";
 import { env } from "./env";
 import { log } from "./lib/log";
 
@@ -32,6 +34,12 @@ export interface CreateAppOptions {
    * don't care about admin can keep using the bare app.
    */
   admin?: CreateAdminUsageOptions | "auto";
+  /**
+   * Stripe webhook router (RAI-19). Pass the meter + db to mount
+   * `POST /api/webhooks/stripe`. Omitted in dev/test by default so a
+   * missing webhook secret doesn't crash boot.
+   */
+  stripeWebhook?: StripeWebhookDeps;
 }
 
 export function createApp(options: CreateAppOptions = {}): Hono {
@@ -69,6 +77,10 @@ export function createApp(options: CreateAppOptions = {}): Hono {
   if (options.admin) {
     const adminOpts = options.admin === "auto" ? {} : options.admin;
     app.route("/admin", createAdminUsageRouter(adminOpts));
+  }
+
+  if (options.stripeWebhook) {
+    app.route("/api/webhooks", createStripeWebhookRouter(options.stripeWebhook));
   }
 
   app.notFound((c) => c.json({ ok: false, error: "not_found" }, 404));
