@@ -19,6 +19,7 @@
     "@electric-sql/pglite": "^0.5.3",
     "@hono/zod-validator": "^0.8.0",
     "@osrs-llm-helper/shared-types": "workspace:*",
+    "argon2": "^0.44.0",
     "drizzle-orm": "^0.45.2",
     "hono": "^4.12.26",
     "nanoid": "^5.1.15",

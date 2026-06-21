@@ -15,6 +15,8 @@ import { secureHeaders } from "hono/secure-headers";
 
 import { createAdminUsageRouter } from "./api/admin/usage";
 import type { CreateAdminUsageOptions } from "./api/admin/usage";
+import { createPairingRouter } from "./api/pairing";
+import type { CreatePairingRouterOptions } from "./api/pairing";
 import { env } from "./env";
 import { log } from "./lib/log";
 
@@ -32,6 +34,12 @@ export interface CreateAppOptions {
    * don't care about admin can keep using the bare app.
    */
   admin?: CreateAdminUsageOptions | "auto";
+  /**
+   * Pairing-code router config (RAI-18). Pass `{ db }` to mount the
+   * `/v1/pairing/*` endpoints. Omit in tests that don't exercise pairing
+   * so the bare app stays DB-free.
+   */
+  pairing?: CreatePairingRouterOptions;
 }
 
 export function createApp(options: CreateAppOptions = {}): Hono {
@@ -69,6 +77,10 @@ export function createApp(options: CreateAppOptions = {}): Hono {
   if (options.admin) {
     const adminOpts = options.admin === "auto" ? {} : options.admin;
     app.route("/admin", createAdminUsageRouter(adminOpts));
+  }
+
+  if (options.pairing) {
+    app.route("/v1/pairing", createPairingRouter(options.pairing));
   }
 
   app.notFound((c) => c.json({ ok: false, error: "not_found" }, 404));
