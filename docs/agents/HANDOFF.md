@@ -1,10 +1,36 @@
 # Tom's wake-up briefing — 2026-06-21 morning
 
-*Refresh: loop M+10. Strategic-thread swarm in flight; PRs landing every ~20 min. First file to read on next pickup. 90 seconds, then jump in.*
+*Refresh: loop M+13. Adversarial review wave landed; fix wave in flight. PRs landing every ~20 min. First file to read on next pickup. 90 seconds, then jump in.*
 
-## Where we are right now (loop M+10)
+## Where we are right now (loop M+13)
 
 **Cron `8e5a4446`** firing every 20 min, healthy.
+
+**Linear is honest again.** RAI-42 through RAI-57 backfilled today's strategic threads via PR #64. Every in-flight agent is creating its own Linear issue first per `feedback_linear_is_source_of_truth.md`.
+
+**Adversarial review wave 1 landed (PRs #59 / #60 / #61) and paid for itself:**
+
+- **Security skeptic — 4 critical findings.** `requireUser` trusts `x-user-id` verbatim with zero verification. Any internet caller who guesses a 21-char nanoid runs `curl /v1/me/export -H 'x-user-id: <id>'` and gets the GDPR export of any user. Same shape for admin via `x-admin-email`. Pre-deploy blocker.
+- **Hub maintainer — would-reject-hard, 7 blockers.** `ProcessBuilder` lives in production source (`ClaudeRunner.kt:184` + `OsrsLlmHelperPanel.kt:239`) and is the exact pattern PR #11453 was rejected for. Plus the shipped shadowJar contains the `local/**` package even with runtime gating. SECURITY_AUDIT.md + THREAT_MODEL.md + SECURITY_DESIGN.md claim no ProcessBuilder; provably false on inspection.
+- **Strategic consistency — 23 findings.** Top blocker: `apps/backend/src/billing/tiers.ts` declares prices in **USD cents** while every public doc + marketing page quotes **GBP**. Real revenue-correctness hazard. PR #62 absorbed several of the others as side effects.
+
+**Fix wave in flight (5 agents, each Linear-first):**
+
+| Agent | Closes |
+|---|---|
+| Auth fix | Security C1-C4 (real device-key + JWT cookie verification) |
+| Hub blockers fix | Hub maintainer C1 (rip ProcessBuilder + exclude `local/**` from shadowJar + new `:checkLocalNotInJar` Gradle guard) |
+| Strategic consistency fix | Currency split + NORTH_STAR rebuild + Q-status updates + STATUS.md rebuild |
+| E2E harness | **Tom's new directive** — fake-plugin emulator + Claude-in-Chrome scenarios; removes the RuneLite layer so the rest is end-to-end testable |
+| SQL migration safety hat | Read-only review of `apps/backend/migrations/*` via the Squawk ruleset |
+
+**Process discipline (Q-8 root cause finally identified):** the "pre-commit hook" several agents flagged is NOT a misbehaving hook. Repo has no `.husky/`, no hooksPath, no `package.json` hook config, no `.git/hooks/` entries. What agents observed was parallel `git checkout` operations on the shared root checkout when worktree isolation was skipped. Discipline going forward: **every code-writing agent gets `isolation: "worktree"`**. Read-only review hats can share.
+
+**Marketing site implementation landed (PR #62)** with the canonical IA from #54: pixel `runescape_bold.ttf` H1, Inter Tight body, JetBrains Mono, 4×2 inventory FeatureGrid, 3 visible tiers + Iron footnote, no-automation hero second sentence, TrustStrip + FreeTierStrip new sections, palette evolution with WCAG 9.4:1 contrast. 52/56 taste-skill pre-flight pass, 21/21 tests.
+
+**Code-quality hat playbook landed (PR #63)** — 9 hat prompts derived from Effective Kotlin / Effective TypeScript / detekt / typescript-eslint strict / Kent C. Dodds testing trophy / Ousterhout deep modules / full Squawk rule list. Stored at `docs/agents/CODE_QUALITY_PROMPTS.md` for cheap reference. Hat 8 (SQL migrations) spawned this loop; hats 1 + 2 (Kotlin idiomatic + TypeScript strictness) held until the fix wave lands.
+
+
 
 **Currently in flight (7 strategic deep-dive agents):**
 
