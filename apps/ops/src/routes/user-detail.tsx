@@ -23,7 +23,7 @@ import {
 } from "@/components/ui/dialog";
 import { useToast } from "@/components/ui/toast";
 import { apiFetch, ApiError } from "@/lib/api";
-import { formatTokens, formatUsdCents } from "@/lib/format";
+import { formatTokens, formatStripeMinor } from "@/lib/format";
 
 interface UserDetail {
   ok: true;
@@ -509,7 +509,7 @@ export function RouteUserDetail(): ReactNode {
                       {inv.number ?? inv.id}
                     </span>
                     <span className="text-[var(--color-ops-text)]">
-                      {formatUsdCents(inv.amount_paid)}
+                      {formatStripeMinor(inv.amount_paid, inv.currency)}
                     </span>
                   </div>
                   <div className="flex items-center justify-between text-[var(--color-ops-text-faint)]">

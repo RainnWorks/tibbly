@@ -1,6 +1,6 @@
-# Decision log — append only
+# Decision log -- append only
 
-## D-1 — Loop cadence: 20 minutes — 2026-06-21
+## D-1 -- Loop cadence: 20 minutes -- 2026-06-21
 
 **Context:** User initially said 2 min; later clarified 20 min.
 **Chosen:** 20 minutes via ScheduleWakeup `delaySeconds: 1200`.
@@ -8,16 +8,16 @@
 wakeups would burn cache and add no signal.
 **Reversible?:** trivially.
 
-## D-2 — Tech stack: Bun + TypeScript + React + Tailwind + Drizzle — 2026-06-21
+## D-2 -- Tech stack: Bun + TypeScript + React + Tailwind + Drizzle -- 2026-06-21
 
 **Context:** User specified Bun + React + Tailwind. Need an ORM + framework.
 **Chosen:** Hono for HTTP + Bun's native WebSocket. Drizzle ORM for type-safe
 SQL. Zod at boundaries. Vite for frontends. PGLite for dev DB.
 **Rationale:** Lowest friction with Bun; Hono runs on Bun natively; Drizzle
 plays nicely with both SQLite (PGLite) and Postgres.
-**Reversible?:** Moderate — switching frameworks later is painful.
+**Reversible?:** Moderate -- switching frameworks later is painful.
 
-## D-3 — Identity model: device-key + pairing code, no email by default — 2026-06-21
+## D-3 -- Identity model: device-key + pairing code, no email by default -- 2026-06-21
 
 **Context:** User wants frictionless auth via RuneLite identity. RuneLite
 itself doesn't sign anything for us.
@@ -26,9 +26,9 @@ pairs the device with a billing account via a one-time 6-digit code shown
 in-game and entered on the dashboard. One Stripe customer can own many
 device keys (≈ many OSRS accounts).
 **Rationale:** Zero email signup. The dashboard handshake is one-time.
-**Reversible?:** yes — we can layer a magic-link email later if needed.
+**Reversible?:** yes -- we can layer a magic-link email later if needed.
 
-## D-4 — Stripe model: subscription + metered token top-ups — 2026-06-21
+## D-4 -- Stripe model: subscription + metered token top-ups -- 2026-06-21
 
 **Context:** Need both predictable monthly revenue and overage protection.
 **Chosen:** Three subscription tiers (Hobbyist / Pro / Iron). Each tier
@@ -37,7 +37,7 @@ rate. Stop-at-zero unless customer enables auto-top-up.
 **Rationale:** Familiar pattern; protects margin.
 **Reversible?:** yes.
 
-## D-5 — Hide the duplicate tools rather than rename — 2026-06-21
+## D-5 -- Hide the duplicate tools rather than rename -- 2026-06-21
 
 **Context:** Plugin has duplicate `get_slayer_task` and `get_xp_rates`
 registrations.
@@ -46,7 +46,7 @@ combined fields. Drop the old `tools.slayerTask()` / `tools.xpRates()` once
 their data is folded into the integration-based versions.
 **Reversible?:** yes.
 
-## D-6 — Three deliverables, login conditional — 2026-06-21
+## D-6 -- Three deliverables, login conditional -- 2026-06-21
 
 **Context:** User said the three must-ships are productized client,
 marketing page, backend with login. Login conditional if frictionless.
@@ -55,7 +55,7 @@ login screen. Add `/login` route only as a recovery path (for users replacing
 their machine). Stripe Customer Portal is the billing UX.
 **Reversible?:** yes.
 
-## D-8 — Product pivot: dashboard de-prioritised; backend becomes Tibbly ops console; hide token-spend from users — 2026-06-21 (loop M+2/M+3 boundary)
+## D-8 -- Product pivot: dashboard de-prioritised; backend becomes Tibbly ops console; hide token-spend from users -- 2026-06-21 (loop M+2/M+3 boundary)
 
 **Context:** Tom reviewed the overnight build on the morning of 2026-06-21
 and called the user dashboard "LLM slop" visually + conceptually:
@@ -82,8 +82,8 @@ and called the user dashboard "LLM slop" visually + conceptually:
    moves into RuneLite plugin panels in a follow-up. The web app at
    `apps/dashboard` is repurposed as **Tibbly's internal ops console**.
 2. **Token-spend visibility removed from user UI.** Players see
-   tier-aware proxies — "23/30 messages used today", "subscription
-   active — renews on Dec 14", "out of messages — upgrade or wait
+   tier-aware proxies -- "23/30 messages used today", "subscription
+   active -- renews on Dec 14", "out of messages -- upgrade or wait
    until tomorrow". Iron tier shows no scary counter at all unless we
    actually hit a cap. Internal ops keeps the raw token math.
 3. **Whole-site auth wall on the web app.** No public marketing-style
@@ -107,7 +107,7 @@ and called the user dashboard "LLM slop" visually + conceptually:
 
 **What this does NOT change:**
 
-- `/v1/me` (GDPR Art. 15 / Art. 17) endpoints stay — legal/compliance
+- `/v1/me` (GDPR Art. 15 / Art. 17) endpoints stay -- legal/compliance
   requirement regardless of who consumes them. PR #34 is the rewrite.
 - `/v1/pairing`, `/v1/usage`, `/v1/accounts`, `/v1/billing` endpoints
   stay on the backend; their consumers shift from the web dashboard
@@ -124,14 +124,14 @@ forward-going only.
 
 **Open questions for Tom (queued in OPEN_QUESTIONS.md as Q-19 to Q-21):**
 
-- Q-19: name of the re-cast `apps/dashboard` — keep the name, rename
+- Q-19: name of the re-cast `apps/dashboard` -- keep the name, rename
   to `apps/ops`, or split into a separate package?
-- Q-20: PR #34 (me.ts rewrite) — merge-and-forget for compliance, or
+- Q-20: PR #34 (me.ts rewrite) -- merge-and-forget for compliance, or
   pause until the plugin-side panel design lands?
-- Q-21: precedence on plugin account panel vs ops console — which one
+- Q-21: precedence on plugin account panel vs ops console -- which one
   ships first?
 
-## D-10 — Hybrid licensing: MIT plugin, proprietary backend — 2026-06-21 (loop M+9)
+## D-10 -- Hybrid licensing: MIT plugin, proprietary backend -- 2026-06-21 (loop M+9)
 
 **Context:** Tom decided the open-source posture. The plugin must be readable
 by RuneLite hub reviewers and privacy-skeptical players. The backend holds the
@@ -197,18 +197,18 @@ lever.
 - `docs/agents/OPEN_QUESTIONS.md` Q-25 / Q-26 / Q-27: open follow-ups on
   timing, archive vs delete, and where the private repo lives.
 
-## D-7 — Operating model: CTO + Linear MCP + companion personality lane — 2026-06-21
+## D-7 -- Operating model: CTO + Linear MCP + companion personality lane -- 2026-06-21
 
 **Context:** User said "I don't care how you do the sub agents" + "act as CTO"
 + "use the linear MCP to create tasks" + "it's a companion, should feel like
-a friend — or should it? personality aspect to this".
+a friend -- or should it? personality aspect to this".
 **Chosen:**
-- Operate as the CTO — I own pace, agent choreography, and trade-offs.
+- Operate as the CTO -- I own pace, agent choreography, and trade-offs.
 - Track work as Linear issues when the Linear MCP becomes available
-  (currently not loaded — placeholder: log to STATUS.md, then create issues
+  (currently not loaded -- placeholder: log to STATUS.md, then create issues
   on the next loop after `ToolSearch` returns linear tools).
 - Add an explicit **personality / brand voice** task. Default position: the
-  agent has a quietly competent OSRS-veteran tone — knows the lore, makes
+  agent has a quietly competent OSRS-veteran tone -- knows the lore, makes
   occasional callbacks ("don't be a noob"), but never gets in the way.
   Skews slightly companion ("we're in this together") rather than tool
   ("here is your data"). Test against power-user opinions in R2 research.
@@ -216,11 +216,49 @@ a friend — or should it? personality aspect to this".
   agent; for now the product is `osrs-llm-helper` in docs.
 **Reversible?:** yes.
 
-## D-9 — No hardcoded model ids; live catalog drives every routing decision — 2026-06-21 (loop M+9)
+## D-11 -- Pricing currency: GBP (pence) end-to-end -- 2026-06-21 (loop M+11, RAI-41)
+
+**Context:** The strategic-consistency review (loop M+11) flagged a
+USD/GBP split as the highest-risk inconsistency in the corpus. The
+backend tier table (`apps/backend/src/billing/tiers.ts`) declared
+`monthlyPriceCents` in USD; every other canonical doc (marketing IA,
+PricingTiers, HUB_RELEASE_STRATEGY, LICENSING introducing Tibbly Limited
+as a UK entity, OPEN_QUESTIONS Q-2 was historical) quoted GBP. A live
+Stripe checkout could have billed in the wrong currency.
+
+**Chosen:** Public pricing is denominated in GBP end-to-end.
+
+- `monthlyPriceCents` renamed to `monthlyPricePence`. Integer values
+  unchanged (700 / 1900 / 4900).
+- `DEFAULT_TIER_PRICE_USD_CENTS` / `tierPriceUsdCents` / `mrrUsdCents` /
+  `revenueUsdCents` renamed to `..._PENCE` / `tierPricePence` /
+  `mrrPence` / `revenuePence` in `apps/backend/src/api/admin/openrouter.ts`
+  and all ops console consumers.
+- Stripe Checkout: production `STRIPE_PRICE_*` env vars are expected to
+  resolve to GBP price ids. Currency lives on the Stripe price itself,
+  so the backend does not pass an explicit `currency` to
+  `checkout.sessions.create`.
+- OpenRouter spend stays in USD because that is what OpenRouter bills.
+  The ops console converts at a flat USD/GBP rate (1.25) for the margin
+  indicator only; the cost model in `docs/research/llm-providers/`
+  will track live FX in a follow-up.
+
+**Reversible?:** Trivially for code (rename + integer change). Stripe
+price ids are durable in production but new ones can be issued and
+swapped via env vars without touching code.
+
+**References:**
+
+- `docs/reviews/strategic-consistency-001.md` finding C1 / M1.
+- `docs/marketing/IA.md` §2.5 (free strip) and §2.7 (pricing).
+- `docs/architecture/HUB_RELEASE_STRATEGY.md` line 111
+  ("£7 / £19 / £49 tiers").
+
+## D-9 -- No hardcoded model ids; live catalog drives every routing decision -- 2026-06-21 (loop M+9)
 
 **Context:** Tom, verbatim:
 
-> "the model choice MUST be driven by RECENT research — the landscape
+> "the model choice MUST be driven by RECENT research -- the landscape
 > changes all the time. and i want us focusing on the ability to swap it
 > out, segment user base, test."
 
@@ -231,20 +269,22 @@ a friend — or should it? personality aspect to this".
 **Chosen:** Build a 5-layer model platform:
 
 1. Live catalog ingested nightly from OpenRouter (this PR).
-2. Routing policies — `(segment, intent) -> catalog.id` rows.
-3. Segments — runtime-rebindable per user.
-4. Experiments — bandit / holdout assignments.
-5. Sandbox — replay any recorded chat against any model.
+2. Routing policies -- `(segment, intent) -> catalog.id` rows.
+3. Segments -- runtime-rebindable per user.
+4. Experiments -- bandit / holdout assignments.
+5. Sandbox -- replay any recorded chat against any model.
 
 Step 1 ships the catalog table (`model_catalog`), the ingester, a
 boot+nightly scheduler, three admin routes (`/admin/catalog/*`), and a
 `/catalog` view in Tibbly Ops. The legacy `MODEL_HAIKU` / `MODEL_SONNET`
-/ `MODEL_OPUS` constants in `apps/backend/src/llm/router.ts` stay in
-place — step 2 (routing policies) owns their removal once there's a
-consumer of the new policy table.
+/ `MODEL_OPUS` constants in `apps/backend/src/llm/router.ts` become a
+step-2 seed-load only (matching `docs/architecture/MODEL_PLATFORM.md`);
+step 2 (routing policies) owns their removal once there's a consumer of
+the new policy table.
 
 See `docs/architecture/MODEL_PLATFORM.md` for the full architecture and
-the step-2 handoff.
+the step-2 handoff. The two files now use the same framing for the
+legacy constants.
 
 **Reversible?:** the catalog table is additive. If the routing layer is
 ever yanked, the table becomes a curiosity rather than a hazard. The

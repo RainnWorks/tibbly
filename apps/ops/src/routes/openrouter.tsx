@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { StatTile } from "@/components/ui/stat-tile";
 import { Badge } from "@/components/ui/badge";
 import { apiFetch } from "@/lib/api";
-import { formatMicroUsd, formatUsdCents, formatTokens } from "@/lib/format";
+import { formatMicroUsd, formatPence, formatTokens } from "@/lib/format";
 
 interface SpendResponse {
   ok: true;
@@ -26,13 +26,14 @@ interface SpendResponse {
 
 interface RevenueResponse {
   ok: true;
-  mrrUsdCents: number;
+  currency: "gbp";
+  mrrPence: number;
   activeSubscriptions: number;
   tierCounts: Record<string, number>;
-  tierPriceUsdCents: Record<string, number>;
-  approxToday: { revenueUsdCents: number };
-  approxWeek: { revenueUsdCents: number };
-  approxMonth: { revenueUsdCents: number };
+  tierPricePence: Record<string, number>;
+  approxToday: { revenuePence: number };
+  approxWeek: { revenuePence: number };
+  approxMonth: { revenuePence: number };
 }
 
 export function RouteOpenRouter(): ReactNode {
@@ -49,11 +50,18 @@ export function RouteOpenRouter(): ReactNode {
 
   const todaySpend = spend.data?.windows.today.spendMicroUsd ?? 0;
   const monthSpend = spend.data?.windows.month.spendMicroUsd ?? 0;
-  const monthRevenue = revenue.data?.approxMonth.revenueUsdCents ?? 0;
-  const monthRevenueMicro = monthRevenue * 10_000; // cents -> micro USD
+  const monthRevenuePence = revenue.data?.approxMonth.revenuePence ?? 0;
+  // Spend is micro-USD; revenue is pence GBP. Convert revenue to micro-USD
+  // for the margin ratio at a flat 1.25 USD/GBP (rough mid-rate; the ops
+  // console shows margin as an indicator, not a finance-grade figure).
+  // See docs/research/llm-providers/cost-model.md follow-ups for live FX.
+  const USD_PER_GBP_RATE = 1.25;
+  const monthRevenueMicroUsd = Math.round(
+    monthRevenuePence * 10_000 * USD_PER_GBP_RATE,
+  );
   const margin =
-    monthRevenueMicro > 0
-      ? Math.round(((monthRevenueMicro - monthSpend) / monthRevenueMicro) * 1000) / 10
+    monthRevenueMicroUsd > 0
+      ? Math.round(((monthRevenueMicroUsd - monthSpend) / monthRevenueMicroUsd) * 1000) / 10
       : null;
 
   return (
@@ -70,7 +78,7 @@ export function RouteOpenRouter(): ReactNode {
         />
         <StatTile
           label="revenue (30d, approx)"
-          value={formatUsdCents(monthRevenue)}
+          value={formatPence(monthRevenuePence)}
           tone="ok"
         />
         <StatTile
@@ -154,7 +162,7 @@ export function RouteOpenRouter(): ReactNode {
             <tbody>
               {Object.entries(revenue.data?.tierCounts ?? {}).map(
                 ([tier, count]) => {
-                  const price = revenue.data?.tierPriceUsdCents[tier] ?? 0;
+                  const price = revenue.data?.tierPricePence[tier] ?? 0;
                   return (
                     <tr
                       key={tier}
@@ -167,10 +175,10 @@ export function RouteOpenRouter(): ReactNode {
                         {count}
                       </td>
                       <td className="px-2 py-1 text-right font-mono text-[var(--color-ops-text-muted)] tabular-nums">
-                        {formatUsdCents(price)}
+                        {formatPence(price)}
                       </td>
                       <td className="px-2 py-1 text-right font-mono text-[var(--color-ops-text)] tabular-nums">
-                        {formatUsdCents(count * price)}
+                        {formatPence(count * price)}
                       </td>
                     </tr>
                   );

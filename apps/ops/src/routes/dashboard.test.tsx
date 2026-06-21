@@ -34,13 +34,14 @@ describe("RouteDashboard", () => {
       }),
       "GET /api/admin/openrouter/revenue": () => ({
         ok: true,
-        mrrUsdCents: 4_900,
+        currency: "gbp",
+        mrrPence: 4_900,
         activeSubscriptions: 1,
         tierCounts: { iron: 1 },
-        tierPriceUsdCents: { hobbyist: 700, pro: 1900, iron: 4900 },
-        approxToday: { revenueUsdCents: 163 },
-        approxWeek: { revenueUsdCents: 1142 },
-        approxMonth: { revenueUsdCents: 4900 },
+        tierPricePence: { hobbyist: 700, pro: 1900, iron: 4900 },
+        approxToday: { revenuePence: 163 },
+        approxWeek: { revenuePence: 1142 },
+        approxMonth: { revenuePence: 4900 },
       }),
       "GET /api/admin/realtime": () => ({
         ok: true,
@@ -63,7 +64,7 @@ describe("RouteDashboard", () => {
     });
     await renderRoute("/", "/", RouteDashboard);
     await waitFor(() => {
-      expect(screen.getByText("$49.00")).toBeInTheDocument();
+      expect(screen.getByText("£49.00")).toBeInTheDocument();
     });
     expect(screen.getByText(/connected plugins/i)).toBeInTheDocument();
   });

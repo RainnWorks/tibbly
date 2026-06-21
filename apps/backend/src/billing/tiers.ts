@@ -1,20 +1,30 @@
 /**
- * Subscription tier catalog (RAI-19 / RAI-20).
+ * Subscription tier catalog (RAI-19 / RAI-20 / RAI-41).
  *
  * Declarative single-source-of-truth for:
  *   - which Stripe price IDs map to which internal tier;
  *   - how many tokens of monthly quota each tier grants;
- *   - the default model the chat loop should route through.
+ *   - the display price in GBP pence.
  *
  * The Stripe webhook (`src/api/webhooks/stripe.ts`) resolves a subscription's
  * line item to one of these rows. The token meter (`src/billing/meter.ts`)
  * reads `quotaTokens` when crediting `invoice.payment_succeeded`.
  *
+ * Currency: GBP. Public pricing is quoted in pounds across the marketing
+ * page, the IA synthesis (docs/marketing/IA.md), the hub release strategy
+ * (docs/architecture/HUB_RELEASE_STRATEGY.md), and the licensing doc (which
+ * names "Tibbly Limited" as a UK entity). See D-9 / D-10 / D-11 in
+ * `docs/agents/DECISION_LOG.md`. Stripe price ids resolved via
+ * STRIPE_PRICE_* env vars are expected to be GBP price ids in production;
+ * the currency lives on the Stripe price itself, not in this table.
+ *
  * Margin discipline (per docs/research/llm-providers/_SUMMARY.md):
- *   - Hobbyist $7 / 100K tokens → 97.4% margin headroom.
- *   - Pro $19 / 500K tokens → 88.0%.
- *   - Iron $49 / 2M tokens → 79.1%.
+ *   - Hobbyist 700p / 100K tokens -> 97.4% margin headroom.
+ *   - Pro 1900p / 500K tokens -> 88.0%.
+ *   - Iron 4900p / 2M tokens -> 79.1%.
  * Changing any quota here MUST be checked against `cost-model.md` first.
+ * OpenRouter spend is denominated in USD; revenue in GBP. Conversion drift
+ * is small at current rates but tracked in `docs/research/llm-providers/`.
  */
 import type { Tier } from "@osrs-llm-helper/shared-types";
 
@@ -27,13 +37,14 @@ export interface TierSpec {
    * concurrent in-flight requests — see meter.md for the atomic decrement.
    */
   quotaTokens: number;
-  /** Display price in cents USD — surfaced on the dashboard. */
-  monthlyPriceCents: number;
+  /** Display price in pence GBP — surfaced on the marketing page + ops console. */
+  monthlyPricePence: number;
   /** Marketing-facing human title. */
   title: string;
   /**
    * Env var holding the Stripe price id this tier maps to. Read lazily so
-   * tests can mutate the env without recompiling the table.
+   * tests can mutate the env without recompiling the table. The resolved
+   * Stripe price is expected to be a GBP price id in production.
    */
   priceEnvVar: "STRIPE_PRICE_HOBBYIST" | "STRIPE_PRICE_PRO" | "STRIPE_PRICE_IRON";
 }
@@ -47,21 +58,21 @@ export const TIERS: readonly TierSpec[] = [
   {
     tier: "hobbyist",
     quotaTokens: 100_000,
-    monthlyPriceCents: 700,
+    monthlyPricePence: 700,
     title: "Hobbyist",
     priceEnvVar: "STRIPE_PRICE_HOBBYIST",
   },
   {
     tier: "pro",
     quotaTokens: 500_000,
-    monthlyPriceCents: 1900,
+    monthlyPricePence: 1900,
     title: "Pro",
     priceEnvVar: "STRIPE_PRICE_PRO",
   },
   {
     tier: "iron",
     quotaTokens: 2_000_000,
-    monthlyPriceCents: 4900,
+    monthlyPricePence: 4900,
     title: "Iron",
     priceEnvVar: "STRIPE_PRICE_IRON",
   },
