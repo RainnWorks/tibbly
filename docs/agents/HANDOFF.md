@@ -18,28 +18,37 @@ redirected:
    dials before writing UI code. Hard bans: no Inter default, no
    em-dashes, no 3-equal-card grids, no beige+brass+oxblood.
 4. **Marketing page stays public.** Only ops gets the auth wall.
-5. **Plugin work continues.** The RAI-5 unblockers agent **landed
-   PR #36** (merged) — 4 of 5 Tier 0 tools shipped:
-   `get_account_identity`, `get_raid_layout`,
-   `get_target_projectiles`, `get_active_prayers`. 17 new tests
-   green, `:check` green incl. `:checkMcpServerGated`. New
-   `StateProbes.kt` in `cloud/tools/` is positioned for the future
-   cloud→local dispatcher (replacing `StubToolDispatcher`).
-   Deferred: `get_farming_state` (RuneLite `timetracking.farming` is
-   package-private; needs split into `get_farming_summary` +
-   `get_farming_patches(region=)`).
+5. **Plugin work continues.** All 5 RAI-5 Tier 0 unblockers shipped
+   (PR #36 + PR #38): `get_account_identity`, `get_raid_layout`,
+   `get_target_projectiles`, `get_active_prayers`,
+   `get_farming_summary` + `get_farming_patches(region=)`. 35 new
+   tests across both PRs. `:check` green. `FarmingTables.kt` mirrors
+   the package-private upstream patch→varbit table (17 OSRS regions
+   v1; hardwood / seaweed / cactus / spirit tree / etc deferred to
+   v2). `StateProbes.kt` in `cloud/tools/` is positioned for the
+   future cloud→local dispatcher (replacing `StubToolDispatcher`).
 
 Full pivot writeup: `docs/agents/DECISION_LOG.md` D-8.
-Open questions waiting on Tom: Q-19, Q-20, Q-21 in
-`docs/agents/OPEN_QUESTIONS.md`.
+Tom's Q-19/Q-20/Q-21 answers:
+- Q-19 → rename done (PR #37 merged).
+- Q-20 → merge for compliance (PR #34 merged).
+- Q-21 → ops + plugin panel as parallel tracks (both agents
+  spawned in M+5, in flight).
 
-**Three direct questions for Tom (from my last response):**
-- Should I start the ops re-cast immediately or queue it in Linear first?
-- Is PR #34 (`/v1/me` GDPR rewrite) merge-and-forget for compliance,
-  or do you want to look at it first?
-- Plugin account panel vs ops console — which ships first? (My
-  default: ops console first because you said you NEED the
-  observability platform.)
+## Loop M+5 — in flight (parallel tracks)
+
+- **Ops console re-cast agent** — `apps/ops/` rebuilt as Tibbly's
+  internal ops console. Auth wall on `/login` via JWT cookie.
+  Routes: `/`, `/users`, `/users/:id`, `/analytics`, `/openrouter`.
+  Backend gains `/admin/{users,users/:id,users/:id/{ban,unban,refund,credit},openrouter/{spend,revenue},login}`.
+  Taste-skill applied: design-read + 3-dials block goes at the top
+  of the PR body.
+- **Plugin account panel agent** — Swing sidebar in RuneLite.
+  Tier-aware "messages left today" proxy (server computes; UI
+  never sees raw tokens). GDPR export/delete actions. Stripe portal
+  link. Backend gains `/v1/account/summary` +
+  `/v1/account/usage-proxy`. New Gradle
+  `:checkAccountPanelNoRawTokens` guard.
 
 ## What's new since the previous HANDOFF refresh
 
