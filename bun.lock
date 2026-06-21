@@ -112,6 +112,26 @@
       "name": "@osrs-llm-helper/plugin",
       "version": "0.1.0",
     },
+    "e2e": {
+      "name": "@osrs-llm-helper/e2e",
+      "version": "0.0.0",
+      "dependencies": {
+        "@electric-sql/pglite": "^0.5.3",
+        "@osrs-llm-helper/backend": "workspace:*",
+        "@osrs-llm-helper/shared-types": "workspace:*",
+        "ai": "^6.0.208",
+        "drizzle-orm": "^0.45.2",
+        "hono": "^4.12.26",
+        "nanoid": "^5.1.15",
+        "stripe": "^22.2.2",
+        "zod": "^4.4.3",
+      },
+      "devDependencies": {
+        "@osrs-llm-helper/tooling": "workspace:*",
+        "@types/bun": "^1.1.14",
+        "typescript": "^5.7.2",
+      },
+    },
     "packages/osrs-assets": {
       "name": "@osrs-llm-helper/osrs-assets",
       "version": "0.0.0",
@@ -323,6 +343,8 @@
     "@opentelemetry/api": ["@opentelemetry/api@1.9.1", "", {}, "sha512-gLyJlPHPZYdAk1JENA9LeHejZe1Ti77/pTeFm/nMXmQH/HFZlcS/O2XJB+L8fkbrNSqhdtlvjBVjxwUYanNH5Q=="],
 
     "@osrs-llm-helper/backend": ["@osrs-llm-helper/backend@workspace:apps/backend"],
+
+    "@osrs-llm-helper/e2e": ["@osrs-llm-helper/e2e@workspace:e2e"],
 
     "@osrs-llm-helper/marketing": ["@osrs-llm-helper/marketing@workspace:apps/marketing"],
 
