@@ -1,3 +1,5 @@
+import java.util.zip.ZipFile
+
 plugins {
     kotlin("jvm") version "2.3.21"
     kotlin("plugin.serialization") version "2.3.21"
@@ -29,10 +31,19 @@ dependencies {
     annotationProcessor("org.projectlombok:lombok:1.18.34")
     compileOnly("ch.qos.logback:logback-classic:1.2.9")
 
-    implementation("io.modelcontextprotocol:kotlin-sdk:$mcpVersion")
-    implementation("io.ktor:ktor-server-netty:$ktorVersion")
-    implementation("io.ktor:ktor-server-content-negotiation:$ktorVersion")
-    implementation("io.ktor:ktor-server-sse:$ktorVersion")
+    // RAI-40: the MCP SDK and ktor-server deps are needed to COMPILE the
+    // developer-only `co.rowm.osrsllm.local.McpServerService` class, but they
+    // must NEVER appear in the shipped jar — the RuneLite Plugin Hub rejects
+    // any plugin that embeds a listening socket library (PR #11453 precedent).
+    // Marking them `compileOnly` keeps the source compilable in-tree without
+    // dragging the runtime classes into shadowJar. The corresponding
+    // McpServerService class itself is excluded from the jar by the shadowJar
+    // task block below and verified by `:checkLocalNotInJar`.
+    compileOnly("io.modelcontextprotocol:kotlin-sdk:$mcpVersion")
+    compileOnly("io.ktor:ktor-server-netty:$ktorVersion")
+    compileOnly("io.ktor:ktor-server-content-negotiation:$ktorVersion")
+    compileOnly("io.ktor:ktor-server-sse:$ktorVersion")
+
     implementation("io.ktor:ktor-serialization-kotlinx-json:$ktorVersion")
     // RAI-38: WSS transport for the production cloud-chat egress (see cloud/EgressGate.kt).
     implementation("io.ktor:ktor-client-okhttp:$ktorVersion")
@@ -49,6 +60,12 @@ dependencies {
     // RAI-22: in-process Ktor WS server for CloudChatRunner round-trip tests.
     // Test scope only — `:checkNoHttpServer` excludes test sources by design.
     testImplementation("io.ktor:ktor-server-websockets:$ktorVersion")
+    // The MCP server and ktor-server-netty deps are compileOnly in production,
+    // but the test classpath needs them to instantiate McpServerService for the
+    // legacy unit tests (none currently, but keeps the surface buildable).
+    testImplementation("io.modelcontextprotocol:kotlin-sdk:$mcpVersion")
+    testImplementation("io.ktor:ktor-server-netty:$ktorVersion")
+    testImplementation("io.ktor:ktor-server-content-negotiation:$ktorVersion")
 }
 
 java {
@@ -66,12 +83,83 @@ tasks.withType<JavaCompile> {
     options.release.set(11)
 }
 
+// RAI-40: the developer-only `local/` package must NEVER be present in any jar
+// that leaves this project. The plain `:jar` task and the `:shadowJar` task both
+// produce an artifact at the same `archiveFileName` by default, and `:check`
+// runs both — so whichever wins the race is what a maintainer ends up reading.
+// Apply the exclusion to BOTH tasks so the regression vector is closed
+// regardless of task order.
+tasks.jar {
+    archiveClassifier.set("plain")
+    exclude("co/rowm/osrsllm/local/**")
+    exclude("**/McpServerService*")
+}
+
 tasks.shadowJar {
     archiveClassifier.set("")
     mergeServiceFiles()
     exclude("META-INF/*.SF", "META-INF/*.DSA", "META-INF/*.RSA", "module-info.class")
+    // RAI-40: hard-exclude the developer-only `local/` package from the shipped
+    // artifact. The runtime gate (`developerMode` + `localMcpEnabled`) prevents
+    // McpServerService from binding a socket in a hub build, but a maintainer
+    // running `unzip -l plugin-shadow.jar` would still find the listener class
+    // sitting in the jar and reject on appearance. The audit doc
+    // (`docs/reviews/plugin-hub-readiness-001.md` blocker 3) calls this out
+    // explicitly. The `:checkLocalNotInJar` task below verifies the exclusion
+    // every build and fails if it ever regresses.
+    exclude("co/rowm/osrsllm/local/**")
+    exclude("**/McpServerService*")
     dependencies {
         exclude(dependency("org.slf4j:slf4j-api:.*"))
+    }
+}
+
+// RAI-40: provable, not promised. After `:jar` and `:shadowJar` produce their
+// artifacts, list each one's entries and fail the build if any forbidden class
+// slipped in. This is the second half of the local/** exclusion contract — if
+// a future refactor undoes the `exclude(...)` lines on either jar task, this
+// check breaks the build before the artifact ever reaches a hub maintainer.
+// Both jars are scanned because gradle's task order (with `java-library` + the
+// shadow plugin) is not stable enough to guarantee one is the final winner in
+// `build/libs/`.
+tasks.register("checkLocalNotInJar") {
+    group = "verification"
+    description = "Fails if any produced jar (plain `:jar` or `:shadowJar`) contains a " +
+        "`co/rowm/osrsllm/local/` class or `McpServerService*` entry."
+    dependsOn("shadowJar", "jar")
+    doLast {
+        val jars = listOf(
+            tasks.shadowJar.get().archiveFile.get().asFile,
+            tasks.jar.get().archiveFile.get().asFile,
+        ).filter { it.exists() }
+        if (jars.isEmpty()) {
+            throw GradleException("checkLocalNotInJar: no jars found to scan")
+        }
+        val violations = mutableListOf<String>()
+        for (jar in jars) {
+            ZipFile(jar).use { zf ->
+                val entries = zf.entries()
+                while (entries.hasMoreElements()) {
+                    val name = entries.nextElement().name
+                    if (name.startsWith("co/rowm/osrsllm/local/") ||
+                        name.substringAfterLast('/').startsWith("McpServerService")
+                    ) {
+                        violations += "${jar.name}!${name}"
+                    }
+                }
+            }
+        }
+        if (violations.isNotEmpty()) {
+            throw GradleException(
+                "checkLocalNotInJar: forbidden entries found. The local/** package " +
+                    "and McpServerService* classes must be excluded from every produced " +
+                    "jar. See `docs/reviews/plugin-hub-readiness-001.md` blocker 3.\n  " +
+                    violations.joinToString("\n  "),
+            )
+        }
+        logger.lifecycle(
+            "checkLocalNotInJar: all jars clean (${jars.joinToString { it.name }})",
+        )
     }
 }
 
@@ -166,6 +254,28 @@ tasks.register("checkNoReflection") {
         if (hits.isNotEmpty()) {
             val rendered = hits.joinToString("\n  ") { (f, n) -> "$n  ←  ${f.relativeTo(projectDir)}" }
             throw GradleException("checkNoReflection: forbidden reflection pattern found:\n  $rendered")
+        }
+    }
+}
+
+// RAI-40: subprocess invocation is explicitly forbidden by the RuneLite Plugin
+// Hub (PR #11453 precedent: "I meant all uses of process builder"). This task
+// scans the production source set for the two ways a Kotlin file could spawn a
+// process and fails the build if either appears. The grep substrings match
+// across whitespace and line breaks; comments mentioning the literal token are
+// the regression vector, so the gate is the only line of defense.
+tasks.register("checkNoSubprocess") {
+    group = "verification"
+    description = "Fails if any subprocess invocation pattern appears in the production source set."
+    doLast {
+        val hits = findMatches(listOf("ProcessBuilder(", "Runtime.getRuntime().exec("))
+        if (hits.isNotEmpty()) {
+            val rendered = hits.joinToString("\n  ") { (f, n) -> "$n  ←  ${f.relativeTo(projectDir)}" }
+            throw GradleException(
+                "checkNoSubprocess: subprocess invocation found in production source. " +
+                    "The RuneLite Plugin Hub rejects any subprocess pattern (PR #11453 " +
+                    "precedent). Delete the offending code; do not gate it.\n  $rendered",
+            )
         }
     }
 }
@@ -401,7 +511,9 @@ tasks.named("check") {
         "checkMcpServerGated",
         "checkAccountPanelNoRawTokens",
         "checkNoKeyLeak",
+        "checkNoSubprocess",
         "secretsScan",
+        "checkLocalNotInJar",
     )
 }
 

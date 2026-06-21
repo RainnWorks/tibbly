@@ -100,7 +100,7 @@ We will use this exact shape.
   > *"I meant all uses of process builder. If a user needs to use tailscale, they can just run tailscale."*
 - **Lessons:**
   1. **An MCP server bound to localhost is still "exposing player information over HTTP" in the maintainers' read.** Loopback does not save us. We must drop the local HTTP/MCP listener and replace it with an **outbound** WebSocket from the plugin to our backend.
-  2. **No `ProcessBuilder` anywhere in the codebase.** Even removing the cloud relay was not enough; the maintainer wanted the entire `ProcessBuilder` capability removed.
+  2. **No `ProcessBuilder` anywhere in the codebase.** Even removing the cloud relay was not enough; the maintainer wanted the entire `ProcessBuilder` capability removed. *In this plugin: all `ProcessBuilder` uses have been deleted (RAI-40); the `:checkNoSubprocess` Gradle gate fails the build on any regression.*
   3. **No dynamic network setup helpers** (ssh keygen, ngrok-style tunnels, automatic Tailscale enrollment). If the user wants cross-device, they install Tailscale themselves.
 - **How our design differs from the rejected one (and why we believe it can pass):**
   - We do NOT expose any HTTP server on the client.
