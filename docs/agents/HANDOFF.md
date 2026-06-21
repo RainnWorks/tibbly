@@ -1,6 +1,45 @@
 # Tom's wake-up briefing — 2026-06-21 morning
 
-*Refresh: loop M+1 (post-premature-stop recovery cycle). First file Tom should read on wake-up. 90 seconds, then jump in.*
+*Refresh: loop M+3 (post-pivot). Tom is awake and gave product direction. First file to read on next pickup. 90 seconds, then jump in.*
+
+## ⚠️ Pivot landed — 2026-06-21 loop M+2 → M+3
+
+Tom reviewed the build, called the user dashboard "LLM slop", and
+redirected:
+
+1. **User dashboard de-prioritised.** Most account management moves
+   into RuneLite plugin panels. The web app becomes Tibbly's
+   internal ops console (gated whole-site on `ADMIN_EMAILS`).
+2. **Token-spend visibility removed from user UI.** Use tier-aware
+   proxies ("23/30 messages used today"). Internal ops keeps the
+   token math.
+3. **Apply taste-skill** to every UI commit. Mirrored at
+   `.claude/skills/taste-skill/SKILL.md`. Declare design read + 3
+   dials before writing UI code. Hard bans: no Inter default, no
+   em-dashes, no 3-equal-card grids, no beige+brass+oxblood.
+4. **Marketing page stays public.** Only ops gets the auth wall.
+5. **Plugin work continues.** The RAI-5 unblockers agent **landed
+   PR #36** (merged) — 4 of 5 Tier 0 tools shipped:
+   `get_account_identity`, `get_raid_layout`,
+   `get_target_projectiles`, `get_active_prayers`. 17 new tests
+   green, `:check` green incl. `:checkMcpServerGated`. New
+   `StateProbes.kt` in `cloud/tools/` is positioned for the future
+   cloud→local dispatcher (replacing `StubToolDispatcher`).
+   Deferred: `get_farming_state` (RuneLite `timetracking.farming` is
+   package-private; needs split into `get_farming_summary` +
+   `get_farming_patches(region=)`).
+
+Full pivot writeup: `docs/agents/DECISION_LOG.md` D-8.
+Open questions waiting on Tom: Q-19, Q-20, Q-21 in
+`docs/agents/OPEN_QUESTIONS.md`.
+
+**Three direct questions for Tom (from my last response):**
+- Should I start the ops re-cast immediately or queue it in Linear first?
+- Is PR #34 (`/v1/me` GDPR rewrite) merge-and-forget for compliance,
+  or do you want to look at it first?
+- Plugin account panel vs ops console — which ships first? (My
+  default: ops console first because you said you NEED the
+  observability platform.)
 
 ## What's new since the previous HANDOFF refresh
 
