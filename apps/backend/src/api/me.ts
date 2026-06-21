@@ -17,7 +17,7 @@
  * against the real schema; mounted in `app.ts`.
  */
 import { Hono } from "hono";
-import { eq, sql } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import type Stripe from "stripe";
 
 import type { DbClient } from "../db/client";
@@ -89,17 +89,20 @@ export function createMeRouter(options: CreateMeRouterOptions = {}): Hono<{
       db.select().from(sessions).where(eq(sessions.userId, userId)),
       chatIds.length === 0
         ? Promise.resolve([])
-        : db
-            .select()
-            .from(messages)
-            .where(sql`${messages.chatId} = ANY(${chatIds})`),
+        : db.select().from(messages).where(inArray(messages.chatId, chatIds)),
       chatIds.length === 0
         ? Promise.resolve([])
         : db
             .select()
             .from(toolCalls)
             .where(
-              sql`${toolCalls.messageId} IN (SELECT ${messages.id} FROM ${messages} WHERE ${messages.chatId} = ANY(${chatIds}))`,
+              inArray(
+                toolCalls.messageId,
+                db
+                  .select({ id: messages.id })
+                  .from(messages)
+                  .where(inArray(messages.chatId, chatIds)),
+              ),
             ),
       db.select().from(usageRecords).where(eq(usageRecords.userId, userId)),
       db.select().from(subscriptions).where(eq(subscriptions.userId, userId)),
@@ -205,14 +208,16 @@ export function createMeRouter(options: CreateMeRouterOptions = {}): Hono<{
       if (chatIds.length > 0) {
         // tool_calls → messages → chats (FK cascades cover messages →
         // tool_calls, but we delete explicitly for the audit trail).
-        await tx
-          .delete(toolCalls)
-          .where(
-            sql`${toolCalls.messageId} IN (SELECT ${messages.id} FROM ${messages} WHERE ${messages.chatId} = ANY(${chatIds}))`,
-          );
-        await tx
-          .delete(messages)
-          .where(sql`${messages.chatId} = ANY(${chatIds})`);
+        await tx.delete(toolCalls).where(
+          inArray(
+            toolCalls.messageId,
+            tx
+              .select({ id: messages.id })
+              .from(messages)
+              .where(inArray(messages.chatId, chatIds)),
+          ),
+        );
+        await tx.delete(messages).where(inArray(messages.chatId, chatIds));
         await tx.delete(chats).where(eq(chats.userId, userId));
       }
 
