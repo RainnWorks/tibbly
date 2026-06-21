@@ -105,6 +105,13 @@ port ready in case a reviewer enforces the wiki literally. Default: ship
 Kotlin and adapt only if pushed.
 
 ## Q-17 — Open-source the backend repo (or just the protocol spec)? — 2026-06-21 (R10 / RAI-35)
+**RESOLVED 2026-06-21 (loop M+9) — see D-10 in DECISION_LOG and
+`docs/architecture/LICENSING.md`. Tom chose the hybrid split: plugin MIT,
+backend proprietary, shared-types MIT on npm, protocol CC-BY-4.0 in a
+doc-only repo. The repo migration plan is in
+`docs/architecture/REPO_SPLIT.md`. Original picked-default and alternatives
+preserved below for context.**
+
 **Picked default:** open-source only the WebSocket protocol spec and the
 plugin RPC schemas; keep the backend (billing, OpenRouter routing) closed.
 Group Ironmen Tracker open-sources its receiver in the same repo — a
@@ -205,3 +212,51 @@ Updated `docs/INDEX.md` to link the new files.
 `git push -u origin agent/r4/openrouter-economics`, or
 (b) re-stage from the main worktree on a fresh branch and commit there.
 Files are intact in `docs/research/llm-providers/`.
+
+## Q-25 — When do we actually run the repo split? — 2026-06-21 (loop M+9, D-10)
+**Picked default:** **before** we open the RuneLite hub PR. Reasoning: the
+first hub PR review fetches the GitHub link out of the PR description, and
+the reviewer should land on a repo whose root README says "MIT-licensed
+RuneLite plugin" with no surrounding noise. Doing the migration after the
+hub PR is open means doing a public rename mid-review, which is the kind
+of mid-flight churn reviewers remember.
+**Other options:**
+(a) migrate after the hub PR is merged: saves rework if the PR is
+rejected for a structural reason, but risks the rename hitting users who
+have already starred or linked the original repo;
+(b) skip the split and ship the hub PR pointing at the current monorepo
+with a `LICENSE-PLUGIN.md` carve-out: legally defensible but a worse
+signal, per `docs/architecture/REPO_SPLIT.md`.
+**Why not asked:** Tom is offline; the migration plan is fully reversible
+up to the first public push of `tibbly-plugin`, which is gated on Tom's
+approval anyway.
+
+## Q-26 — Archive `RainnWorks/osrs-llm-helper` or fully delete it? — 2026-06-21 (loop M+9, D-10)
+**Picked default:** **archive** with a top-level README rewrite that
+points at the new repos. GitHub's archive UX is good enough: the repo
+stays browsable, old links keep working, search engines and Discord
+embeds do not 404. The README becomes a redirect notice ("this project
+is now Tibbly. The plugin lives at X. The protocol spec lives at Y. The
+operations monorepo is private.").
+**Other options:**
+(a) fully delete: cleanest break, but every existing link breaks
+permanently, including community shares we cannot see;
+(b) leave it live and unmaintained: worst of both worlds; confuses new
+visitors about which repo is authoritative.
+**Why not asked:** lowest-regret default; reversible by deleting later
+if Tom prefers the clean break.
+
+## Q-27 — Where does the private `tibbly-platform` repo actually live? — 2026-06-21 (loop M+9, D-10)
+**Picked default:** **GitHub private**. The team is already there, the
+tooling (Actions, gh CLI, MCP integration) is wired up, and at a team
+size of one the cost difference is rounding error. Revisit if the team
+grows past three contributors or if private-repo Actions minutes become
+a binding cost.
+**Other options:**
+(a) paid GitLab: cheaper for many private repos at scale, more ops
+complexity (separate CI runners, separate auth), and forces a context
+switch every time we cross-link to the public plugin repo on GitHub;
+(b) self-hosted Gitea: cheapest at scale and gives us total control,
+but a real ops burden we should not take on solo. Plausible at 5+ devs.
+**Why not asked:** infrastructure call with no urgency; current default
+is the path of least resistance.

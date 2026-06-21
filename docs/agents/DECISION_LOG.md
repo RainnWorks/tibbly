@@ -131,6 +131,72 @@ forward-going only.
 - Q-21: precedence on plugin account panel vs ops console — which one
   ships first?
 
+## D-10 — Hybrid licensing: MIT plugin, proprietary backend — 2026-06-21 (loop M+9)
+
+**Context:** Tom decided the open-source posture. The plugin must be readable
+by RuneLite hub reviewers and privacy-skeptical players. The backend holds the
+USP (model routing, prompt shaping, OpenRouter cost control, billing) and
+should stay closed. The reasoning matters: license-as-defense is theatre
+against LLMs that can ingest any public code; license-as-signal is the real
+lever.
+
+**Tom's directive, captured verbatim:**
+
+> I fundamentally don't believe open source is the correct model because of
+> how LLMs and agents can use it as full context no matter really the license.
+> But that will dramatically impact how RuneLite plugin developers view this
+> project. So I'm wondering if it's possible to actually split it: allow the
+> RuneLite developers to view the code for the backend... actually no, the
+> **plugin** open-source so RuneLite maintainers can audit, the **backend**
+> closed-source so we keep the USP. We open source as much as possible but we
+> keep the really sort of USP closed source.
+
+**Chosen split:**
+
+| Component | License | Repo |
+|---|---|---|
+| `apps/plugin/` | MIT | public: `RainnWorks/tibbly-plugin` |
+| `apps/backend/` | Proprietary | private: `RainnWorks/tibbly-platform` |
+| `apps/ops/` | Proprietary | private: same as backend |
+| `apps/marketing/` | Proprietary | private: same as backend |
+| `apps/mobile/` (future) | MIT | public: `RainnWorks/tibbly-mobile` |
+| `packages/shared-types/` | MIT | published as `@tibbly/shared-types` on npm |
+| WebSocket protocol spec | CC-BY-4.0 | public: `RainnWorks/tibbly-protocol` (doc-only) |
+
+**Why not the alternatives:**
+
+- Full open (MIT everywhere): maximum reviewer goodwill but a competitor can
+  stand up a hosted clone in a week.
+- Full closed: harder hub PR, lower player trust, no audit story.
+- Open-core (MIT base + private pro modules): constant maintenance tax keeping
+  the boundary clean; few of our improvements actually fit the split.
+- BUSL with conversion: still readable and trainable; the conversion clock is
+  meaningless to LLMs.
+- AGPL: scares enterprise users; does not stop a Group-Ironmen-Tracker-style
+  competitor who is happy to publish.
+
+**Reversible?:**
+
+- Plugin MIT: **one-way door.** Once published, every historical commit stays
+  MIT. Forks made during the MIT window stay MIT. We can change future commits
+  but cannot retroactively close history.
+- Shared-types MIT: also a one-way door, but surface area is tiny (Zod schemas
+  + type aliases visible on the wire anyway).
+- Protocol CC-BY-4.0: published versions are permanently usable by anyone who
+  attributes us. That is the point.
+- Backend proprietary: **fully reversible.** Closed today; can be opened under
+  any license later if we change our mind. Cost of reversing is social
+  (explaining the shift) and competitive (model-routing logic becomes
+  copyable). No historical commitment locks us out.
+
+**References:**
+
+- `docs/architecture/LICENSING.md`: canonical licensing doc.
+- `docs/architecture/REPO_SPLIT.md`: repo migration plan.
+- `docs/agents/OPEN_QUESTIONS.md` Q-17: superseded by D-10.
+- `docs/agents/OPEN_QUESTIONS.md` Q-25 / Q-26 / Q-27: open follow-ups on
+  timing, archive vs delete, and where the private repo lives.
+
 ## D-7 — Operating model: CTO + Linear MCP + companion personality lane — 2026-06-21
 
 **Context:** User said "I don't care how you do the sub agents" + "act as CTO"
