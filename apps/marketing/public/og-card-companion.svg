@@ -36,9 +36,9 @@
   </g>
 
   <!--
-    Companion sprite + speech bubble. The sprite is the same hooded
-    humanoid placeholder rendered by CompanionSprite.tsx, scaled up so
-    it reads at og:image size. Speech bubble carries one of the five
+    Probe sprite + speech bubble. The sprite is the same floating
+    robot Probe rendered by CompanionSprite.tsx, scaled up so it
+    reads at og:image size. Speech bubble carries one of the five
     magical-moment lines verbatim.
   -->
   <g transform="translate(796,170)">
@@ -53,17 +53,24 @@
       <polygon points="400,120 440,150 400,140" fill="url(#bubble)" stroke="#5a3e1a" stroke-width="2"/>
     </g>
 
-    <!-- Hooded companion sprite, scaled. -->
+    <!-- Probe (floating robot) sprite, scaled. -->
     <g transform="translate(0,0) scale(4)">
-      <ellipse cx="32" cy="58" rx="14" ry="2.4" fill="rgba(0,0,0,0.55)"/>
-      <path d="M16 30 C 16 22, 22 14, 32 14 C 42 14, 48 22, 48 30 L 50 56 L 14 56 Z" fill="#2b1d0d" stroke="#5a3e1a" stroke-width="1.5"/>
-      <path d="M14 56 L 50 56" fill="none" stroke="#7a5824" stroke-width="1" opacity="0.75"/>
-      <path d="M32 18 L 32 54" stroke="#f3c75a" stroke-width="1.2" stroke-linecap="round" opacity="0.85"/>
-      <ellipse cx="32" cy="26" rx="9" ry="8" fill="#0b0703"/>
-      <circle cx="28.5" cy="26" r="1.6" fill="#f3c75a"/>
-      <circle cx="35.5" cy="26" r="1.6" fill="#f3c75a"/>
-      <path d="M32 14 Q 38 8, 40 14" fill="none" stroke="#5a3e1a" stroke-width="1.5" stroke-linecap="round"/>
-      <circle cx="32" cy="36" r="1.2" fill="#f3c75a" opacity="0.9"/>
+      <ellipse cx="32" cy="58" rx="13" ry="2.2" fill="rgba(0,0,0,0.55)"/>
+      <line x1="32" y1="14" x2="32" y2="9" stroke="#5a3e1a" stroke-width="1.5" stroke-linecap="round"/>
+      <circle cx="32" cy="8" r="1.4" fill="#f3c75a"/>
+      <circle cx="32" cy="30" r="16" fill="#3a2d1a" stroke="#5a3e1a" stroke-width="1.5"/>
+      <path d="M19 24 Q 24 18, 36 19" fill="none" stroke="#7a5824" stroke-width="1.2" stroke-linecap="round" opacity="0.7"/>
+      <circle cx="32" cy="32" r="9" fill="#0b0703" stroke="#5a3e1a" stroke-width="1.2"/>
+      <circle cx="32" cy="32" r="6" fill="#f3c75a" opacity="0.95"/>
+      <circle cx="29.5" cy="29.5" r="1.6" fill="#fff8d6" opacity="0.85"/>
+      <rect x="26" y="40" width="12" height="4" rx="1" fill="#0b0703" stroke="#5a3e1a" stroke-width="0.8"/>
+      <rect x="28" y="41.5" width="2" height="1" fill="#f3c75a" opacity="0.9"/>
+      <rect x="32" y="41.5" width="2" height="1" fill="#f3c75a" opacity="0.6"/>
+      <rect x="36" y="41.5" width="0.8" height="1" fill="#f3c75a" opacity="0.9"/>
+      <ellipse cx="17" cy="33" rx="2.2" ry="3" fill="#0b0703"/>
+      <ellipse cx="47" cy="33" rx="2.2" ry="3" fill="#0b0703"/>
+      <ellipse cx="17" cy="34.5" rx="1.4" ry="1.4" fill="#f3c75a" opacity="0.55"/>
+      <ellipse cx="47" cy="34.5" rx="1.4" ry="1.4" fill="#f3c75a" opacity="0.55"/>
     </g>
   </g>
 

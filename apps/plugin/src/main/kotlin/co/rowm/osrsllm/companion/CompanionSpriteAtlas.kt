@@ -1,409 +1,328 @@
 package co.rowm.osrsllm.companion
 
+import org.slf4j.LoggerFactory
 import java.awt.AlphaComposite
 import java.awt.Color
 import java.awt.Graphics2D
 import java.awt.RenderingHints
 import java.awt.image.BufferedImage
 import javax.imageio.ImageIO
-import org.slf4j.LoggerFactory
 
 /**
- * Eight-compass direction the companion can face. Encoded so the loader
- * can index into atlas rows / file names without string fiddling on the
- * hot path.
+ * Atlas of 2D PNG sprite frames for the embodied companion.
  *
- * The vector represents the "front" of the sprite in tile-space. We use
- * RuneScape's screen-space convention: north is +y, east is +x. That keeps
- * the math aligned with [net.runelite.api.coords.WorldPoint].
+ * The atlases are baked offline from a CC0 3D source mesh
+ * (Quaternius, see THIRD_PARTY_LICENSES.md and
+ * docs/product/COMPANION_3D_SOURCE.md). The Blender baking script
+ * lives at apps/plugin/scripts/bake-companion-atlas.py and emits
+ * one PNG per frame per cell size under
+ * apps/plugin/src/main/resources/companion/<variant>/<size>px/.
+ *
+ * Frame catalog (58 frames per variant), from
+ * docs/product/COMPANION_VISUAL_BIBLE.md section 3 renamed for the
+ * floating-robot pivot:
+ *
+ *   8 directions hover-move x 3 frames = 24
+ *   8 directions idle hover x 2 frames = 16
+ *   scan x 8
+ *   display_on x 2
+ *   power_down x 2
+ *   power_down_extended x 2
+ *   reaction_rise x 2
+ *   speak x 2
+ *   ---
+ *   total = 58
+ *
+ * The runtime resolves a frame by its pose name + sub-index (e.g.
+ * "hover_move_n", 1). If the PNG resource is missing (fresh clone,
+ * or running unit tests without the baked assets) the loader falls
+ * back to [PlaceholderAtlas], which draws a simple geometric robot
+ * silhouette so the renderer never crashes and tests do not require
+ * the binary assets to be present.
  */
-enum class Direction(val dx: Int, val dy: Int) {
-    SOUTH(0, -1),
-    SOUTH_WEST(-1, -1),
-    WEST(-1, 0),
-    NORTH_WEST(-1, 1),
-    NORTH(0, 1),
-    NORTH_EAST(1, 1),
-    EAST(1, 0),
-    SOUTH_EAST(1, -1);
+class CompanionSpriteAtlas private constructor(
+    val variant: Variant,
+    val cellSize: Int,
+    private val frames: Map<String, List<BufferedImage>>,
+    val isPlaceholder: Boolean,
+) {
+
+    /** Visual variant. Default is "Probe". */
+    enum class Variant(val resourceKey: String, val displayName: String) {
+        DEFAULT("default", "Probe"),
+        COMM_VISOR("comm_visor", "Probe - comm visor"),
+        HEAVY_ARMOR("heavy_armor", "Probe - heavy armor"),
+        RESEARCH_ARRAY("research_array", "Probe - research array"),
+    }
+
+    /**
+     * Get frame [subIndex] for [poseName]. Returns null if [poseName] is
+     * not in the catalog or [subIndex] is past the pose's frame count.
+     */
+    fun frame(poseName: String, subIndex: Int): BufferedImage? {
+        val pose = frames[poseName] ?: return null
+        if (subIndex < 0 || subIndex >= pose.size) return null
+        return pose[subIndex]
+    }
+
+    /** Number of frames in a given pose, or 0 if unknown. */
+    fun frameCount(poseName: String): Int = frames[poseName]?.size ?: 0
+
+    /** Every pose name the atlas can render. */
+    fun poseNames(): Set<String> = frames.keys
 
     companion object {
-        /**
-         * Nearest of the eight directions to the supplied tile delta. Used by
-         * the renderer to decide which sprite row to draw based on the
-         * direction of travel.
-         */
-        fun fromDelta(dx: Int, dy: Int): Direction {
-            if (dx == 0 && dy == 0) return SOUTH
-            // atan2 gives angle in radians; map it to one of eight buckets.
-            val angle = Math.toDegrees(Math.atan2(dy.toDouble(), dx.toDouble()))
-            // Normalise to [0, 360).
-            val normalised = ((angle % 360.0) + 360.0) % 360.0
-            // 0 deg points east; each direction owns a 45 deg slice centred
-            // on its compass heading. Offset by 22.5 deg so the buckets land
-            // symmetrically around the cardinal directions.
-            val bucket = ((normalised + 22.5) / 45.0).toInt() % 8
-            return when (bucket) {
-                0 -> EAST
-                1 -> NORTH_EAST
-                2 -> NORTH
-                3 -> NORTH_WEST
-                4 -> WEST
-                5 -> SOUTH_WEST
-                6 -> SOUTH
-                7 -> SOUTH_EAST
-                else -> SOUTH
+
+        private val log = LoggerFactory.getLogger(CompanionSpriteAtlas::class.java)
+
+        /** Frame catalog. (pose name, frame count). 58 frames total. */
+        val POSE_CATALOG: List<Pair<String, Int>> = listOf(
+            "hover_move_n" to 3,
+            "hover_move_ne" to 3,
+            "hover_move_e" to 3,
+            "hover_move_se" to 3,
+            "hover_move_s" to 3,
+            "hover_move_sw" to 3,
+            "hover_move_w" to 3,
+            "hover_move_nw" to 3,
+            "idle_hover_n" to 2,
+            "idle_hover_ne" to 2,
+            "idle_hover_e" to 2,
+            "idle_hover_se" to 2,
+            "idle_hover_s" to 2,
+            "idle_hover_sw" to 2,
+            "idle_hover_w" to 2,
+            "idle_hover_nw" to 2,
+            "scan" to 8,
+            "display_on" to 2,
+            "power_down" to 2,
+            "power_down_extended" to 2,
+            "reaction_rise" to 2,
+            "speak" to 2,
+        )
+
+        const val TOTAL_FRAMES: Int = 58
+
+        init {
+            val total = POSE_CATALOG.sumOf { it.second }
+            require(total == TOTAL_FRAMES) {
+                "atlas spec drift: expected $TOTAL_FRAMES frames, got $total"
             }
         }
-    }
-}
 
-/**
- * The animation the companion is currently playing. Sealed so the renderer
- * can `when`-exhaust the cases and the state machine can drive transitions
- * without ambiguity.
- *
- * Naming follows the spec in `docs/product/EMBODIED_COMPANION.md` §4
- * (idle + reactive animations). Two-frame placeholders cover every state
- * before the real artwork lands.
- */
-sealed class AnimationState(val id: String, val loops: Boolean) {
-    /** Standing still, occasionally looking around. */
-    object Idle : AnimationState("idle", loops = true)
-
-    /** Trotting between tiles to catch up to the player. */
-    object Walking : AnimationState("walking", loops = true)
-
-    /** Head-snap toward something specific (NPC dialog target, examined object). */
-    object LookAt : AnimationState("look_at", loops = false)
-
-    /** Sat cross-legged with a book open. Triggered by short idle. */
-    object Read : AnimationState("read", loops = true)
-
-    /** Sat down, hands folded. Triggered by long AFK. */
-    object Sit : AnimationState("sit", loops = true)
-
-    /** Hop + small puff of smoke. Pet drops, level-ups, collection log entries. */
-    object Surprise : AnimationState("surprise", loops = false)
-
-    /** Yawn. Mild idle indicator after about a minute of inactivity. */
-    object Yawn : AnimationState("yawn", loops = false)
-
-    /** Mouth moves while a speech bubble is rendered above the head. */
-    object Speak : AnimationState("speak", loops = true)
-
-    companion object {
         /**
-         * Every state, useful for atlas iteration in tests. Built lazily
-         * because the static init of the companion object can run before
-         * the sealed-class child `object`s are themselves initialised,
-         * which would publish a list of nulls.
+         * Load the atlas for [variant] at [cellSize] pixels per cell.
+         * Falls back to [PlaceholderAtlas] when the baked PNGs are
+         * absent so calling code (and the test suite) never crashes
+         * on a missing-resource path.
          */
-        val ALL: List<AnimationState> by lazy {
-            listOf(Idle, Walking, LookAt, Read, Sit, Surprise, Yawn, Speak)
-        }
-    }
-}
+        fun load(variant: Variant, cellSize: Int): CompanionSpriteAtlas {
+            val resolved = mutableMapOf<String, List<BufferedImage>>()
+            var anyMissing = false
+            for ((poseName, count) in POSE_CATALOG) {
+                val poseFrames = mutableListOf<BufferedImage>()
+                for (i in 0 until count) {
+                    val path = resourcePath(variant, cellSize, poseName, i)
+                    val stream = CompanionSpriteAtlas::class.java.getResourceAsStream(path)
+                    if (stream == null) {
+                        anyMissing = true
+                        break
+                    }
+                    stream.use {
+                        val image = ImageIO.read(it)
+                        if (image == null) {
+                            anyMissing = true
+                        } else {
+                            poseFrames.add(image)
+                        }
+                    }
+                }
+                if (poseFrames.size == count) {
+                    resolved[poseName] = poseFrames
+                } else {
+                    anyMissing = true
+                }
+            }
 
-/**
- * One frame from an animation atlas. The `index` is the frame's column
- * inside the atlas row; `durationMs` is how long the renderer should show
- * it before advancing.
- */
-data class Frame(val index: Int, val durationMs: Long) {
-    init {
-        require(index >= 0) { "Frame index must be non-negative (got $index)" }
-        require(durationMs > 0) { "Frame durationMs must be positive (got $durationMs)" }
-    }
-}
+            if (anyMissing || resolved.size != POSE_CATALOG.size) {
+                log.info(
+                    "companion atlas resources absent for variant={} cellSize={}, " +
+                        "falling back to PlaceholderAtlas. " +
+                        "Bake with apps/plugin/scripts/bake-companion-atlas.py to enable the real art.",
+                    variant.resourceKey,
+                    cellSize,
+                )
+                return PlaceholderAtlas.build(variant, cellSize)
+            }
 
-/**
- * Ordered list of frames the renderer plays in sequence. Total duration is
- * pre-computed so the renderer can wrap-around without iterating every
- * paint.
- */
-data class Animation(val frames: List<Frame>) {
-    val totalDurationMs: Long = frames.sumOf { it.durationMs }
-
-    init {
-        require(frames.isNotEmpty()) { "Animation must have at least one frame" }
-    }
-
-    /**
-     * Resolve which frame should be visible at [elapsedMs] into the
-     * animation. Caller decides whether to wrap or clamp. We wrap by
-     * default because the renderer is the only caller and it always
-     * wraps for looping states.
-     */
-    fun frameAt(elapsedMs: Long): Frame {
-        if (elapsedMs <= 0) return frames.first()
-        val wrap = elapsedMs % totalDurationMs
-        var acc = 0L
-        for (f in frames) {
-            acc += f.durationMs
-            if (wrap < acc) return f
-        }
-        return frames.last()
-    }
-}
-
-/**
- * One starter form, e.g. `veteran`, `fox`, `wisp`, `golem`. The atlas
- * loader uses the id as the resource subdirectory name.
- */
-enum class Starter(val id: String, val placeholderTint: Color) {
-    VETERAN("veteran", Color(140, 180, 220)),
-    FOX("fox", Color(220, 130, 60)),
-    WISP("wisp", Color(180, 220, 140)),
-    GOLEM("golem", Color(180, 140, 90));
-
-    companion object {
-        fun fromIdOrDefault(id: String?): Starter =
-            values().firstOrNull { it.id.equals(id, ignoreCase = true) } ?: VETERAN
-    }
-}
-
-/**
- * Read-only view of one starter's sprite atlas. The atlas resolves a
- * sprite by (`Direction`, `AnimationState`, `Frame.index`) so the
- * renderer never has to know how the underlying PNGs are packed.
- *
- * Implementations:
- *  - [PlaceholderAtlas] ships with the plugin and is what the renderer
- *    falls back to when no commissioned art is on the classpath. It draws
- *    a flat-shaded 32x32 silhouette per direction so every state machine
- *    transition is observable end-to-end without art.
- *  - [ResourceAtlas] (lazy) loads `companion/<starter>/<state>_<dir>_<n>.png`
- *    sequences from the classpath when they exist. The renderer is
- *    written so that real art "drops in" without code changes; this is
- *    the seam.
- *
- * The renderer must NOT block on disk I/O during paint. All loads happen
- * once, eagerly, when the atlas is first asked for the starter. Worst
- * case is a few small PNG decodes during plugin startup.
- */
-interface CompanionSpriteAtlas {
-    val starter: Starter
-    val tileSize: Int
-    fun animation(state: AnimationState, direction: Direction): Animation
-    fun sprite(state: AnimationState, direction: Direction, frameIndex: Int): BufferedImage
-}
-
-/**
- * Loader for sprite atlases. The single static entry-point [load] picks
- * the best available atlas for a starter, falling back to
- * [PlaceholderAtlas] when no commissioned PNGs are on the classpath.
- *
- * The lookup pattern for real art is intentionally simple so a contractor
- * can drop a folder of PNGs in without touching code:
- *
- * ```
- * src/main/resources/companion/<starter>/<state>_<direction>_<index>.png
- * ```
- *
- * For example, `veteran/walking_north_0.png` is frame 0 of the walking
- * animation facing north, on the Veteran starter.
- */
-object CompanionAtlasLoader {
-    private val log = LoggerFactory.getLogger(CompanionAtlasLoader::class.java)
-    private val cache = mutableMapOf<Starter, CompanionSpriteAtlas>()
-
-    /**
-     * Return the atlas for [starter], loading and caching it on first call.
-     * Always returns SOMETHING - the placeholder is the floor.
-     */
-    @Synchronized
-    fun load(starter: Starter): CompanionSpriteAtlas {
-        cache[starter]?.let { return it }
-        val resolved = tryLoadResources(starter) ?: PlaceholderAtlas(starter)
-        cache[starter] = resolved
-        log.info("Companion atlas resolved: starter={} kind={}", starter.id, resolved::class.simpleName)
-        return resolved
-    }
-
-    /** Drop the cache; visible for tests that want to swap atlases. */
-    @Synchronized
-    internal fun reset() {
-        cache.clear()
-    }
-
-    /** Try to load real PNGs from the classpath. Returns null if any state is missing. */
-    private fun tryLoadResources(starter: Starter): CompanionSpriteAtlas? {
-        // The shipped resources directory contains a `.gitkeep` so it
-        // exists, but no PNGs land until the asset commission completes
-        // (separate PR). We do a single existence probe for the south
-        // idle frame 0 - if that's missing, we fall back wholesale.
-        val probe = "companion/${starter.id}/idle_south_0.png"
-        val url = CompanionAtlasLoader::class.java.classLoader.getResource(probe)
-        if (url == null) {
-            log.debug("Companion atlas probe '{}' missing; using placeholder for starter={}", probe, starter.id)
-            return null
-        }
-        return runCatching { ResourceAtlas(starter) }
-            .onFailure { log.warn("Failed to load companion atlas resources for {}: {}", starter.id, it.message) }
-            .getOrNull()
-    }
-}
-
-/**
- * Placeholder atlas with a single flat-colour silhouette per direction.
- *
- * The placeholder shows clearly that the companion subsystem is alive
- * without leaning on any commissioned art. Each state is drawn the same
- * way (a coloured 32x32 with a small directional indicator) so the
- * rendering loop, the state machine transitions, the speech bubble
- * anchoring, and the path-follow interpolation can all be exercised in
- * dogfood and in tests.
- */
-class PlaceholderAtlas(override val starter: Starter) : CompanionSpriteAtlas {
-    override val tileSize: Int = TILE_PX
-
-    private val cache = HashMap<Triple<String, Direction, Int>, BufferedImage>()
-    private val animationCache = HashMap<Pair<String, Direction>, Animation>()
-
-    override fun animation(state: AnimationState, direction: Direction): Animation =
-        animationCache.getOrPut(state.id to direction) {
-            // Two-frame placeholder. Walking flips a tiny "foot" pixel
-            // between frames so the renderer's frame advance is visible.
-            Animation(
-                listOf(
-                    Frame(0, defaultDurationMs(state)),
-                    Frame(1, defaultDurationMs(state)),
-                ),
+            return CompanionSpriteAtlas(
+                variant = variant,
+                cellSize = cellSize,
+                frames = resolved,
+                isPlaceholder = false,
             )
         }
 
-    override fun sprite(state: AnimationState, direction: Direction, frameIndex: Int): BufferedImage {
-        val key = Triple(state.id, direction, frameIndex.coerceIn(0, 1))
-        return cache.getOrPut(key) { renderPlaceholder(state, direction, key.third) }
-    }
+        /**
+         * Internal constructor for the placeholder fallback. Public-ish
+         * so the test suite can build deterministic fixtures.
+         */
+        internal fun fromFrames(
+            variant: Variant,
+            cellSize: Int,
+            frames: Map<String, List<BufferedImage>>,
+            isPlaceholder: Boolean,
+        ): CompanionSpriteAtlas = CompanionSpriteAtlas(
+            variant = variant,
+            cellSize = cellSize,
+            frames = frames,
+            isPlaceholder = isPlaceholder,
+        )
 
-    /** Per-state default frame timing for the placeholder. */
-    private fun defaultDurationMs(state: AnimationState): Long = when (state) {
-        AnimationState.Walking -> 150L
-        AnimationState.Speak -> 120L
-        AnimationState.Surprise -> 200L
-        AnimationState.Yawn -> 300L
-        AnimationState.LookAt -> 250L
-        AnimationState.Read, AnimationState.Sit -> 400L
-        AnimationState.Idle -> 500L
-    }
-
-    private fun renderPlaceholder(state: AnimationState, direction: Direction, frame: Int): BufferedImage {
-        val img = BufferedImage(TILE_PX, TILE_PX, BufferedImage.TYPE_INT_ARGB)
-        val g = img.createGraphics()
-        try {
-            g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON)
-            g.composite = AlphaComposite.Src
-            // Body: rounded square tinted by starter.
-            val tint = starter.placeholderTint
-            g.color = Color(tint.red, tint.green, tint.blue, 220)
-            g.fillRoundRect(4, 8, TILE_PX - 8, TILE_PX - 12, 8, 8)
-            // Direction indicator: small dark dot toward the facing side.
-            g.color = Color(20, 20, 20, 220)
-            val cx = TILE_PX / 2
-            val cy = TILE_PX / 2
-            val dirX = cx + direction.dx * 8
-            val dirY = cy - direction.dy * 8
-            g.fillOval(dirX - 3, dirY - 3, 6, 6)
-            // State badge: tiny coloured square in the corner so each state
-            // is visually distinct in the placeholder.
-            g.color = stateBadgeColor(state, frame)
-            g.fillRect(TILE_PX - 8, 2, 6, 6)
-        } finally {
-            g.dispose()
+        private fun resourcePath(
+            variant: Variant,
+            cellSize: Int,
+            poseName: String,
+            subIndex: Int,
+        ): String {
+            val indexStr = subIndex.toString().padStart(2, '0')
+            return "/companion/robot-default/${variant.resourceKey}/${cellSize}px/${poseName}_$indexStr.png"
         }
-        return img
-    }
-
-    private fun stateBadgeColor(state: AnimationState, frame: Int): Color = when (state) {
-        AnimationState.Idle -> if (frame == 0) Color(180, 180, 180) else Color(210, 210, 210)
-        AnimationState.Walking -> if (frame == 0) Color(80, 200, 80) else Color(120, 240, 120)
-        AnimationState.LookAt -> Color(220, 180, 100)
-        AnimationState.Read -> Color(140, 100, 220)
-        AnimationState.Sit -> Color(120, 120, 200)
-        AnimationState.Surprise -> Color(255, 120, 80)
-        AnimationState.Yawn -> Color(160, 160, 220)
-        AnimationState.Speak -> if (frame == 0) Color(240, 240, 100) else Color(255, 255, 160)
-    }
-
-    companion object {
-        const val TILE_PX: Int = 32
     }
 }
 
 /**
- * Eager-load atlas backed by classpath PNGs at the layout described in
- * [CompanionAtlasLoader] KDoc. Construction throws if any state is
- * missing for the default direction, so the loader can fall back to the
- * placeholder cleanly.
+ * Deterministic geometric stand-in for [CompanionSpriteAtlas] used when
+ * the baked PNGs are not on the classpath. Keeps tests green and lets
+ * the renderer ship a recognizable Probe silhouette before the real
+ * bake lands.
  *
- * We do NOT support partial atlases; the rationale is that mixing
- * commissioned and placeholder frames looks worse than either alone.
- * The asset-drop PR will replace this whole tree at once.
+ * Each pose paints a small floating-robot silhouette (a body circle, a
+ * lens circle, a small antenna tick) with per-pose tweaks so the
+ * animator code path can still verify pose changes are taking effect.
  */
-internal class ResourceAtlas(override val starter: Starter) : CompanionSpriteAtlas {
-    override val tileSize: Int = PlaceholderAtlas.TILE_PX
+object PlaceholderAtlas {
 
-    private val sprites: Map<Triple<String, Direction, Int>, BufferedImage>
-    private val animations: Map<Pair<String, Direction>, Animation>
-
-    init {
-        val loaded = HashMap<Triple<String, Direction, Int>, BufferedImage>()
-        val anims = HashMap<Pair<String, Direction>, Animation>()
-        val loader = CompanionAtlasLoader::class.java.classLoader
-        for (state in AnimationState.ALL) {
-            for (dir in Direction.values()) {
-                val frames = ArrayList<Frame>()
-                var idx = 0
-                while (true) {
-                    val resourcePath = "companion/${starter.id}/${state.id}_${dir.name.lowercase()}_$idx.png"
-                    val url = loader.getResource(resourcePath) ?: break
-                    val img = ImageIO.read(url)
-                        ?: error("ImageIO failed to read $resourcePath")
-                    loaded[Triple(state.id, dir, idx)] = img
-                    frames += Frame(idx, defaultDurationMs(state))
-                    idx++
-                    if (idx > MAX_FRAMES_PER_ANIM) break
-                }
-                if (frames.isEmpty()) {
-                    error("ResourceAtlas missing frames for starter=${starter.id} state=${state.id} dir=$dir")
-                }
-                anims[state.id to dir] = Animation(frames)
+    fun build(variant: CompanionSpriteAtlas.Variant, cellSize: Int): CompanionSpriteAtlas {
+        val resolved = mutableMapOf<String, List<BufferedImage>>()
+        for ((poseName, count) in CompanionSpriteAtlas.POSE_CATALOG) {
+            val poseFrames = (0 until count).map { i ->
+                paint(variant, cellSize, poseName, i)
             }
+            resolved[poseName] = poseFrames
         }
-        sprites = loaded
-        animations = anims
+        return CompanionSpriteAtlas.fromFrames(
+            variant = variant,
+            cellSize = cellSize,
+            frames = resolved,
+            isPlaceholder = true,
+        )
     }
 
-    override fun animation(state: AnimationState, direction: Direction): Animation =
-        animations[state.id to direction]
-            ?: error("ResourceAtlas missing animation for ${state.id}/$direction")
+    private fun paint(
+        variant: CompanionSpriteAtlas.Variant,
+        cellSize: Int,
+        poseName: String,
+        subIndex: Int,
+    ): BufferedImage {
+        val image = BufferedImage(cellSize, cellSize, BufferedImage.TYPE_INT_ARGB)
+        val g = image.createGraphics()
+        try {
+            g.setRenderingHint(
+                RenderingHints.KEY_ANTIALIASING,
+                RenderingHints.VALUE_ANTIALIAS_ON,
+            )
+            g.composite = AlphaComposite.SrcOver
+            g.color = Color(0, 0, 0, 0)
+            g.fillRect(0, 0, cellSize, cellSize)
 
-    override fun sprite(state: AnimationState, direction: Direction, frameIndex: Int): BufferedImage =
-        sprites[Triple(state.id, direction, frameIndex)]
-            ?: sprites[Triple(state.id, direction, 0)]
-            ?: error("ResourceAtlas missing sprite for ${state.id}/$direction/$frameIndex")
+            val bodyColor = bodyColor(variant)
+            val ledColor = ledColor(variant, poseName, subIndex)
 
-    private fun defaultDurationMs(state: AnimationState): Long = when (state) {
-        AnimationState.Walking -> 150L
-        AnimationState.Speak -> 120L
-        AnimationState.Surprise -> 200L
-        AnimationState.Yawn -> 300L
-        AnimationState.LookAt -> 250L
-        AnimationState.Read, AnimationState.Sit -> 400L
-        AnimationState.Idle -> 500L
+            val cx = cellSize / 2
+            val baseCy = cellSize * 6 / 10
+            val cy = baseCy + bobOffset(poseName, subIndex, cellSize)
+            val bodyRadius = cellSize * 3 / 8
+
+            // Soft ground shadow
+            g.color = Color(0, 0, 0, 80)
+            g.fillOval(
+                cx - bodyRadius,
+                cellSize - cellSize / 6,
+                bodyRadius * 2,
+                cellSize / 12,
+            )
+
+            // Body sphere
+            g.color = bodyColor
+            g.fillOval(
+                cx - bodyRadius,
+                cy - bodyRadius,
+                bodyRadius * 2,
+                bodyRadius * 2,
+            )
+
+            // Antenna tick on top
+            g.color = bodyColor.darker()
+            g.fillRect(cx - 1, cy - bodyRadius - cellSize / 8, 2, cellSize / 8)
+
+            // Front-facing lens (the LED)
+            g.color = ledColor
+            val lensRadius = bodyRadius / 2
+            g.fillOval(
+                cx - lensRadius,
+                cy - lensRadius / 2,
+                lensRadius * 2,
+                lensRadius,
+            )
+        } finally {
+            g.dispose()
+        }
+        return image
     }
 
-    /**
-     * Draw [sprite] into [g] at canvas (`x`, `y`). Centralised so the
-     * renderer never has to know about scaling.
-     */
-    fun draw(g: Graphics2D, image: BufferedImage, x: Int, y: Int) {
-        g.drawImage(image, x - tileSize / 2, y - tileSize, null)
+    private fun bodyColor(variant: CompanionSpriteAtlas.Variant): Color = when (variant) {
+        CompanionSpriteAtlas.Variant.DEFAULT -> Color(219, 209, 189)
+        CompanionSpriteAtlas.Variant.COMM_VISOR -> Color(209, 214, 219)
+        CompanionSpriteAtlas.Variant.HEAVY_ARMOR -> Color(102, 107, 115)
+        CompanionSpriteAtlas.Variant.RESEARCH_ARRAY -> Color(189, 219, 199)
     }
 
-    companion object {
-        private const val MAX_FRAMES_PER_ANIM = 16
+    private fun ledColor(
+        variant: CompanionSpriteAtlas.Variant,
+        poseName: String,
+        subIndex: Int,
+    ): Color {
+        val base = when (variant) {
+            CompanionSpriteAtlas.Variant.DEFAULT -> Color(243, 199, 90)
+            CompanionSpriteAtlas.Variant.COMM_VISOR -> Color(90, 199, 243)
+            CompanionSpriteAtlas.Variant.HEAVY_ARMOR -> Color(243, 90, 76)
+            CompanionSpriteAtlas.Variant.RESEARCH_ARRAY -> Color(166, 243, 204)
+        }
+        return when {
+            poseName == "speak" && subIndex % 2 == 1 -> base.darker()
+            poseName == "reaction_rise" && subIndex == 0 -> base.brighter()
+            poseName == "power_down" || poseName == "power_down_extended" -> Color(
+                base.red / 3,
+                base.green / 3,
+                base.blue / 3,
+                base.alpha,
+            )
+            else -> base
+        }
+    }
+
+    private fun bobOffset(poseName: String, subIndex: Int, cellSize: Int): Int {
+        // Tiny vertical drift so adjacent frames are not pixel-identical.
+        // This is what gives the placeholder a hint of life so the
+        // renderer's animation tick is visible during dogfood.
+        val unit = (cellSize / 32).coerceAtLeast(1)
+        return when {
+            poseName.startsWith("idle_hover") -> if (subIndex == 0) -unit else unit
+            poseName.startsWith("hover_move") -> -subIndex * unit
+            poseName == "reaction_rise" -> -(subIndex + 1) * unit * 2
+            poseName == "power_down" || poseName == "power_down_extended" -> (subIndex + 1) * unit * 2
+            else -> 0
+        }
     }
 }

@@ -1,9 +1,19 @@
-# Companion Visual Bible + Asset Commissioning Plan
+# Companion Visual Bible + 3D Source Pipeline
 
-Status: greenlit, ready to commission against
-Owner: product (Tom), art direction (agent r-loop-mplus15)
-Linear: [RAI-64](https://linear.app/rainnworks/issue/RAI-64/companion-visual-bible-asset-commissioning-plan)
-Related: [EMBODIED_COMPANION.md](./EMBODIED_COMPANION.md), [SOCIAL_COMPANION.md](./SOCIAL_COMPANION.md), [../marketing/BRAND_VOICE.md](../marketing/BRAND_VOICE.md), [../research/osrs-wiki/licensing.md](../research/osrs-wiki/licensing.md)
+Status: greenlit, ready to bake against
+Owner: product (Tom), art direction (agent r-loop-mplus15), pipeline (agent r-loop-mplus16)
+Linear: [RAI-64](https://linear.app/rainnworks/issue/RAI-64/companion-visual-bible-asset-commissioning-plan) (original), [RAI-71](https://linear.app/rainnworks/issue/RAI-71) (3D pivot)
+Related: [COMPANION_3D_SOURCE.md](./COMPANION_3D_SOURCE.md), [EMBODIED_COMPANION.md](./EMBODIED_COMPANION.md), [SOCIAL_COMPANION.md](./SOCIAL_COMPANION.md), [../marketing/BRAND_VOICE.md](../marketing/BRAND_VOICE.md), [../research/osrs-wiki/licensing.md](../research/osrs-wiki/licensing.md)
+
+**2026-06-21 pivot.** The original four hand-drawn starter forms (Wiki
+Veteran hooded humanoid, Fox, Wisp, Golem) and the USD 5000+ artist
+commission budget in section 6 are RETIRED. The companion is now a
+floating robot ("Probe") sourced from a CC0 3D mesh by Quaternius and
+baked offline into 2D sprite atlases via Blender. The pose catalog,
+hub-safety analysis, marketing-shot list, and reversibility logic in
+this doc remain valid; section 2 (forms) and section 6 (pipeline) are
+rewritten in place. The full sourcing rationale is in
+[COMPANION_3D_SOURCE.md](./COMPANION_3D_SOURCE.md).
 
 This is the doc the asset commission goes against and the engineering
 agent reads to know what sprite frames to render. It is the single
@@ -33,113 +43,103 @@ they say "where do I get that", we are inside the directive. If they
 say "neat" we are outside it. We commission against the first answer
 or we slip the date.
 
-## 2. The four starter forms
+## 2. The four starter forms (Probe variants)
 
-The player picks one of four starter forms on first install, then
+The player picks one of four Probe variants on first install, then
 picks one of four personality archetypes (per
 [EMBODIED_COMPANION.md section 5](./EMBODIED_COMPANION.md#5-personality-and-memory-system)).
 Form and archetype are two independent dials. The default pairing for
-each starter is set below because most players will accept the default
+each variant is set below because most players will accept the default
 pairing, but the runtime config separates them so a player can put any
-archetype on any form.
+archetype on any variant.
 
-The recommended primary starter that ships at M-COMP-1 is **The Wiki
-Veteran**, the hooded humanoid in a deliberately not-OSRS art style.
-The other three follow at M-COMP-2 / M-COMP-3.
+All four variants share the same Quaternius CC0 base mesh (a small
+floating bot with a single front-facing lens and a stub antenna,
+roughly Fallout-Eyebot silhouette). The variants differ in LED color,
+chassis tint, and a small attached primitive (radar fin / armor
+plating / antenna array) that distinguishes the silhouette at
+glance-distance. All four are baked from one source through the
+Blender pipeline in [section 6](#6-the-3d-source-and-bake-pipeline)
+without re-sourcing any additional third-party asset.
 
-### 2.1 The Wiki Veteran (primary, ships first)
+The recommended primary variant that ships at M-COMP-1 is **Probe
+(default)**, paired with the dry wiki nerd archetype. The other three
+variants ship in the same PR because they cost only a parameter
+override; the variant-pipeline follow-up referenced in
+[COMPANION_3D_SOURCE.md section 6](./COMPANION_3D_SOURCE.md#6-the-four-variants)
+covers any silhouette adjustments that emerge from dogfood.
 
-**Visual identity.** A small hooded humanoid roughly 32 pixels tall
-at @1x. Modern flat-shaded vector look rendered to a pixel grid.
-Three-tone shading per region (highlight, midtone, shadow). Hood up
-by default, faceshadow heavy enough that the face reads as
-"presence, not portrait". One tintable accent color on the inner
-hood lining, the satchel strap, and the lantern handle. Player picks
-the tint on first install. Default tint is a warm wiki-veteran amber
-roughly `#f3c75a` (the existing og-card.svg gold), with five
-alternates available (sage green, dusk violet, terracotta, deep teal,
-chalk white).
+### 2.1 Probe (default, ships first)
 
-Silhouette test passes. At 32 pixels tall the hood plus the
-satchel plus a small lantern at the hip reads as a coherent
-shape against the OSRS scene. The lantern is the silhouette
-anchor: it is the thing a player describes when they tell a friend
-what their Tibbly looks like.
+**Visual identity.** A small floating bot, roughly spherical chassis,
+single front-facing lens, stub antenna on top. Rendered at 32 pixels
+tall at @1x after the Blender bake. The source mesh is Quaternius
+flat-shaded low poly so the rendered sprite reads as a clean game
+asset rather than photoreal hardware. Warm amber LED at the lens
+(roughly `#f3c75a`, the og-card.svg gold). Neutral chassis tint that
+keeps the bot legible against both bright (Falador) and dim
+(Brimhaven dungeon) tile palettes.
 
-The art reads as "not a Jagex NPC" at one glance. This is
-load-bearing for [hub safety, see section 8](#8-hub--jagex-risk). No
-2.5D isometric wedge, no chunky OSRS character outline, no
-washed-out OSRS palette. The Wiki Veteran is on the same scene as
-the player, but they look like they walked in from a different
-illustration.
+Silhouette test passes. A spherical bot with a single bright lens at
+the front is the trope-correct "small floating companion" read at
+32x32. The lens is the silhouette anchor: it is the thing a player
+describes when they tell a friend what their Tibbly looks like.
+
+The art reads as "obviously not a Jagex asset" at one glance. There
+is no Jagex precedent for a floating modern robot in the OSRS world.
+A robot in Falador trivially clears the
+[hub-safety bar](#8-hub-and-jagex-risk).
 
 **Personality archetype paired by default.** Dry wiki nerd. The
-voice the [brand voice doc](../marketing/BRAND_VOICE.md) leads
-with: calm, lore-literate, casually authoritative, ribs you gently
-when you ask the third time how to get to Lumbridge. The form
-fits the voice because a hooded scholar holding a lantern is the
-trope-correct silhouette for "the friend who already read the
-wiki".
+voice the [brand voice doc](../marketing/BRAND_VOICE.md) leads with:
+calm, lore-literate, casually authoritative, ribs you gently when
+you ask the third time how to get to Lumbridge. The form fits the
+voice because a methodical scanning probe with a steady amber light
+is the trope-correct silhouette for "the friend who already read
+the wiki".
 
-**Why this form pairs with this personality.** The hooded humanoid
-can read books (the read pose lands without disbelief), can point
-at a quest target (a finger-point silhouette is visible at 32x32 in
-a way that a fox or a wisp cannot match), and can sit cross-legged
-with the lantern set down beside them. Every reactive animation in
+**Why this variant pairs with this personality.** A small scanning
+probe can do every pose in the atlas (hover, scan, display facts on
+its belly screen, power down to sleep, react with a sudden rise) in
+a way a humanoid cannot fake at 32 px. Every reactive animation in
 [EMBODIED_COMPANION.md section 4](./EMBODIED_COMPANION.md#4-visual-and-presence-design)
-has a clean staging for this form.
+maps cleanly to a Probe pose.
 
 **Anti-examples (what this is NOT).**
 
-- Not a Jagex NPC. Not a re-skin of Hans, the Wise Old Man, or any
-  named OSRS character. If a hub reviewer can name the inspiration,
-  we redraw.
-- Not a fantasy-generic hooded assassin. No daggers, no glowing eyes
-  visible in the hood shadow, no skull motifs. We are friendly, not
-  edgy.
-- Not a cartoon Saturday-morning mascot. No giant eyes, no rounded
-  baby proportions, no kawaii cheekspots.
-- Not a Clippy with a hood. No exclamation-mark thought bubble, no
-  flailing arms, no interruption posture.
-- Not the Hollow Knight protagonist (close to our silhouette risk
-  band). Different proportion, different mood, different palette,
-  no horns.
+- Not the Fallout Eyebot itself. We use the silhouette as inspiration;
+  the rendered Probe is flat-shaded low-poly, not Bethesda's photoreal
+  asset.
+- Not EVE from Wall-E. Different proportions, no curved white shell,
+  no segmented face plate.
+- Not Wheatley from Portal 2. Different silhouette, no single round
+  faceplate with thick handlebars.
+- Not BB-8. Different proportions, no rolling base, no two-tone shell.
+- Not a hostile combat drone. No weapon attachments, warm LED, soft
+  bob in idle hover, body language reads as curious not menacing.
 
-**Reference art (north stars for the artist).**
+**Reference art (north stars for the bake).**
 
-- The cloaked traveller in Hyper Light Drifter
-  ([gamedeveloper.com case study](https://www.gamedeveloper.com/business/the-ultra-modern-stylings-of-hyper-light-drifter))
-  for the deliberately not-Jagex flat-shaded palette discipline.
-- Slynyrd's human walk cycle tutorial
-  ([slynyrd.com/blog/2024/5/24/pixelblog-50-human-walk-cycle](https://www.slynyrd.com/blog/2024/5/24/pixelblog-50-human-walk-cycle))
-  for the 4-frame walk cycle skeleton we expect on top of an
-  8-direction atlas.
-- Pedro Medeiros's idle and walk animation principles
-  ([lospec.com/pixel-art-tutorials/author/pedro-medeiros](https://lospec.com/pixel-art-tutorials/author/pedro-medeiros))
-  as the canonical animation easing reference.
-- Juanjo Marmol's pixel-art walk cycle character study on ArtStation
-  ([artstation.com/artwork/qWZez](https://www.artstation.com/artwork/qWZez))
-  for the cloth-flow on the hood and cape between frames.
-- The wandering scholar character archetype from Pyre by
-  Supergiant ([game press kit on supergiantgames.com](https://www.supergiantgames.com/games/pyre/))
-  for the lantern-and-satchel silhouette logic.
+- Quaternius's Sci-Fi Essentials Kit on
+  ([opengameart.org/content/sci-fi-essentials-kit](https://opengameart.org/content/sci-fi-essentials-kit))
+  for the source mesh and the flat-shaded palette.
+- The Fallout Eyebot silhouette
+  ([fallout.fandom.com/wiki/Eyebot](https://fallout.fandom.com/wiki/Eyebot))
+  as the spherical-with-lens trope reference (silhouette only, we
+  do not use Bethesda's asset).
+- The Star Wars Probe Droid silhouette as the floating-with-antenna
+  trope reference.
+- Hyper Light Drifter's flat-shaded vector palette for the rendered
+  sprite color discipline.
 
-### 2.2 The Fox (soft confused friend)
+### 2.2 Probe - comm visor (soft confused friend)
 
-**Visual identity.** A small fox-like creature, four-legged, roughly
-22 pixels tall at the shoulder. Three-tone shaded fur with two
-accent patches the player can tint (ear tips and tail tip). Larger
-ears than realistic, no anime eyes, no human face. Reads as "small
-animal companion that visibly listens". One ear can twitch as part of
-the idle cycle. The tail is the most expressive body part: low and
-swishing means content, up and bristled means surprise, curled
-around the body means sit-AFK.
-
-The fox is the form most adjacent to OSRS pet silhouettes. We have
-to draw the line carefully. It is not the Bloodhound, not the Baby
-Mole, not the Vorki. Larger ears, longer legs, deliberately different
-palette range. If the silhouette overlaps with any known OSRS pet at
-fifty paces, we redraw.
+**Visual identity.** The Probe base mesh tinted with a cool teal LED
+and a small radar fin attached to the top of the lens housing. The
+chassis stays neutral-warm so the variant reads as the same Probe in
+a different mood, not as a different bot. The radar fin is the
+silhouette anchor: it gives the Probe an upward sweep that
+distinguishes it from the default at glance-distance.
 
 **Personality archetype paired by default.** Soft confused friend.
 The voice asks more questions than it answers. Helpful but tentative.
@@ -147,245 +147,182 @@ Tom's note: "the soft confused friend is the option for players who
 want the companion to feel like a younger sibling who is genuinely
 curious about the game".
 
-**Why this form pairs with this personality.** A small animal that
-tilts its head when puzzled communicates the soft-confused archetype
-without needing a single word. The head-tilt at a weird item from
-[EMBODIED_COMPANION.md section 4](./EMBODIED_COMPANION.md#4-visual-and-presence-design)
-is the canonical Fox frame.
+**Why this variant pairs with this personality.** A scanning probe
+with a tilted radar fin reads as "I am listening, I am uncertain, I
+am asking". The teal LED softens the read further. The same scan
+pose plays on every variant, but on the comm-visor variant the lens
+sweeps wider so the body language reads as inquisitive rather than
+methodical.
 
 **Anti-examples.**
 
-- Not the Bloodhound, Baby Mole, Vorki, or any RuneScape pet. If a
-  veteran player squints and names the pet, we redraw.
-- Not a Pokemon. No type-icon framing, no overworld sprite quoting
-  Gen 5.
-- Not a memey "doge". No tongue out, no "such friend".
-- Not a generic stock fox vector. Asymmetric tail rest, ear nick on
-  one side, one paw slightly forward in idle. Personality through
-  asymmetry.
+- Not a hostile UAV. No targeting reticle, no aggressive radar sweep.
+- Not a CCTV camera. The fin is small, soft-edged, and bobs with
+  the idle cycle so it never reads as static surveillance.
 
-**Reference art.**
+### 2.3 Probe - heavy armor (sardonic veteran)
 
-- The fox character studies on the Pixel Art Tutorials catalogue at
-  [slynyrd.com/pixelblog-catalogue](https://www.slynyrd.com/pixelblog-catalogue)
-  for body-shape proportion at small pixel scale.
-- The Spiritfarer animal companions
-  ([thunder-lotus.com/spiritfarer](https://thunder-lotus.com/spiritfarer/))
-  for soft-confused-friend body language without humanising the face.
-- Ori and the Will of the Wisps creature studies
-  ([orithegame.com](https://www.orithegame.com/will-of-the-wisps/))
-  for "small creature that listens" idle posture without facial
-  detail.
-- The fox companion in Tunic
-  ([tunicgame.com](https://tunicgame.com/)) for proportion and palette
-  restraint at small pixel scale.
-- Sara Drasner's pixel-art animation breakdowns
-  ([sarah.dev](https://sarah.dev/)) for the tail-swish loop pattern.
+**Visual identity.** The Probe base mesh tinted slate grey with
+visible armor-plating decals on the chassis and a deeper red LED.
+The plating is the silhouette anchor: the chassis reads slightly
+chunkier than the default, like a probe that has seen things and
+got reinforced. The deeper red LED reads as wisdom-aged rather than
+hostile because the bot otherwise hovers and scans like the others.
 
-### 2.3 The Wisp (abstract option)
+**Personality archetype paired by default.** Sardonic veteran. Small
+flame, dry wit, sees a lot, says little. The heavy-armor Probe talks
+in short sentences and lets the player fill the silence. It is the
+quietest of the four variants by design.
 
-**Visual identity.** A moth-with-a-face wisp. Roughly 20 pixels of
-glow plus 4 pixels of moth body suspended inside the glow. The
-"face" is two tiny eye-pixels that the player will read as eyes only
-because of the body language around them. No mouth. Wings flap on a
-2-frame cycle. The glow is the player's tintable accent. Surrounding
-fuzz around the wisp body fades with distance from the centre, so
-the silhouette is soft, not crisp.
-
-The wisp is the form most likely to read as "uncanny" if done
-wrong, and the form most likely to read as "magical" if done right.
-This is the discipline gate. The glow must not pulse on a regular
-cycle. Regular pulse reads as a notification icon. The wisp glow
-is hand-keyed to look like a moth's wings catching candlelight, not
-like a load-spinner.
-
-**Personality archetype paired by default.** Sardonic veteran.
-Small flame, dry wit, sees a lot, says little. The wisp talks in
-short sentences and lets the player fill the silence. It is the
-quietest of the four starters by design.
-
-**Why this form pairs with this personality.** The wisp's small
-silhouette and refusal to humanise the face match a personality
-that does not need to perform. The sardonic veteran says little; the
-wisp shows little; both feel grown-up.
+**Why this variant pairs with this personality.** A weather-beaten
+probe with armor plating reads as "I have done this before". The
+sardonic veteran says little; the heavy-armor Probe scans slowly
+and pulses its lens calmly; both feel grown-up.
 
 **Anti-examples.**
 
-- Not a Pokemon Litwick. Different proportion, different palette, no
-  candle base.
-- Not a Spyro firefly. We are not bouncy. We are still.
-- Not a fairy with anime eyes. The eyes are two pixels, not two
-  ovals.
-- Not a generic blue glowing orb. The moth body is visible inside
-  the glow. The form has a body, not just a light.
+- Not a battle drone. No weapon attachments, no targeting indicators.
+- Not a riot bot. The plating is decorative, not aggressive.
+- Not a Terminator HK silhouette. The bot still hovers warmly and
+  bobs in idle. The plating is a tint not a stance.
 
-**Reference art.**
+### 2.4 Probe - research array (earnest helper)
 
-- The lantern-spirit characters in Spiritfarer
-  ([thunder-lotus.com/spiritfarer](https://thunder-lotus.com/spiritfarer/))
-  for glow-around-a-body silhouette discipline.
-- The Sealight character studies on Lospec
-  ([lospec.com/gallery](https://lospec.com/gallery)) for moth and
-  small-flame palette principles.
-- Pedro Medeiros's particle and glow tutorials
-  ([80.lv/articles/pixel-animation-tutorial-by-pedro-medeiros](https://80.lv/articles/pixel-animation-tutorial-by-pedro-medeiros))
-  for the non-uniform glow cycle.
-- The Hollow Knight grub and dreamer characters
-  ([hollowknight.com](https://www.hollowknight.com/)) for the
-  "glow with face" discipline at small scale.
-- Studio Ghibli soot sprites (Susuwatari) from Spirited Away
-  ([ghibli.jp](https://www.ghibli.jp/)) as the cultural reference
-  for "small floating creature with eyes but no mouth that feels
-  alive".
-
-### 2.4 The Golem (earnest helper)
-
-**Visual identity.** A small wooden golem roughly 28 pixels tall.
-Slow, deliberate, blocky proportions. Three slats of wood for the
-torso visible through a sash. Two carved circles for eyes. The
-accent the player tints is the moss growing on one shoulder and the
-glow inside the eye sockets. Walks with a slight forward lean as if
-each step takes intent. The earnest helper voice is the perfect fit
-because the golem visibly tries hard.
+**Visual identity.** The Probe base mesh tinted sage green with a
+small antenna array swapped in for the radar fin and a pale-cyan
+LED. The antenna array is the silhouette anchor: three thin antenna
+posts on top of the lens housing that bob slightly out of phase
+during the idle cycle so the bot reads as "thinking, gathering".
 
 **Personality archetype paired by default.** Earnest helper. Warm,
-sincere, never sarcastic, never preachy. The opposite of the wisp.
-Where the wisp is dry, the golem is direct. Where the wisp says
-little, the golem offers a small extra of detail.
+sincere, never sarcastic, never preachy. The opposite of the
+heavy-armor variant. Where heavy-armor is dry, research-array is
+direct. Where heavy-armor says little, research-array offers a small
+extra of detail.
 
-**Why this form pairs with this personality.** A small wooden figure
-that takes a beat before each action visually maps to a personality
-that thinks before it speaks. Earnest helper is the archetype
-players pick when they want a companion that will never make them
-feel dumb. The golem cannot raise an eyebrow because it does not
-have one.
+**Why this variant pairs with this personality.** A research-coded
+Probe with antennae that twitch as it scans reads as "I am gathering
+information for you". Earnest helper is the archetype players pick
+when they want a companion that will never make them feel dumb. The
+sage palette and pale LED keep the read warm.
 
 **Anti-examples.**
 
-- Not the Wise Old Man. Not Hans. Not a Jagex character with wood
-  swapped for cloth. We are not in the OSRS character roster.
-- Not a Minecraft golem. Different proportion, more carved detail,
-  no Mojang-style face.
-- Not a steampunk automaton. No brass, no gears, no pipework.
-- Not a Pokemon Sudowoodo. We are wood, not "rock pretending to be
-  wood".
+- Not a science-fiction sci-rig robot. Antennae are small and bob
+  with the idle cycle, never extending into a spider-leg silhouette.
+- Not a "smart assistant" cartoon with a question mark over its head.
+  The Probe communicates through the speech bubble, not through
+  cartoon thought icons.
 
-**Reference art.**
+## 3. The animation atlas, what frames each variant ships at MVP
 
-- The forest-spirit characters in Princess Mononoke (Kodama)
-  ([ghibli.jp](https://www.ghibli.jp/)) for the wooden-golem stillness
-  and forward-lean walk.
-- The figurines in Death's Door
-  ([acidnerve.com](https://acidnerve.com/)) for the carved-but-warm
-  silhouette discipline.
-- The dryad and tree-folk studies on Lospec gallery
-  ([lospec.com/gallery](https://lospec.com/gallery)).
-- The companion automaton in Brothers: A Tale of Two Sons
-  ([starbreeze.com](https://www.starbreeze.com/games/)) for the slow
-  deliberate gait.
-- The wooden-doll character studies in Hyper Light Drifter
-  ([heartmachine.com](https://heartmachine.com/)) for the small
-  earnest figure at low resolution.
+The atlas is the same shape for all four Probe variants. The Blender
+bake script in [section 6](#6-the-3d-source-and-bake-pipeline)
+generates exactly this frame layout from the Quaternius source. The
+runtime in `CompanionSpriteAtlas.kt` indexes frames by pose name
+plus sub-index rather than by pixel offset so the catalog can move
+without breaking the renderer.
 
-## 3. The animation atlas, what frames each starter ships at MVP
+Total per variant at MVP: 58 frames. Times four variants at full
+launch: 232 frames, all baked from one CC0 source. Dimensions: 32 by
+32 pixels at @1x, with @2x (64 px) and @3x (96 px) atlases generated
+directly by the bake script (not by the runtime, because
+nearest-neighbour upscaling at runtime introduces visible seams on
+subpixel motion).
 
-The atlas is the same shape for all four starters. The artist
-commissions against this exact list. Engineering pre-allocates the
-atlas slots before the first commission lands. The atlas is laid out
-in Aseprite with the frame names below as layer tags so the runtime
-can index by name, not by pixel offset.
+The pose names below match the resource paths the runtime expects.
 
-Total per starter at MVP: 58 frames. Times four starters at full
-launch: 232 frames. Dimensions: 32 by 32 pixels at @1x, with @2x and
-@3x atlases generated by the artist directly (not by the runtime,
-because nearest-neighbour upscaling at runtime introduces visible
-seams on subpixel motion).
+### 3.1 Hover-move cycle, 8 directions, 3 frames each (24 frames)
 
-### 3.1 Walking cycle, 8 directions, 3 frames each (24 frames)
-
-The 8 directions match the existing OSRS character facing octants
-(N, NE, E, SE, S, SW, W, NW). 3 frames per direction = 24 frames.
-The middle frame is the contact pose where the leading foot is on
-the ground. The other two frames are the pass and the high-foot.
+Pose names: `hover_move_n`, `hover_move_ne`, `hover_move_e`,
+`hover_move_se`, `hover_move_s`, `hover_move_sw`, `hover_move_w`,
+`hover_move_nw`. 3 frames per direction = 24 frames. The bot tilts
+forward in the direction of travel and bobs slightly up-down so the
+hover-move reads as motion, not as a still bot teleporting between
+tiles.
 
 This is the frame budget that supports the smooth follow behaviour
 in [EMBODIED_COMPANION.md section 4](./EMBODIED_COMPANION.md#4-visual-and-presence-design).
 The runtime interpolates between the three keyframes per direction
 based on the companion's velocity. At slow speed the cycle plays at
 6 frames per second; at sprint speed the cycle plays at 12 frames
-per second. This is the canonical Slynyrd 4-frame-on-8-direction
-pattern, simplified to 3 frames for the smaller pixel budget
-(see [slynyrd.com/blog/2024/5/24/pixelblog-50-human-walk-cycle](https://www.slynyrd.com/blog/2024/5/24/pixelblog-50-human-walk-cycle)).
+per second.
 
-### 3.2 Idle cycle in each direction, 2 frames each (16 frames)
+### 3.2 Idle hover cycle in each direction, 2 frames each (16 frames)
 
-8 directions, 2 frames per direction. The two frames are the
-"breath-in" and "breath-out" pose. Cycle plays at 1.5 frames per
-second. This is the canonical floor-presence of the companion when
-nothing else is happening. Without this, the companion looks like
-a still PNG. With it, the companion looks alive.
+Pose names: `idle_hover_n`, ..., `idle_hover_nw`. 8 directions, 2
+frames per direction. The two frames are the "bob up" and "bob down"
+pose. Cycle plays at 1.5 frames per second. This is the canonical
+floor-presence of the companion when nothing else is happening.
+Without this, the companion looks like a still PNG. With it, the
+companion looks alive.
 
-### 3.3 Look-at poses, 8 directions, 1 frame each (8 frames)
+### 3.3 Scan pose, 8 frames
 
-The companion turns its head toward an interest target without
-moving its body. Used when the player examines an item, when an NPC
-dialogue starts, when a milestone fires. One frame per direction
-because the head-turn snap is intentional: the snap is the visual
-beat that tells the player "the companion noticed".
+Pose name: `scan`. The Probe's lens rotates toward an interest
+target without moving its body. Used when the player examines an
+item, when an NPC dialogue starts, when a milestone fires. 8 frames
+sweeping through the cardinal+diagonal targets. The lens-rotate snap
+is intentional: the snap is the visual beat that tells the player
+"the Probe noticed".
 
-### 3.4 Read pose, 2 frames
+### 3.4 Display-on pose, 2 frames
 
-Companion sits cross-legged with a book in hand. The two frames are
-"book open" and "book turn page". Used during long player idle
-(over 20 seconds) and when the companion is producing a long
-answer (visible during the latency window before the speech bubble
-opens).
+Pose name: `display_on`. The Probe's belly screen lights up to
+display a fact (high-alch value, GP/hour, prayer requirement). The
+two frames are "screen warm" and "screen flicker". Used during long
+player idle (over 20 seconds) and when the companion is producing a
+long answer (visible during the latency window before the speech
+bubble opens). Replaces the original "read pose".
 
-### 3.5 Sit pose, 2 frames
+### 3.5 Power-down pose, 2 frames
 
-Companion sits with arms wrapped around knees. The two frames are
-"sit settled" and "small sway". Used during deeper AFK (over 90
-seconds without input). Distinct from the read pose: read implies
-the companion is doing something, sit implies the companion is
-waiting.
+Pose name: `power_down`. The Probe dips toward the ground and dims
+its lens. The two frames are "dip" and "settled". Used during deeper
+AFK (over 90 seconds without input). Distinct from `display_on`:
+display-on implies the Probe is showing something, power_down
+implies the Probe is waiting. Replaces the original "sit pose".
 
-### 3.6 Surprise pose, 2 frames
+### 3.6 Reaction rise pose, 2 frames
 
-Companion reacts to a drop, a pet milestone, a quest completion, a
-diary tier unlock. The two frames are "snap to attention" and
-"settle". Plays once on event, not on a cycle. Optional small
-particle pop scheduled at the same tick by the runtime (handled
-outside the atlas).
+Pose name: `reaction_rise`. The Probe rises sharply and flashes its
+LED in reaction to a drop, a pet milestone, a quest completion, a
+diary tier unlock. The two frames are "rise" and "settle". Plays
+once on event, not on a cycle. Optional small particle pop scheduled
+at the same tick by the runtime (handled outside the atlas).
+Replaces the original "surprise pose".
 
-### 3.7 Yawn pose, 2 frames
+### 3.7 Extended power-down pose, 2 frames
 
-Companion plays one yawn at the 5-minute idle threshold. The two
-frames are "wide yawn" and "close mouth". Plays once, not on a
-cycle. The yawn is a small humanising beat that signals the
-companion is bored, which is itself a personality cue. The yawn
-never plays during chat.
+Pose name: `power_down_extended`. The Probe plays one extended
+power-down at the 5-minute idle threshold with a small "zzz"
+particle effect baked in. The two frames are "deep dip" and "still".
+Plays once, not on a cycle. Replaces the original "yawn pose" and
+keeps the same role: a small humanising beat that signals the
+companion is bored, which is itself a personality cue. Never plays
+during chat.
 
 ### 3.8 Speak pose, 2 frames
 
-Mouth open and mouth closed. Cycles at 4 frames per second only
-during a speech-bubble reveal. Synced to the per-character reveal
-in the bubble (see section 4). This is the only frame in the atlas
-that the runtime cycles based on data outside the companion's own
-state (the chat reveal cursor).
+Pose name: `speak`. The Probe's front lens pulses and the belly
+screen flickers in time with the speech reveal. Cycles at 4 frames
+per second only during a speech-bubble reveal. Synced to the
+per-character reveal in the bubble (see section 4). This is the
+only frame in the atlas that the runtime cycles based on data
+outside the companion's own state (the chat reveal cursor).
 
-### 3.9 Atlas packing notes for the artist
+### 3.9 Atlas packing notes for the bake
 
-Deliver as a single Aseprite source file per starter with each pose
-above on its own layer tag (e.g. `walk_n`, `walk_ne`, `idle_s`,
-`look_e`, `read`, `sit`, `surprise`, `yawn`, `speak`). Final exports
-are PNG atlases at @1x (32x32 per cell), @2x (64x64), @3x (96x96).
-Source file plus three atlases delivered as a single zip.
+The Blender bake script (`apps/plugin/scripts/bake-companion-atlas.py`)
+emits one PNG per frame per cell size into
+`apps/plugin/src/main/resources/companion/robot-default/<variant>/<size>px/`
+with file names of the form `<pose>_<index>.png` (zero-padded). An
+`atlas.json` per directory describes the pose names and frame counts
+so `CompanionSpriteAtlas.kt` can resolve frames by name.
 
-Total deliverables per starter: 58 frames, 1 Aseprite source, 3
-PNG atlases, 1 metadata JSON file with the frame index mapped to
-pose names. The metadata JSON is the artist's responsibility because
-they know which frame they put where; engineering writes the schema
-the artist fills in.
+Total deliverables per variant: 58 PNG frames per cell size, 3 cell
+sizes (32, 64, 96 px), plus one `atlas.json` per cell size. The bake
+recipe lives at `apps/plugin/scripts/README.md`.
 
 ## 4. The speech bubble and chat panel visual system
 
@@ -568,253 +505,114 @@ positives are worse than false negatives here. Better to skip the
 thinking pose than to play it when the line is not actually a
 memory.
 
-## 6. The asset commission plan
+## 6. The 3D source and bake pipeline
 
-The plan covers the experiment-fidelity commission that ships
-M-COMP-1, the full launch-fidelity commission that ships M-COMP-2
-and M-COMP-3, the vendor candidates, the brief template that goes
-out, and the interim solution if commissioning slips.
+This section replaces the original USD 5000+ artist commission plan.
+The pivot is captured in [COMPANION_3D_SOURCE.md](./COMPANION_3D_SOURCE.md).
+The vendor lists, brief templates, and interim Stable-Diffusion
+placeholder in the previous version of this section are RETIRED.
 
-### 6.1 Vendor candidates
+The new pipeline has three steps: vendor a CC0 3D mesh, run a Blender
+script offline to bake it to 2D PNG atlases, commit the PNG output.
+Total marginal cost for all four variants is the bake time on Tom's
+local machine (estimated under one hour for the full set).
 
-The OSRS pixel-art community does not surface a tidy list of
-"commissionable veterans" through public web search. The community
-operates through Discord channels (OSRS Art and OSRS Pixel Art
-servers) and through individual artists' DMs on Twitter and
-DeviantArt. The candidates below are real artists with public
-portfolios in the adjacent space (pixel-art game character work
-with walk cycles and small-creature sprites). Each has a portfolio
-URL. Day rates are estimated from public information; confirm in
-the actual commissioning email.
+### 6.1 The source
 
-For first contact use the candidate's listed contact channel. If
-none is listed, message through their portfolio platform.
+The Probe base mesh is the Quaternius Sci-Fi Essentials Kit, released
+under CC0 1.0 Universal. The standalone flying-bot model from the kit
+sits at <https://poly.pizza/m/lF3jeRJwiH>. The full pick rationale
+including the four-criteria ranking and the rejected runners-up lives
+in [COMPANION_3D_SOURCE.md sections 2 and 3](./COMPANION_3D_SOURCE.md#2-the-pick).
 
-1. **Pedro Medeiros (MiniBoss / Skytorn / Celeste pixel artist)**.
-   [studiominiboss on Tumblr](https://www.tumblr.com/studiominiboss),
-   [Patreon](https://www.patreon.com/saint11),
-   [pixel-art tutorial catalogue on Lospec](https://lospec.com/pixel-art-tutorials/author/pedro-medeiros).
-   Industry tier. The animation easing reference everyone else
-   learns from. Likely day rate USD 600 to USD 800 if he takes the
-   work. Probability he takes a contract this small is low; worth
-   asking because the Wiki Veteran is squarely his idiom.
-2. **Slynyrd (Pedro Junqueira)**. [slynyrd.com](https://www.slynyrd.com/),
-   [pixelblog catalogue](https://www.slynyrd.com/pixelblog-catalogue).
-   Public tutorial archive shows mastery of the 8-direction human
-   walk cycle which is exactly our spec. Commissions surface
-   occasionally through his contact page. Estimated day rate USD
-   400 to USD 600.
-3. **Juanjo Marmol (dreco)**. [dreco on ArtStation](https://dreco.artstation.com/),
-   [walk-cycle character study](https://www.artstation.com/artwork/qWZez).
-   Public ArtStation portfolio of pixel-art walk cycles for
-   character work. Open to commissions per his ArtStation profile.
-   Estimated day rate USD 300 to USD 500.
-4. **Chantal Allanson**. [walk-cycle character study on
-   ArtStation](https://www.artstation.com/artwork/GeVY4W). Pixel-art
-   walk-cycle work on ArtStation. Less prominent profile, more
-   likely to accept a smaller contract. Estimated day rate USD 250
-   to USD 400.
-5. **Open posting on PixelJoint forum**. [pixeljoint forum thread
-   on sprite commission pricing](http://pixeljoint.com/forum/forum_posts.asp?TID=20340).
-   PixelJoint is the canonical community forum for pixel artists.
-   A "commission wanted" thread will surface multiple candidates
-   inside 48 hours; the standard range observed on the forum is USD
-   15 to USD 30 per hour for character sprite work, which at our 58
-   frame budget per starter (assuming 2 hours per keyframe for
-   walking, 1 hour per non-cycled pose) maps to roughly USD 1100 to
-   USD 1500 per starter for a mid-tier artist.
+### 6.2 The bake
 
-Search did not surface a named OSRS-community-specific pixel
-artist with a clean public portfolio of commissionable
-character-sprite work suitable for our use. The closest in-community
-talent is concentrated in the OSRS Art Discord servers
-([primebattlegamers OSRS art community guide](https://primebattlegamers.com/osrs-art-the-ultimate-guide-to-old-school-runescapes-vibrant-creative-community-in-2026/))
-and not surfaced through search. Direct outreach via the OSRS Art
-Discord and the OSRS Pixel Art Discord (both linked from the
-r/2007scape sidebar) is the recommended secondary channel after the
-five candidates above. Doc the outreach in the agent log when it
-happens.
+`apps/plugin/scripts/bake-companion-atlas.py` is a Blender Python
+script that:
 
-### 6.2 Budget
+1. Loads the vendored `probe.glb` from
+   `apps/plugin/src/main/resources/companion/source/`.
+2. Sets up a perspective camera at the OSRS isometric tilt (~45
+   degrees down) and three-point lighting tuned for flat-shaded
+   chassis reads at 32 px.
+3. Applies one of four variant material overrides (LED color,
+   chassis tint, optional extra primitive for the silhouette swap).
+4. For each of the 22 poses, stages the mesh per frame and renders
+   one PNG per cell size (32, 64, 96 px).
+5. Writes an `atlas.json` per output directory describing the pose
+   names and frame counts.
 
-**M-COMP-1 experiment fidelity (one starter, the Wiki Veteran).**
-USD 500 to USD 1000. Defended as follows. The Wiki Veteran at MVP
-is 58 frames. At a fair mid-tier sprite rate of USD 15 to USD 30
-per hour and an average production time of 1.5 hours per frame
-(per
-[2dwillneverdie.com cost-of-sprites breakdown](https://2dwillneverdie.com/blog/how-much-do-sprites-cost/)),
-the labor cost lands between USD 1300 and USD 2600 at uncapped
-rates. We capped the M-COMP-1 brief at USD 1000 by reducing the
-walk-cycle to 2 frames per direction (16 frames total instead of
-24) for the experiment ship. The full walking cycle backfills at
-M-COMP-2.
+Run it via:
 
-The M-COMP-1 budget also covers Aseprite source delivery and the 3
-PNG atlas exports at @1x, @2x, @3x. No animation easing curves
-delivered (engineering handles those at runtime through the state
-machine).
-
-**Full launch fidelity (all four starters).** USD 4000 to USD 6000
-for the remaining art. The Wiki Veteran's missing walk-cycle
-frames (8 frames) backfill at M-COMP-2 for USD 200 to USD 400.
-The three other starters at the full 58-frame spec each cost USD
-1100 to USD 1500. Stretch animations (alternate look-at poses,
-seasonal hood tint variants, a celebration pose for diary
-milestones) add USD 500 to USD 1000 per starter.
-
-The total budget envelope (USD 4000 to USD 6000 for launch beyond
-the M-COMP-1 spend, plus the M-COMP-1 spend of USD 500 to USD 1000)
-maps to a worst-case all-in of USD 7000. The
-[EMBODIED_COMPANION.md section 6 cost note](./EMBODIED_COMPANION.md#6-technical-architecture)
-of GBP 1500 to GBP 3000 was conservative; we expect to spend at
-the higher end of that range plus 50 percent because we are
-including the second wave of stretch animations the spec did not
-originally enumerate.
-
-If the M-COMP-1 experiment does not move the needle, the spend
-caps at USD 1000 and we never touch the launch budget. The decision
-gate at the end of the M-COMP-1 week is the budget gate.
-
-### 6.3 Brief template the artist receives
-
-The template below is what we paste into the first contact email.
-It is calibrated to the Wiki Veteran starter. The same template is
-adapted by changing the starter name and reference art for the
-other three.
-
-```
-Subject: Commission: pixel-art companion sprite for Tibbly (OSRS overlay)
-
-Hi {Artist},
-
-I'm commissioning a pixel-art character sprite for a paid product
-called Tibbly (an in-client AI companion for Old School RuneScape,
-shipping as a RuneLite overlay plugin). The companion is a small
-hooded humanoid that walks beside the player. I want to commission
-the first of four starter forms, which we are calling The Wiki
-Veteran. Brief follows.
-
-THE FORM
-
-A small hooded humanoid, roughly 32 pixels tall at @1x. Modern
-flat-shaded vector look rendered to a pixel grid. Three-tone shading
-per region (highlight, midtone, shadow). Hood up by default with
-heavy faceshadow. One tintable accent color on the inner hood
-lining, the satchel strap, and the lantern handle. Carries a small
-lantern on the hip.
-
-The art reads as "not a Jagex NPC" at one glance. This is
-load-bearing. Please do not reference any OSRS character or NPC in
-the silhouette. References below for the art direction.
-
-REFERENCE ART (north stars, not assets to copy)
-
-- Hyper Light Drifter cloaked traveller for flat-shaded palette.
-- Slynyrd's human walk cycle tutorial.
-  https://www.slynyrd.com/blog/2024/5/24/pixelblog-50-human-walk-cycle
-- Pedro Medeiros's animation easing tutorials on Lospec.
-- The wandering scholar archetype from Pyre (Supergiant).
-
-DELIVERABLES
-
-58 frames total in a single Aseprite source, plus three PNG atlases
-at @1x (32x32 per cell), @2x (64x64), @3x (96x96), plus one
-metadata JSON file mapping frame index to pose name.
-
-Frame breakdown:
-- Walking cycle, 8 directions, 3 frames each (24 frames)
-- Idle cycle, 8 directions, 2 frames each (16 frames)
-- Look-at poses, 8 directions, 1 frame each (8 frames)
-- Read pose (sitting cross-legged with book, 2 frames)
-- Sit pose (knees-to-chest, 2 frames)
-- Surprise pose (snap to attention, 2 frames)
-- Yawn pose (2 frames)
-- Speak pose (mouth open / closed, 2 frames)
-
-LICENSING
-
-Work-for-hire under a written contract. Exclusive license to
-Rainnworks Ltd for use in the Tibbly product and its marketing. You
-keep portfolio rights with credit to "Tibbly by Rainnworks". You
-may show the work on your portfolio and on social once we ship.
-
-BUDGET
-
-USD 500 to USD 1000 fixed-price for the M-COMP-1 spec above. I am
-open to splitting the spec into a smaller M-COMP-1 deliverable (16
-walking frames at 2 frames per direction instead of 3) at the
-lower end of that range, with the remaining 8 walking frames
-optionally backfilled at the same rate later. State your preference.
-
-TIMELINE
-
-Two weeks from acceptance. M-COMP-1 ships internally on a fixed
-date. If you can deliver inside one week we can offer a 10 percent
-premium on the agreed fixed price.
-
-FORMATS
-
-- Aseprite source (.ase) with each pose on its own layer tag
-- PNG atlases at @1x, @2x, @3x
-- Metadata JSON (schema attached)
-
-WHAT WE LOVE IN YOUR PORTFOLIO
-
-{Two specific pieces from the artist's portfolio, named, with
-URLs. Personal note. We do not send the same email to every
-candidate.}
-
-If you're interested I'd love to chat over a 30-minute call to walk
-through the spec and the references. Reply with a time that suits
-or a rough quote and I'll come back inside the day.
-
-Thanks,
-Tom (Rainnworks)
+```bash
+blender --background --python apps/plugin/scripts/bake-companion-atlas.py \
+    -- \
+    --source apps/plugin/src/main/resources/companion/source/probe.glb \
+    --out apps/plugin/src/main/resources/companion/robot-default \
+    --variant default
 ```
 
-### 6.4 Interim solution if commission falls through
+The full recipe (install, vendor, bake all four variants, output
+layout) lives at `apps/plugin/scripts/README.md`.
 
-If the M-COMP-1 commission cannot be placed inside the experiment
-week, we ship placeholder art generated by Stable Diffusion XL Turbo
-with the PixelArtXL LoRA
-([huggingface.co/nerijs/pixel-art-xl](https://huggingface.co/nerijs/pixel-art-xl)),
-hand-cleaned in Aseprite ([aseprite.org](https://www.aseprite.org/)).
-The placeholder is labeled in the dashboard as "Placeholder art,
-commissioned replacement coming soon". The placeholder is
-deliberately less polished so dogfooders read it as temporary, not as
-the shipping art.
+### 6.3 The runtime
 
-We do not ship AI-generated art as the final companion. The full
-launch art is hand-commissioned without exception. The placeholder
-is the bridge that lets us test the visual presence hypothesis in
-the M-COMP-1 week without blocking on commission lead time.
+`apps/plugin/src/main/kotlin/co/rowm/osrsllm/companion/CompanionSpriteAtlas.kt`
+loads the baked PNGs at startup. When the PNGs are absent (a fresh
+clone before the source is vendored, or a CI environment without the
+binary assets), the atlas falls back to a `PlaceholderAtlas` that
+paints a deterministic geometric Probe silhouette. The fallback
+keeps the test suite green and lets the renderer ship a recognizable
+stand-in before the real bake lands.
 
-The placeholder generation pipeline takes one to two hours per
-starter through the tools listed above. The cleanup hand-pass takes
-another four to eight hours. The output is acceptable for internal
-dogfooding and is not acceptable for the marketing site or for
-sharing with external testers. This is recorded in the dashboard
-config flag `companion.art_quality` as "placeholder" vs
-"commissioned".
+The pose catalog inside `CompanionSpriteAtlas.kt` is the canonical
+list. The Blender script asserts the same 58-frame total to catch
+spec drift between the doc, the bake, and the runtime.
 
+### 6.4 The four variants from one source
+
+The four variant labels in [section 2](#2-the-four-starter-forms-probe-variants)
+(default, comm visor, heavy armor, research array) are baked from the
+same `probe.glb` by passing `--variant` to the script. The
+differences (LED hue, chassis tint, optional radar fin / armor
+plating / antenna array) are parameter overrides + small Blender
+primitives composed at bake time. No second-party 3D asset is
+introduced.
+
+If a variant's silhouette does not land in dogfood, we adjust the
+parameter overrides in the script and re-bake. The source mesh
+stays unchanged.
+
+### 6.5 Budget
+
+Zero dollars in art spend. The Quaternius asset is CC0; the bake
+runs locally. The original USD 4000 to USD 7000 commission budget
+is freed for engineering, marketing, or BYOK provider credits.
+
+If marketing-grade hero illustrations (the GIFs in section 7)
+require higher fidelity than the bake output can provide, we
+commission those as one-shot illustrations later. The in-plugin
+atlas remains the Quaternius bake forever; the commission would only
+touch marketing surface art.
 ## 7. The marketing surface for the companion
 
-The companion is the marketing grab. The visual bible is the
-brief that goes to the artist who will draw the GIFs the marketing
-site embeds. The five magical-moment GIFs below are the marketing
-site's hero loop, the pricing-page anchor, and the social-share
-catnip.
+The companion is the marketing grab. The five magical-moment shots
+below are the marketing site's hero loop, the pricing-page anchor,
+and the social-share catnip. The shots are voice-driven (the words
+in the bubble do the work), so the floating-robot pivot does not
+change the script; only the silhouette in each frame changes from a
+hooded humanoid to the Probe.
 
 ### 7.1 The hero-page magical moment (the 4-second loop)
 
 The marketing site hero shows a 4-second loop in which the player
-walks across the Lumbridge bridge with the companion (Wiki Veteran)
-trotting beside them. At second 2, the player hovers over an
-unidentified herb in their inventory. The companion does the
-look-at snap. A speech bubble appears that reads "ranarr. high
-alch is 195. you want to clean this." at the Inter Tight body
-size with the "195" set in IBM Plex Mono. The bubble fades out at
-second 3.5. The loop restarts.
+walks across the Lumbridge bridge with the Probe hovering beside
+them. At second 2, the player hovers over an unidentified herb in
+their inventory. The Probe plays the scan pose so the lens snaps
+toward the inventory slot. A speech bubble appears that reads
+"ranarr. high alch is 195. you want to clean this." at the Inter
+Tight body size with the "195" set in IBM Plex Mono. The bubble
+fades out at second 3.5. The loop restarts.
 
 This is the loop an OSRS YouTuber screenshots. It is short enough
 to be a GIF, busy enough to be readable, and specific enough that
@@ -830,45 +628,45 @@ each rendered as a marketing GIF that lands on the marketing site
 as scroll-revealed content under the hero loop.
 
 1. **The recognition on log-in.** Player teleports to Lumbridge.
-   Companion is already sitting on the bridge railing (the sit pose,
-   used as a stationary spawn frame). On player arrival, the
-   companion stands, walks to the player, and says "welcome back.
-   you said no spoilers on monkey madness 2, still on?" The bubble
-   plays at 4-second total length. The "remembering" thinking pose
-   from section 5.4 plays in the 800 ms before the bubble opens.
+   The Probe is already power-down on the bridge railing (the
+   `power_down` pose, used as a stationary spawn frame). On player
+   arrival, the Probe plays `reaction_rise` to lift back into hover
+   and says "welcome back. you said no spoilers on monkey madness
+   2, still on?" The bubble plays at 4-second total length. The
+   "remembering" thinking beat from section 5.4 plays in the 800 ms
+   before the bubble opens.
 
 2. **Quiet competence mid-task.** Player hovers a herb (the hero
    loop from section 7.1, isolated and slowed to 6 seconds).
 
 3. **A shaped relationship.** Player asks "how do I get to Lumbridge
-   again". Companion responds "home teleport. third time today.
-   want me to set a quick shortcut?" The companion plays the
-   yawn-then-return idle so the gentle ribbing reads as patient,
-   not exasperated.
+   again". Probe responds "home teleport. third time today. want me
+   to set a quick shortcut?" The Probe plays the extended-power-down
+   idle so the gentle ribbing reads as patient, not exasperated.
 
-4. **Live boss tip.** Player is fighting Vorkath. Companion plays
-   the look-at snap toward the boss's tile, then says "switch to
+4. **Live boss tip.** Player is fighting Vorkath. The Probe plays
+   the `scan` pose toward the boss's tile, then says "switch to
    protect magic. fireball spawn in two ticks." The "in two ticks"
    sets in IBM Plex Mono so the timing fact reads as data.
 
 5. **Dialogue driven by current state.** Player walks into the
-   bank. Companion plays the look-at toward the bank booth, then
-   says "you have 27 sharks and a full prayer pot stack. that's
-   enough for two zulrah kills before you'd want to bank." The
-   sentence is lifted from the existing
+   bank. The Probe plays `scan` toward the bank booth, then says
+   "you have 27 sharks and a full prayer pot stack. that's enough
+   for two zulrah kills before you'd want to bank." The sentence is
+   lifted from the existing
    [BRAND_VOICE.md sample exchange](../marketing/BRAND_VOICE.md#3-do-s)
    so the marketing copy matches the in-game voice exactly.
 
 Each GIF is 6 seconds or less. Each is under 500 KB. Each renders
-the Wiki Veteran at marketing-quality fidelity. Each is captioned
+the default Probe at marketing-quality fidelity. Each is captioned
 with one line of body copy underneath.
 
 ### 7.3 The first-install "ask Tibbly" CTA
 
 When the player installs the plugin and starts RuneLite for the
-first time, the companion spawns at the Lumbridge spawn point next
-to them and plays the read pose. After 3 seconds (long enough that
-the player looks at the companion and not at the chat), the speech
+first time, the Probe spawns at the Lumbridge spawn point next to
+them and plays the `display_on` pose. After 3 seconds (long enough
+that the player looks at the Probe and not at the chat), the speech
 bubble fades in with "hi. i'm tibbly. pick how i look, then ask me
 anything." The dashboard link is rendered as a clickable affordance
 on the bubble.
@@ -886,51 +684,60 @@ showing the player options, not like a setup wizard.
 
 ## 8. Hub and Jagex risk
 
-The art style declares "this is not a Jagex asset" at one glance.
-That declaration is load-bearing for hub safety. Every choice in
-this document gets stress-tested against [the licensing posture
-documented in research/osrs-wiki/licensing.md](../research/osrs-wiki/licensing.md).
+The floating-robot pivot makes this section trivially safe. Jagex
+has no precedent for a modern floating robot inside the OSRS world,
+so the silhouette is incapable of being mistaken for a Jagex asset.
+The art declaration "this is not a Jagex asset" is automatic, not
+load-bearing.
 
 The decisions, made explicit.
 
-The companion's sprite atlas is hand-commissioned original art under
-work-for-hire to Rainnworks. We own it. It is not derivative of any
-Jagex sprite. It does not use the OSRS palette, the OSRS character
-silhouette wedge, or the OSRS UI chrome on the sprite itself.
+The Probe sprite atlas is baked from a CC0 3D mesh (Quaternius,
+attribution in `THIRD_PARTY_LICENSES.md`). The CC0 dedication waives
+all rights to the maximum extent permitted by law, so we hold a
+legally-unencumbered license to use, modify, and ship derivatives
+forever. The atlas is not derivative of any Jagex sprite. It does
+not use the OSRS palette, the OSRS character silhouette wedge, or
+the OSRS UI chrome on the sprite itself.
 
-We do NOT use OSRS Wiki sprites in the companion. We do NOT hot-link
+We do NOT use OSRS Wiki sprites in the Probe. We do NOT hot-link
 to oldschool.runescape.wiki/images. The `isForbiddenAssetUrl` guard
 in `packages/osrs-assets/src` (from
 [research/osrs-wiki/_SUMMARY.md](../research/osrs-wiki/_SUMMARY.md))
-enforces this in code. The companion atlas is loaded from the
-plugin's packaged resources, not from any wiki URL.
+enforces this in code. The Probe atlas is loaded from the plugin's
+packaged resources, not from any wiki URL.
 
 We DO use RuneStar CC0 fonts and RuneLite BSD-2 icons for the UI
-chrome around the companion (the chat panel border, the
+chrome around the Probe (the chat panel border, the
 inventory-quoting glyphs in the speech bubble, the dashboard form
 chooser). These are catalogued in `packages/osrs-assets/` and
 licensed per [research/osrs-wiki/licensing.md](../research/osrs-wiki/licensing.md).
-The bubble and panel use the existing chrome so the companion feels
-native to the RuneLite client. The companion itself is in a
-deliberately different visual register so a hub reviewer sees a
-distinct entity, not a clone of any in-game NPC.
+The bubble and panel use the existing chrome so the Probe feels
+native to the RuneLite client. The Probe itself is in a deliberately
+different visual register (floating robot in a medieval-fantasy
+world) so a hub reviewer sees a distinct entity, not a clone of any
+in-game NPC.
 
-The "this is what a hub reviewer sees" frame test. Stand the
-companion (Wiki Veteran) next to Hans the greeter in the Lumbridge
-castle yard. The visual difference is immediate: Tibbly is at a
-different shading register, a different silhouette outline, a
-different palette band, and is clearly an overlay character. A
-reviewer can tell at a glance that Tibbly is not depicted by Jagex.
-We commission against this frame test and we ship the frame test
-into the dogfood handoff so the dogfooders can confirm the
-read.
+The "this is what a hub reviewer sees" frame test. Stand the Probe
+next to Hans the greeter in the Lumbridge castle yard. The visual
+difference is immediate and absurd: Tibbly is a small sci-fi robot
+hovering above the cobbles. A reviewer can tell at a glance that
+Tibbly is not depicted by Jagex. The frame test ships into the
+dogfood handoff so the dogfooders can confirm the read.
 
-For the marketing site the companion always appears against
-backgrounds that are clearly Tibbly territory, not in-game
-screenshots that crop tightly around the companion. The hero loop
-is a deliberately rendered scene; we do not stitch the companion
-onto raw OSRS gameplay footage as the marketing first impression.
-The compositing reads as "ours" not as "borrowed".
+The Quaternius attribution flows through three places per the
+[runelite-hub submission checklist](../runelite-hub/SUBMISSION_CHECKLIST.md):
+the plugin manifest `warning=` line cites
+`THIRD_PARTY_LICENSES.md`; the LICENSE.txt next to the vendored
+source carries the CC0 dedication; the plugin "About" panel surfaces
+the author thank-you line.
+
+For the marketing site the Probe always appears against backgrounds
+that are clearly Tibbly territory, not in-game screenshots that crop
+tightly around the companion. The hero loop is a deliberately
+rendered scene; we do not stitch the Probe onto raw OSRS gameplay
+footage as the marketing first impression. The compositing reads as
+"ours" not as "borrowed".
 
 The disclosure copy from [research/osrs-wiki/licensing.md](../research/osrs-wiki/licensing.md)
 ("this project is not affiliated with or endorsed by Jagex Ltd.")
