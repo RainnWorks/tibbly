@@ -205,3 +205,64 @@ Updated `docs/INDEX.md` to link the new files.
 `git push -u origin agent/r4/openrouter-economics`, or
 (b) re-stage from the main worktree on a fresh branch and commit there.
 Files are intact in `docs/research/llm-providers/`.
+
+
+## Q-32 — Which solo tier unlocks the social companion layer? — 2026-06-21 (loop M+9, social fabric spec)
+**Picked default:** Pro and above. Hobbyist gets S0 (passive presence
+rendering) only. Reasoning: the social fabric is the moat-defining
+surface; gating it at Pro reshapes the £7/£19/£49 ladder so Pro buys the
+social benefit, not just a model upgrade. Hobbyist players still see
+other companions exist (the conversion teaser), but cannot interact.
+**Other options:**
+(a) include S1 idle banter in Hobbyist as a stronger teaser, with S2+
+gated at Pro and S4 at Iron;
+(b) put the whole social layer behind Iron tier only, making it a
+luxury feature with sharper margin.
+**Why not asked:** pricing-strategy call with reversible defaults.
+See `docs/product/SOCIAL_COMPANION.md` sections 1 and 3.
+
+## Q-33 — Social layer launch mode: friends-only only, or "open to strangers" toggle from day one? — 2026-06-21 (loop M+9, social fabric spec)
+**Picked default:** friends-only at launch. Open the "discoverable by
+nearby strangers" dial after the moderation pipeline has a month of
+production data. Reasoning: the chat-filter-bypass risk is real and the
+classifier needs adversarial training time before we expose to random
+players. Friends-only also makes the first product moments cleaner
+(seeing your actual friend's companion is the wow moment, not seeing a
+random's).
+**Other options:**
+(a) ship strangers-toggle from day one, defaulted off, to gather data
+on opt-in rate;
+(b) gate strangers-toggle to Iron tier permanently as a moderation
+cost-recovery mechanism.
+**Why not asked:** safety-posture call with conservative default.
+See `docs/product/SOCIAL_COMPANION.md` sections 4 and 5.
+
+## Q-34 — Moderation staffing for the social layer launch? — 2026-06-21 (loop M+9, social fabric spec)
+**Picked default:** solo-founder operations plus automated classifier
+through M-COMP-7, then hire a part-time moderator when the report queue
+exceeds capacity. Reasoning: pre-launch we cannot predict report volume;
+hiring early burns runway against a load we have not measured. The
+classifier handles the high-confidence cases; Tom triages the ambiguous
+queue daily until volume forces the hire.
+**Other options:**
+(a) hire a part-time moderator from M-COMP-4 launch (safer, more cost);
+(b) outsource moderation to a vendor from day one (faster scale, loses
+the in-house ear for OSRS-specific abuse patterns).
+**Why not asked:** staffing call; defaults to lowest-cost reversible.
+See `docs/product/SOCIAL_COMPANION.md` section 5.
+
+## Q-35 — Do companions ever produce visible OSRS chat lines? — 2026-06-21 (loop M+9, social fabric spec)
+**Picked default:** speech-bubble only; no OSRS chat lines, ever.
+Reasoning: OSRS chat is the player's voice. Polluting it with
+companion-generated lines breaks the social contract the game itself
+sets and exposes us to Jagex moderation systems we do not control.
+Speech bubbles are our own surface; we own the rendering and the
+moderation.
+**Other options:**
+(a) opt-in "companion can post to clan chat" toggle for the player's
+own clan (high social-visibility benefit, real Jagex-side risk);
+(b) experimental "whisper to friend" via the friends-chat surface
+(same risks; less reward).
+**Why not asked:** product-surface boundary; conservative default
+preserves all options.
+See `docs/product/SOCIAL_COMPANION.md` section 8.
