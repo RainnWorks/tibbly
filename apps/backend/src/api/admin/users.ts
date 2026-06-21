@@ -34,7 +34,7 @@ import {
   users,
 } from "../../db/schema";
 import { computeCostMicroUsd } from "../../llm/cost";
-import { adminGate, type AdminGateOptions } from "./_gate";
+import { adminGate, type AdminGateOptions, type AdminGateVars } from "./_gate";
 
 /* -------------------------------------------------------------------------- */
 /*  Stripe surface                                                            */
@@ -108,11 +108,13 @@ export interface CreateAdminUsersOptions extends AdminGateOptions {
   stripe?: StripeAdminLike;
 }
 
-export function createAdminUsersRouter(options: CreateAdminUsersOptions): Hono {
+export function createAdminUsersRouter(
+  options: CreateAdminUsersOptions,
+): Hono<{ Variables: AdminGateVars }> {
   const { db } = options;
   const stripe = options.stripe ?? makeDevStubStripe();
 
-  const app = new Hono();
+  const app = new Hono<{ Variables: AdminGateVars }>();
 
   app.use("/*", adminGate(options));
 
@@ -393,7 +395,7 @@ export function createAdminUsersRouter(options: CreateAdminUsersOptions): Hono {
       .set({ endedAt: new Date() })
       .where(and(eq(sessions.userId, id), sql`${sessions.endedAt} IS NULL`));
 
-    const adminEmail = c.req.header("x-admin-email") ?? "unknown";
+    const adminEmail = c.var.adminEmail;
     await db.insert(eventsTable).values({
       id: newId(),
       type: "user.banned",
@@ -419,7 +421,7 @@ export function createAdminUsersRouter(options: CreateAdminUsersOptions): Hono {
       .set({ status: "active", updatedAt: new Date() })
       .where(eq(users.id, id));
 
-    const adminEmail = c.req.header("x-admin-email") ?? "unknown";
+    const adminEmail = c.var.adminEmail;
     await db.insert(eventsTable).values({
       id: newId(),
       type: "user.unbanned",
@@ -479,7 +481,7 @@ export function createAdminUsersRouter(options: CreateAdminUsersOptions): Hono {
       .where(eq(tokenBalances.userId, id))
       .limit(1);
 
-    const adminEmail = c.req.header("x-admin-email") ?? "unknown";
+    const adminEmail = c.var.adminEmail;
     await db.insert(eventsTable).values({
       id: newId(),
       type: "billing.credit_granted",
@@ -532,7 +534,7 @@ export function createAdminUsersRouter(options: CreateAdminUsersOptions): Hono {
       reason: body.reason.slice(0, 64),
     });
 
-    const adminEmail = c.req.header("x-admin-email") ?? "unknown";
+    const adminEmail = c.var.adminEmail;
     await db.insert(eventsTable).values({
       id: newId(),
       type: "billing.refund_issued",
