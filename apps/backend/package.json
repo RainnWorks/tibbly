@@ -28,6 +28,7 @@
     "nanoid": "^5.1.15",
     "pino": "^10.3.1",
     "postgres": "^3.4.9",
+    "stripe": "^22.2.2",
     "zod": "^4.4.3"
   },
   "devDependencies": {

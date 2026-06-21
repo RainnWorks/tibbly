@@ -1,5 +1,7 @@
 package co.rowm.osrsllm
 
+import co.rowm.osrsllm.cloud.PairingFlow
+import co.rowm.osrsllm.cloud.PairingModal
 import co.rowm.osrsllm.local.McpServerService
 import net.runelite.client.ui.ColorScheme
 import net.runelite.client.ui.FontManager
@@ -23,6 +25,7 @@ import javax.swing.Timer
 class OsrsLlmHelperPanel(
     private val gameStateStore: GameStateStore,
     private val mcpServerService: McpServerService,
+    private val pairingFlow: PairingFlow? = null,
 ) : PluginPanel() {
 
     private val log = LoggerFactory.getLogger(OsrsLlmHelperPanel::class.java)
@@ -35,7 +38,12 @@ class OsrsLlmHelperPanel(
     private val installButton = JButton("Install in Claude CLI")
     private val copyButton = JButton("Copy command")
     private val installStatus = JLabel(" ")
+    private val pairButton = JButton("Pair with account")
+    private val pairStatus = JLabel(" ")
     private val refresher: Timer
+
+    @Volatile
+    private var pairedPlayerName: String? = null
 
     init {
         layout = BorderLayout(0, 8)
@@ -64,13 +72,23 @@ class OsrsLlmHelperPanel(
         installStatus.alignmentX = LEFT_ALIGNMENT
         installStatus.foreground = Color.LIGHT_GRAY
         installStatus.font = FontManager.getRunescapeSmallFont()
+        pairButton.alignmentX = LEFT_ALIGNMENT
+        pairStatus.alignmentX = LEFT_ALIGNMENT
+        pairStatus.foreground = Color.LIGHT_GRAY
+        pairStatus.font = FontManager.getRunescapeSmallFont()
         installButton.addActionListener { runInstall() }
         copyButton.addActionListener { copyCommandToClipboard() }
+        pairButton.addActionListener { startPairing() }
+        pairButton.isEnabled = pairingFlow != null
         bottom.add(installButton)
         bottom.add(Box.createVerticalStrut(4))
         bottom.add(copyButton)
         bottom.add(Box.createVerticalStrut(6))
         bottom.add(installStatus)
+        bottom.add(Box.createVerticalStrut(10))
+        bottom.add(pairButton)
+        bottom.add(Box.createVerticalStrut(4))
+        bottom.add(pairStatus)
         add(bottom, BorderLayout.SOUTH)
 
         refresher = Timer(1000) { refresh() }
@@ -229,4 +247,67 @@ class OsrsLlmHelperPanel(
         }
         return Result(proc.exitValue(), output)
     }
+
+    // ------------------------------------------------------------------
+    // RAI-23 — pair-with-account flow
+    // ------------------------------------------------------------------
+
+    private fun startPairing() {
+        val flow = pairingFlow
+        if (flow == null) {
+            setPairStatus("Pairing not wired in this build.", Color(220, 160, 100))
+            return
+        }
+        pairButton.isEnabled = false
+        setPairStatus("Requesting code…", Color.LIGHT_GRAY)
+
+        Thread({
+            val playerName = runCatching { gameStateStore.snapshot().player?.name }.getOrNull()
+            val issuedResult = runCatching { flow.requestCode(playerName) }
+
+            SwingUtilities.invokeLater {
+                pairButton.isEnabled = true
+                issuedResult.fold(
+                    onSuccess = { issued ->
+                        setPairStatus("Code issued — enter it on the dashboard.", Color.LIGHT_GRAY)
+                        val parent = SwingUtilities.getWindowAncestor(this)
+                        PairingModal.show(parent, flow, issued) { outcome ->
+                            handlePairingOutcome(outcome, playerName)
+                        }
+                    },
+                    onFailure = { e ->
+                        log.warn("Pairing request failed", e)
+                        setPairStatus("Pairing failed: ${e.message}", Color(220, 100, 100))
+                    },
+                )
+            }
+        }, "osrsllm-pairing-request").apply { isDaemon = true }.start()
+    }
+
+    private fun handlePairingOutcome(outcome: PairingFlow.PollOutcome, playerName: String?) {
+        when (outcome) {
+            is PairingFlow.PollOutcome.Claimed -> {
+                val name = outcome.playerName ?: playerName
+                pairedPlayerName = name
+                val nameSuffix = if (name.isNullOrBlank()) "" else " @$name"
+                setPairStatus("Paired with$nameSuffix", Color(120, 200, 120))
+                pairButton.text = "Re-pair"
+            }
+            PairingFlow.PollOutcome.Expired ->
+                setPairStatus("Pairing code expired.", Color(220, 160, 100))
+            is PairingFlow.PollOutcome.Error ->
+                setPairStatus("Pairing error: ${outcome.message}", Color(220, 100, 100))
+            PairingFlow.PollOutcome.Pending -> {
+                // shouldn't reach here
+            }
+        }
+    }
+
+    private fun setPairStatus(text: String, color: Color) {
+        pairStatus.text = text
+        pairStatus.foreground = color
+    }
+
+    /** Test/debug accessor — last successful pairing's player name. */
+    internal fun pairedPlayerNameOrNull(): String? = pairedPlayerName
 }

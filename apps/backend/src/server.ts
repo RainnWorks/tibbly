@@ -10,12 +10,15 @@
 import type { WebSocketHandler } from "bun";
 
 import { createApp } from "./app";
+import { createTokenMeter } from "./billing/meter";
+import { meterToBalancePort } from "./billing/ws-adapter";
 import { getDb } from "./db/client";
 import { env } from "./env";
 import { startAggregationCron } from "./events/aggregate";
 import { attachEventPersister, getDefaultBus } from "./events";
 import { startRetentionCron } from "./jobs/retention-sweeper";
 import { log } from "./lib/log";
+import type { BalanceMeter } from "./ws/plugin";
 import { bridgeEventLoggerToBus, pluginWsHandler } from "./ws/plugin";
 import { presenceWsHandler } from "./ws/presence";
 import { getDefaultPresenceTracker } from "./ws/presence-tracker";
@@ -27,8 +30,6 @@ import {
 
 const presenceTracker = getDefaultPresenceTracker();
 
-const app = createApp({ admin: "auto", presence: { tracker: presenceTracker } });
-
 // RAI-37: spin up the analytics pipeline. The bus + persister + crons are
 // in-process; an external bus swap-in stays a future concern.
 const { db } = getDb();
@@ -36,12 +37,27 @@ attachEventPersister(getDefaultBus(), { db });
 const aggregationCron = startAggregationCron({ db });
 const retentionCron = startRetentionCron({ db });
 
+// RAI-20: real token meter. When STRIPE_WEBHOOK_SECRET is configured we trust
+// the meter to be live and use it as the WS BalanceMeter port; otherwise we
+// fall back to the dev stub so local agents can iterate without Stripe.
+const meter = createTokenMeter({ db, bus: getDefaultBus() });
+const useRealMeter = !!env.STRIPE_WEBHOOK_SECRET;
+const balanceMeter: BalanceMeter = useRealMeter ? meterToBalancePort(meter) : devStubBalanceMeter;
+
+// RAI-19: mount the Stripe webhook router when keys are configured.
+// RAI-21: mount the public presence router for /v1/presence.
+const app = createApp({
+  admin: "auto",
+  presence: { tracker: presenceTracker },
+  ...(useRealMeter ? { stripeWebhook: { db, meter, bus: getDefaultBus() } } : {}),
+});
+
 // RAI-17: plugin↔backend chat WebSocket. RAI-15/RAI-20 will replace the
 // dev stubs with the real device + balance impls.
 assertNotDevStub(env.NODE_ENV);
 const pluginWs = pluginWsHandler({
   deviceLookup: devStubDeviceLookup,
-  balanceMeter: devStubBalanceMeter,
+  balanceMeter,
   eventLogger: bridgeEventLoggerToBus(getDefaultBus()),
   presence: presenceTracker,
 });

@@ -47,6 +47,8 @@ then jump as needed.
 - [`runelite-hub/PRECEDENT.md`](runelite-hub/PRECEDENT.md) — approved + rejected plugins we cite in our PR
 - [`runelite-hub/PLUGIN_DESCRIPTION.md`](runelite-hub/PLUGIN_DESCRIPTION.md) — hub listing copy + `warning=` line
 - [`runelite-hub/DATA_DISCLOSURE.md`](runelite-hub/DATA_DISCLOSURE.md) — every field that can leave the client
+- [`runelite-hub/SECURITY_AUDIT.md`](runelite-hub/SECURITY_AUDIT.md) — verbatim grep audit, PASS/FAIL per rule *(RAI-36)*
+- [`runelite-hub/THREAT_MODEL.md`](runelite-hub/THREAT_MODEL.md) — STRIDE table, mitigations, accepted risks *(RAI-36)*
 
 ## Legal (RAI-34 — NEEDS LAWYER REVIEW BEFORE LAUNCH)
 

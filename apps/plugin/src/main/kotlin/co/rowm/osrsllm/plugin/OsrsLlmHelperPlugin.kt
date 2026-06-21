@@ -15,9 +15,12 @@ import co.rowm.osrsllm.cloud.BackendUrl
 import co.rowm.osrsllm.cloud.BackendWsClient
 import co.rowm.osrsllm.cloud.CloudChatBackend
 import co.rowm.osrsllm.cloud.CloudChatRunner
+import co.rowm.osrsllm.cloud.ConfigManagerDeviceKeyStore
 import co.rowm.osrsllm.cloud.ConsentState
 import co.rowm.osrsllm.cloud.ContextRouter
+import co.rowm.osrsllm.cloud.DeviceKey
 import co.rowm.osrsllm.cloud.EgressGate
+import co.rowm.osrsllm.cloud.PairingFlow
 import co.rowm.osrsllm.cloud.StubToolDispatcher
 import co.rowm.osrsllm.events.EventLogService
 import co.rowm.osrsllm.local.McpServerService
@@ -72,6 +75,7 @@ class OsrsLlmHelperPlugin : Plugin() {
     @Inject private lateinit var hitsplatHistoryService: HitsplatHistoryService
     @Inject private lateinit var mcpServerService: McpServerService
     @Inject private lateinit var backendWsClient: BackendWsClient
+    @Inject private lateinit var pairingFlow: PairingFlow
     @Inject private lateinit var egressGate: EgressGate
     @Inject private lateinit var contextRouter: ContextRouter
     @Inject private lateinit var widgetTracker: WidgetTracker
@@ -158,7 +162,7 @@ class OsrsLlmHelperPlugin : Plugin() {
         eventBus.register(hitsplatHistoryService)
         eventBus.register(widgetTracker)
 
-        val sidebar = OsrsLlmHelperPanel(gameStateStore, mcpServerService)
+        val sidebar = OsrsLlmHelperPanel(gameStateStore, mcpServerService, pairingFlow)
         panel = sidebar
         val button = NavigationButton.builder()
             .tooltip("OSRS LLM Helper")
@@ -394,6 +398,14 @@ class OsrsLlmHelperPlugin : Plugin() {
 
     @Provides @Singleton
     fun provideClaudeRunner(): ClaudeRunner = claudeRunner
+
+    // RAI-23: device-key storage + backend-URL supplier for the pairing flow.
+    @Provides @Singleton
+    fun provideDeviceKeyStore(store: ConfigManagerDeviceKeyStore): DeviceKey.Store = store
+
+    @Provides @Singleton
+    fun providePairingBackendUrlSupplier(cfg: OsrsLlmHelperConfig): PairingFlow.BackendUrlSupplier =
+        PairingFlow.BackendUrlSupplier { BackendUrl(cfg.backendUrl()) }
 
     private fun createStatusIcon(): BufferedImage = textIcon("AI", Color(74, 144, 226))
 

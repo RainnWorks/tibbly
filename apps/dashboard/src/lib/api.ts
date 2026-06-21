@@ -1,9 +1,15 @@
 /**
  * Thin fetch wrapper.
  *
- * Reads VITE_BACKEND_URL at build time. The real backend wiring lands in
- * RAI-27 — this skeleton just gives every route a single chokepoint so we
- * never sprinkle `fetch()` calls or hard-coded URLs across components.
+ * Reads VITE_BACKEND_URL at build time. RAI-27 wired the real endpoints
+ * — this is the single chokepoint every route uses so we never sprinkle
+ * `fetch()` calls or hard-coded URLs across components.
+ *
+ * Auth model: we attach the saved session token as `Authorization:
+ * Bearer …` AND send `credentials: 'include'` so a forthcoming
+ * cookie-based session works without route-level changes. The backend
+ * accepts either an `x-user-id` header or `Authorization: Bearer
+ * <userId>` (see `apps/backend/src/api/_auth.ts`).
  */
 
 import { getSessionToken } from "./auth";
@@ -67,7 +73,11 @@ export async function apiFetch<T = unknown>(
     }
   }
 
-  const response = await fetch(url, { ...rest, headers: composedHeaders });
+  const response = await fetch(url, {
+    credentials: "include",
+    ...rest,
+    headers: composedHeaders,
+  });
   const contentType = response.headers.get("content-type") ?? "";
   const isJson = contentType.includes("application/json");
   const payload = isJson

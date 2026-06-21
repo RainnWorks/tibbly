@@ -1,6 +1,6 @@
 {
-  "id": "afdbf9b3-8593-4049-be00-199911c60290",
-  "prevId": "fb062445-230d-4def-9c47-a40bb97a1b55",
+  "id": "be9f8e2a-7b54-4e19-9ede-cb5a3d1e1e62",
+  "prevId": "afdbf9b3-8593-4049-be00-199911c60290",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -1778,6 +1778,38 @@
           "with": {}
         }
       },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.processed_stripe_events": {
+      "name": "processed_stripe_events",
+      "schema": "",
+      "columns": {
+        "event_id": {
+          "name": "event_id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "event_type": {
+          "name": "event_type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "processed_at": {
+          "name": "processed_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
       "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
