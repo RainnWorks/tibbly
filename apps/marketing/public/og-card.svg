@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" width="1200" height="630" role="img" aria-label="Tibbly — your in-client co-pilot for Old School RuneScape">
+  <!-- Background: parchment over the OSRS chat-box brown -->
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#1c130a" />
+      <stop offset="55%" stop-color="#100a05" />
+      <stop offset="100%" stop-color="#0a0604" />
+    </linearGradient>
+    <linearGradient id="card" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#3a2a16" />
+      <stop offset="100%" stop-color="#241809" />
+    </linearGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#ffe7a8" />
+      <stop offset="50%" stop-color="#f3c75a" />
+      <stop offset="100%" stop-color="#a37412" />
+    </linearGradient>
+    <pattern id="grid" x="0" y="0" width="32" height="32" patternUnits="userSpaceOnUse">
+      <path d="M32 0H0V32" fill="none" stroke="#5a3e1a" stroke-width="0.5" opacity="0.35"/>
+    </pattern>
+    <filter id="softShadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feGaussianBlur stdDeviation="4"/>
+    </filter>
+  </defs>
+
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <rect width="1200" height="630" fill="url(#grid)"/>
+
+  <!-- Chat-window frame, OSRS-style -->
+  <g transform="translate(60,60)">
+    <rect x="0" y="0" width="1080" height="510" rx="8" fill="url(#card)" stroke="#a37412" stroke-width="3"/>
+    <rect x="6" y="6" width="1068" height="498" rx="6" fill="none" stroke="#3a2a16" stroke-width="2" opacity="0.8"/>
+
+    <!-- Title bar -->
+    <rect x="0" y="0" width="1080" height="56" rx="8" fill="#1f1408"/>
+    <rect x="0" y="48" width="1080" height="8" fill="#1f1408"/>
+    <text x="24" y="38" font-family="'IBM Plex Mono','Courier New',monospace" font-size="22" fill="#f3c75a" letter-spacing="1.5">▸ tibbly · in-client co-pilot</text>
+    <circle cx="1000" cy="28" r="8" fill="#3fb968"/>
+    <text x="1020" y="34" font-family="'IBM Plex Mono','Courier New',monospace" font-size="16" fill="#7fbf9c">online</text>
+
+    <!-- Hero copy -->
+    <g transform="translate(56,120)">
+      <text font-family="Georgia,serif" font-size="84" font-weight="700" fill="url(#gold)" filter="url(#softShadow)">Stop alt-tabbing.</text>
+      <text y="100" font-family="Georgia,serif" font-size="84" font-weight="700" fill="#ffe7a8">Start playing.</text>
+      <text y="170" font-family="'IBM Plex Mono','Courier New',monospace" font-size="22" fill="#cbb88a" letter-spacing="0.5">A live AI co-pilot that already knows your bank,</text>
+      <text y="200" font-family="'IBM Plex Mono','Courier New',monospace" font-size="22" fill="#cbb88a" letter-spacing="0.5">gear, quests, and slayer task. Answers in-client.</text>
+    </g>
+
+    <!-- Sample exchange chip -->
+    <g transform="translate(56,396)">
+      <rect x="0" y="0" width="968" height="84" rx="6" fill="#0f0a05" stroke="#5a3e1a" stroke-width="1.5"/>
+      <text x="20" y="32" font-family="'IBM Plex Mono','Courier New',monospace" font-size="16" fill="#8a7048">player:</text>
+      <text x="92" y="32" font-family="'IBM Plex Mono','Courier New',monospace" font-size="16" fill="#e6d6a8">which prayer for Verzik phase 3?</text>
+      <text x="20" y="64" font-family="'IBM Plex Mono','Courier New',monospace" font-size="16" fill="#7fbf9c">tibbly:</text>
+      <text x="92" y="64" font-family="'IBM Plex Mono','Courier New',monospace" font-size="16" fill="#f3c75a">protect magic. she nukes 50s the second the orb spawns. flick on the cast bar.</text>
+    </g>
+  </g>
+</svg>
