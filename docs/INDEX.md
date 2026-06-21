@@ -29,6 +29,8 @@ then jump as needed.
 - [`product/VISION.md`](product/VISION.md) — the productized SaaS vision
 - [`product/PERSONAS.md`](product/PERSONAS.md) — who pays and why
 - [`product/PRICING.md`](product/PRICING.md) — tiers + sample math
+- [`product/EMBODIED_COMPANION.md`](product/EMBODIED_COMPANION.md) — strategic spec for the client-side companion entity *(loop M+9)*
+- [`product/SOCIAL_COMPANION.md`](product/SOCIAL_COMPANION.md) — social-fabric layer stacked on the solo embodied companion *(loop M+9)*
 
 ## Architecture
 
@@ -40,6 +42,8 @@ then jump as needed.
 - [`architecture/PROTOCOL.md`](architecture/PROTOCOL.md) — WS protocol plugin ↔ backend
 - [`architecture/DATA_FLOW.md`](architecture/DATA_FLOW.md) — Mermaid sequence diagrams of every wire crossing *(r10 / RAI-35)*
 - [`architecture/MODEL_PLATFORM.md`](architecture/MODEL_PLATFORM.md) — 5-layer model platform: live catalog (step 1 shipped), routing policies / segments / experiments / sandbox *(loop M+9, D-9)*
+- [`architecture/LICENSING.md`](architecture/LICENSING.md) — hybrid licensing: MIT plugin, proprietary backend *(loop M+9 / D-10)*
+- [`architecture/REPO_SPLIT.md`](architecture/REPO_SPLIT.md) — public/private repo migration plan *(loop M+9 / D-10)*
 
 ## RuneLite Plugin Hub compliance *(r10 / RAI-35)*
 
@@ -62,6 +66,7 @@ then jump as needed.
 
 ## Marketing
 
+- [`marketing/IA.md`](marketing/IA.md) — **canonical marketing IA**, synthesised from PRs #46/#47/#48/#49 *(loop-mplus9 / synthesis)*
 - [`marketing/POSITIONING.md`](marketing/POSITIONING.md) — copy, pillar messages
 - [`marketing/ASSET_CATALOG.md`](marketing/ASSET_CATALOG.md) — OSRS Wiki sprites + URLs
 - [`marketing/BRAND_VOICE.md`](marketing/BRAND_VOICE.md) — picked voice ("clever friend who read the wiki") + 5 sample exchanges *(r7 / RAI-11)*
@@ -78,6 +83,7 @@ then jump as needed.
   - [`research/community/pain-points.md`](research/community/pain-points.md) — 13 pain points with sourced evidence + top-50 plugin install corpus
   - [`research/community/creators.md`](research/community/creators.md) — J1mmy / Soup / Settled / Limpwurt / B0aty profiles + outreach principles
   - [`research/community/trends.md`](research/community/trends.md) — Leagues 6, Sailing, Varlamore, calendar opportunities
+  - [`research/community/mobile-companion.md`](research/community/mobile-companion.md) — OSRS mobile companion landscape + Tibbly Pocket MVP shape *(loop-mplus9)*
 - [`research/memory-systems/`](research/memory-systems/) — how to do durable agent memory
 - [`research/llm-providers/`](research/llm-providers/) — OpenRouter model + pricing
   - [`research/llm-providers/_SUMMARY.md`](research/llm-providers/_SUMMARY.md) — TL;DR + hand-off map

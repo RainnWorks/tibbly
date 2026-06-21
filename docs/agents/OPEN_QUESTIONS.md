@@ -105,6 +105,13 @@ port ready in case a reviewer enforces the wiki literally. Default: ship
 Kotlin and adapt only if pushed.
 
 ## Q-17 — Open-source the backend repo (or just the protocol spec)? — 2026-06-21 (R10 / RAI-35)
+**RESOLVED 2026-06-21 (loop M+9) — see D-10 in DECISION_LOG and
+`docs/architecture/LICENSING.md`. Tom chose the hybrid split: plugin MIT,
+backend proprietary, shared-types MIT on npm, protocol CC-BY-4.0 in a
+doc-only repo. The repo migration plan is in
+`docs/architecture/REPO_SPLIT.md`. Original picked-default and alternatives
+preserved below for context.**
+
 **Picked default:** open-source only the WebSocket protocol spec and the
 plugin RPC schemas; keep the backend (billing, OpenRouter routing) closed.
 Group Ironmen Tracker open-sources its receiver in the same repo — a
@@ -205,3 +212,111 @@ Updated `docs/INDEX.md` to link the new files.
 `git push -u origin agent/r4/openrouter-economics`, or
 (b) re-stage from the main worktree on a fresh branch and commit there.
 Files are intact in `docs/research/llm-providers/`.
+
+## Q-25 — When do we actually run the repo split? — 2026-06-21 (loop M+9, D-10)
+**Picked default:** **before** we open the RuneLite hub PR. Reasoning: the
+first hub PR review fetches the GitHub link out of the PR description, and
+the reviewer should land on a repo whose root README says "MIT-licensed
+RuneLite plugin" with no surrounding noise. Doing the migration after the
+hub PR is open means doing a public rename mid-review, which is the kind
+of mid-flight churn reviewers remember.
+**Other options:**
+(a) migrate after the hub PR is merged: saves rework if the PR is
+rejected for a structural reason, but risks the rename hitting users who
+have already starred or linked the original repo;
+(b) skip the split and ship the hub PR pointing at the current monorepo
+with a `LICENSE-PLUGIN.md` carve-out: legally defensible but a worse
+signal, per `docs/architecture/REPO_SPLIT.md`.
+**Why not asked:** Tom is offline; the migration plan is fully reversible
+up to the first public push of `tibbly-plugin`, which is gated on Tom's
+approval anyway.
+
+## Q-26 — Archive `RainnWorks/osrs-llm-helper` or fully delete it? — 2026-06-21 (loop M+9, D-10)
+**Picked default:** **archive** with a top-level README rewrite that
+points at the new repos. GitHub's archive UX is good enough: the repo
+stays browsable, old links keep working, search engines and Discord
+embeds do not 404. The README becomes a redirect notice ("this project
+is now Tibbly. The plugin lives at X. The protocol spec lives at Y. The
+operations monorepo is private.").
+**Other options:**
+(a) fully delete: cleanest break, but every existing link breaks
+permanently, including community shares we cannot see;
+(b) leave it live and unmaintained: worst of both worlds; confuses new
+visitors about which repo is authoritative.
+**Why not asked:** lowest-regret default; reversible by deleting later
+if Tom prefers the clean break.
+
+## Q-27 — Where does the private `tibbly-platform` repo actually live? — 2026-06-21 (loop M+9, D-10)
+**Picked default:** **GitHub private**. The team is already there, the
+tooling (Actions, gh CLI, MCP integration) is wired up, and at a team
+size of one the cost difference is rounding error. Revisit if the team
+grows past three contributors or if private-repo Actions minutes become
+a binding cost.
+**Other options:**
+(a) paid GitLab: cheaper for many private repos at scale, more ops
+complexity (separate CI runners, separate auth), and forces a context
+switch every time we cross-link to the public plugin repo on GitHub;
+(b) self-hosted Gitea: cheapest at scale and gives us total control,
+but a real ops burden we should not take on solo. Plausible at 5+ devs.
+**Why not asked:** infrastructure call with no urgency; current default
+is the path of least resistance.
+
+## Q-32 — Which solo tier unlocks the social companion layer? — 2026-06-21 (loop M+9, social fabric spec)
+**Picked default:** Pro and above. Hobbyist gets S0 (passive presence
+rendering) only. Reasoning: the social fabric is the moat-defining
+surface; gating it at Pro reshapes the £7/£19/£49 ladder so Pro buys the
+social benefit, not just a model upgrade. Hobbyist players still see
+other companions exist (the conversion teaser), but cannot interact.
+**Other options:**
+(a) include S1 idle banter in Hobbyist as a stronger teaser, with S2+
+gated at Pro and S4 at Iron;
+(b) put the whole social layer behind Iron tier only, making it a
+luxury feature with sharper margin.
+**Why not asked:** pricing-strategy call with reversible defaults.
+See `docs/product/SOCIAL_COMPANION.md` sections 1 and 3.
+
+## Q-33 — Social layer launch mode: friends-only only, or "open to strangers" toggle from day one? — 2026-06-21 (loop M+9, social fabric spec)
+**Picked default:** friends-only at launch. Open the "discoverable by
+nearby strangers" dial after the moderation pipeline has a month of
+production data. Reasoning: the chat-filter-bypass risk is real and the
+classifier needs adversarial training time before we expose to random
+players. Friends-only also makes the first product moments cleaner
+(seeing your actual friend's companion is the wow moment, not seeing a
+random's).
+**Other options:**
+(a) ship strangers-toggle from day one, defaulted off, to gather data
+on opt-in rate;
+(b) gate strangers-toggle to Iron tier permanently as a moderation
+cost-recovery mechanism.
+**Why not asked:** safety-posture call with conservative default.
+See `docs/product/SOCIAL_COMPANION.md` sections 4 and 5.
+
+## Q-34 — Moderation staffing for the social layer launch? — 2026-06-21 (loop M+9, social fabric spec)
+**Picked default:** solo-founder operations plus automated classifier
+through M-COMP-7, then hire a part-time moderator when the report queue
+exceeds capacity. Reasoning: pre-launch we cannot predict report volume;
+hiring early burns runway against a load we have not measured. The
+classifier handles the high-confidence cases; Tom triages the ambiguous
+queue daily until volume forces the hire.
+**Other options:**
+(a) hire a part-time moderator from M-COMP-4 launch (safer, more cost);
+(b) outsource moderation to a vendor from day one (faster scale, loses
+the in-house ear for OSRS-specific abuse patterns).
+**Why not asked:** staffing call; defaults to lowest-cost reversible.
+See `docs/product/SOCIAL_COMPANION.md` section 5.
+
+## Q-35 — Do companions ever produce visible OSRS chat lines? — 2026-06-21 (loop M+9, social fabric spec)
+**Picked default:** speech-bubble only; no OSRS chat lines, ever.
+Reasoning: OSRS chat is the player's voice. Polluting it with
+companion-generated lines breaks the social contract the game itself
+sets and exposes us to Jagex moderation systems we do not control.
+Speech bubbles are our own surface; we own the rendering and the
+moderation.
+**Other options:**
+(a) opt-in "companion can post to clan chat" toggle for the player's
+own clan (high social-visibility benefit, real Jagex-side risk);
+(b) experimental "whisper to friend" via the friends-chat surface
+(same risks; less reward).
+**Why not asked:** product-surface boundary; conservative default
+preserves all options.
+See `docs/product/SOCIAL_COMPANION.md` section 8.
