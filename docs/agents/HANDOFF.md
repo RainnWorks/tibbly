@@ -39,12 +39,29 @@ Shipped this loop:
 - **`openrouter.ts` maxRetries** (3 by default) closes RAI-16's
   retry-acceptance criterion.
 
-In flight:
+RAI-5 catalog landed (PR #29 merged):
 
-- **RAI-5 catalog agent** running in worktree
-  `agent/rai-5/runelite-api-catalog`. Will land
-  `docs/research/runelite-api/catalog.md` (60+ tools) + `_SUMMARY.md`,
-  open a PR closing RAI-5, post Linear completion notes.
+- `docs/research/runelite-api/catalog.md` (776 lines, 100+ tools)
+- `docs/research/runelite-api/_SUMMARY.md` (one-pager)
+- Headline findings:
+  1. **5 unblockers ready to ship** with Kotlin sketches:
+     `get_account_identity` (CORE), `get_raid_layout` (RAIDS),
+     `get_target_projectiles` (COMBAT), `get_farming_state` (FARMING),
+     `get_active_prayers` (COMBAT).
+  2. **Varbits are the biggest unexposed goldmine** — ~200 named
+     constants cover farming patches, raids, leagues, prayer flicks,
+     potion timers, slayer streaks. Bundling into 13 focused Tier-1
+     tools keeps per-turn token cost in check.
+  3. **Group Iron Man has no first-class RL API** — community
+     standard (Group Ironmen Tracker) is detect via `AccountType`,
+     treat clan channel as GIM party. Catalog adopts that pattern.
+
+Also landed (PR #31 — the additive subset of catalog §6):
+
+- `ToolFamily.kt` — added `RAIDS`, `LEAGUES`, `FARMING`, `APPEARANCE`,
+  `AMBIENT`, `PETS`. Purely additive, no existing tool re-assigned.
+- `CLAUDE.md` — corrected "72 MCP tools" to "72 game-state tools + 1
+  meta-tool" (catalog finding: `ToolRegistry.kt` has 73 entries).
 
 Still open from GAPS.md (next loops):
 
