@@ -5,12 +5,14 @@
   "description": "OSRS LLM Helper — paid SaaS turning any LLM into a live in-game OSRS co-pilot. Bun workspace monorepo.",
   "workspaces": [
     "apps/*",
-    "packages/*"
+    "packages/*",
+    "e2e"
   ],
   "scripts": {
     "dev": "bun run --filter '*' dev",
     "build": "bun run --filter '*' build",
     "test": "bun run --filter '*' test",
+    "test:e2e": "bun test e2e/scenarios/",
     "lint": "eslint . --max-warnings=0",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md,yml,yaml,css}\"",
