@@ -37,7 +37,9 @@ class EgressGate @Inject constructor(
         // Strict mode — adding a new field requires a new OutboundPayload subtype.
         ignoreUnknownKeys = false
         encodeDefaults = true
-        classDiscriminator = "kind"
+        // Aligned with packages/shared-types/src/protocol.ts which uses `type`
+        // as the discriminator in `ClientToServer = z.discriminatedUnion("type", …)`.
+        classDiscriminator = "type"
     }
 
     /**
