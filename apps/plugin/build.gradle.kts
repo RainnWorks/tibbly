@@ -46,6 +46,9 @@ dependencies {
     testImplementation("net.runelite:client:$runeLiteVersion")
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.jetbrains.kotlin:kotlin-test")
+    // RAI-22: in-process Ktor WS server for CloudChatRunner round-trip tests.
+    // Test scope only — `:checkNoHttpServer` excludes test sources by design.
+    testImplementation("io.ktor:ktor-server-websockets:$ktorVersion")
 }
 
 java {
