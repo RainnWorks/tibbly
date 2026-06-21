@@ -172,6 +172,8 @@ export const devices = pgTable(
       .references(() => users.id, { onDelete: "cascade" }),
     deviceKeyHash: text("device_key_hash").notNull(),
     displayName: text("display_name"),
+    /** In-game player name read from `Client.localPlayer.name` (RAI-18). */
+    playerName: text("player_name"),
     lastSeenAt: timestamp("last_seen_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
@@ -230,17 +232,31 @@ export const pairingCodes = pgTable(
   {
     id: text("id").primaryKey().$defaultFn(newId),
     code: text("code").notNull(),
-    deviceId: text("device_id")
-      .notNull()
-      .references(() => devices.id, { onDelete: "cascade" }),
+    /**
+     * `device_id` is nullable: the RAI-18 flow inserts the pairing row
+     * BEFORE the device row exists (the dashboard claim materialises both
+     * the user and the device). RAI-15's original API still binds an
+     * existing device on insert — both paths work.
+     */
+    deviceId: text("device_id").references(() => devices.id, { onDelete: "cascade" }),
+    /** Argon2id hash of the raw device key the plugin sent (RAI-18). */
+    deviceKeyHash: text("device_key_hash"),
+    /** In-game player name captured at request time (RAI-18). */
+    playerName: text("player_name"),
+    /** Set on successful claim, links the pairing row to the billing user (RAI-18). */
+    userId: text("user_id").references(() => users.id, { onDelete: "cascade" }),
     expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    /** RAI-15 legacy "spent" marker — still set by the in-game pairing API. */
     usedAt: timestamp("used_at", { withTimezone: true }),
+    /** RAI-18 dashboard-claim marker — set by `claimPairingCode`. */
+    claimedAt: timestamp("claimed_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
     uniqueIndex("pairing_codes_code_unique").on(t.code),
     index("pairing_codes_device_idx").on(t.deviceId),
     index("pairing_codes_expires_idx").on(t.expiresAt),
+    index("pairing_codes_claimed_idx").on(t.claimedAt),
   ],
 );
 
@@ -626,3 +642,15 @@ export const metricsErrorsDaily = pgTable(
 );
 
 export type MetricsErrorsDailyRow = typeof metricsErrorsDaily.$inferSelect;
+
+/* -------------------------------------------------------------------------- */
+/*  Identity — RAI-18 type aliases                                            */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * RAI-18 originally introduced `PairingCodeRow` / `NewPairingCodeRow` aliases.
+ * The RAI-15 schema is now the canonical source; re-export the aliases so
+ * RAI-18 callers (auth/pairing.ts) keep compiling.
+ */
+export type PairingCodeRow = PairingCode;
+export type NewPairingCodeRow = NewPairingCode;
