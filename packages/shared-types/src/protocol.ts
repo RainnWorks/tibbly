@@ -118,12 +118,54 @@ export const ClientPingMsg = z.object({
   clientUptimeMs: z.number().int().nonnegative().optional(),
 });
 
+/**
+ * §C-1 (RAI-65) — Companion proactive trigger.
+ *
+ * Plugin-side cooldown discipline lives in
+ * `CompanionDialogueOrchestrator`. Backend treats this as a candidate
+ * moment; whether it actually generates a line is a backend decision.
+ *
+ * Mirrors `OutboundPayload.CompanionTrigger`.
+ */
+export const ClientCompanionTriggerMsg = z.object({
+  type: z.literal("companion_trigger"),
+  triggerType: z.string().min(1).max(64),
+  contextSnapshot: z.record(z.string(), z.string().max(512)).optional(),
+});
+
+/**
+ * §C-2 (RAI-65) — Player interacted with the companion sprite (click,
+ * drag, dismiss). Lets the backend adapt verbosity / proactive cadence.
+ *
+ * Mirrors `OutboundPayload.CompanionInteractionEvent`.
+ */
+export const ClientCompanionInteractionEventMsg = z.object({
+  type: z.literal("companion_interaction_event"),
+  eventType: z.string().min(1).max(64),
+  payload: z.record(z.string(), z.string().max(512)).optional(),
+});
+
+/**
+ * §C-3 (RAI-65) — End-of-session memory hint for the backend memory
+ * consolidator.
+ *
+ * Mirrors `OutboundPayload.CompanionMemoryHint`.
+ */
+export const ClientCompanionMemoryHintMsg = z.object({
+  type: z.literal("companion_memory_hint"),
+  memorableEvent: z.string().min(1).max(1024),
+  evidenceProbeIds: z.array(z.string().min(1).max(64)).max(32).optional(),
+});
+
 export const ClientToServer = z.discriminatedUnion("type", [
   ClientAuthMsg,
   ClientUserMessageMsg,
   ClientToolCallResultMsg,
   ClientCancelMsg,
   ClientPingMsg,
+  ClientCompanionTriggerMsg,
+  ClientCompanionInteractionEventMsg,
+  ClientCompanionMemoryHintMsg,
 ]);
 export type ClientToServer = z.infer<typeof ClientToServer>;
 export type ClientAuthMsg = z.infer<typeof ClientAuthMsg>;
@@ -131,6 +173,9 @@ export type ClientUserMessageMsg = z.infer<typeof ClientUserMessageMsg>;
 export type ClientToolCallResultMsg = z.infer<typeof ClientToolCallResultMsg>;
 export type ClientCancelMsg = z.infer<typeof ClientCancelMsg>;
 export type ClientPingMsg = z.infer<typeof ClientPingMsg>;
+export type ClientCompanionTriggerMsg = z.infer<typeof ClientCompanionTriggerMsg>;
+export type ClientCompanionInteractionEventMsg = z.infer<typeof ClientCompanionInteractionEventMsg>;
+export type ClientCompanionMemoryHintMsg = z.infer<typeof ClientCompanionMemoryHintMsg>;
 
 // ─── server → client ──────────────────────────────────────────────────────
 

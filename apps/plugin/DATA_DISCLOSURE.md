@@ -61,6 +61,67 @@ Sent on a low-frequency timer while the socket is open. Carries no game
 data — only an uptime counter. Lets the backend drop abandoned sessions
 promptly so a paying customer isn't charged for sockets they aren't using.
 
+## §C — Embodied companion payloads (RAI-65)
+
+When the player flips on the embodied Tibbly companion (see
+`docs/product/EMBODIED_COMPANION.md`) the plugin starts rendering a
+small sprite overlay that walks beside the player and occasionally
+speaks. The renderer / pathfinder / animation state machine are
+entirely local: they touch zero bytes of egress. Three new payload
+shapes carry the companion's coordination with the backend brain that
+generates personality + memory.
+
+All three are gated by `:checkCompanionConsentGated` so a future
+refactor can't accidentally route them around `EgressGate.egress(...)`.
+
+### §C-1 — `companion_trigger`
+
+Sent when the in-game orchestrator notices a moment worth a proactive
+line: a level-up message, a pet drop, a new collection log entry, or
+the player entering a known dungeon. The plugin never decides what the
+companion says; it only declares that something happened. The backend
+picks the line.
+
+| Field | Source | Why |
+|---|---|---|
+| `triggerType` | a short id from `co.rowm.osrsllm.companion.CompanionDialogueOrchestrator.ProactiveTrigger` (e.g. `level_up`, `pet_drop`, `collection_log`) | Routes the backend's personality engine to the right authored response template. |
+| `contextSnapshot` | a `Map<String, String>` of short key/value pairs (e.g. `skill: slayer, level: 92`, capped at ~200 chars per value) | Gives the backend the minimum context it needs to render the line without fanning out tool calls. |
+
+Cooldown discipline is enforced PLUGIN-side by
+`CompanionDialogueOrchestrator`:
+
+- at most 1 proactive trigger every 30 seconds,
+- at most 8 per rolling hour (with recent fires double-weighted),
+- decaying probability after the 90-minute session mark.
+
+These limits are runtime-checked by `CompanionDialogueOrchestratorTest`.
+
+### §C-2 — `companion_interaction_event`
+
+Sent when the player interacts with the sprite directly:
+
+| Field | Source | Why |
+|---|---|---|
+| `eventType` | short id from `InteractionEvent` (e.g. `click_sprite`, `dismiss_bubble`) | Engagement signal for the personality engine. |
+| `payload` | `Map<String, String>` of short attributes (canvas coords, current animation state) | Lets the backend adapt verbosity over time (RAI-65 §5 implicit adaptation). |
+
+Interaction events bypass the proactive-line cooldown because the
+player initiated them.
+
+### §C-3 — `companion_memory_hint`
+
+Sent at end of a chat session to nominate a candidate fact for the
+backend's memory consolidator (see EMBODIED_COMPANION.md §5):
+
+| Field | Source | Why |
+|---|---|---|
+| `memorableEvent` | short human-readable summary built from session signals (e.g. "player killed 113 vorkath this week") | Seed for the cheap memory-extraction pass on the backend. |
+| `evidenceProbeIds` | list of probe ids (e.g. `loot_log`, `session_xp`) | Lets the backend re-verify the claim without re-querying the plugin. |
+
+The companion subsystem NEVER egresses outside these three shapes plus
+the existing chat path. The renderer and animation state machine have
+no egress capability.
+
 ## §D-quater — Tier-2 BYO direct egress (Anthropic / OpenAI / OpenRouter)
 
 This section covers the §"Tier 2 — Free tier" path from
