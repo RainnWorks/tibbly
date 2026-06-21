@@ -1,5 +1,6 @@
 package co.rowm.osrsllm.plugin
 
+import co.rowm.osrsllm.ChatMode
 import co.rowm.osrsllm.GameStateStore
 import co.rowm.osrsllm.LoggingSetup
 import co.rowm.osrsllm.OsrsLlmHelperConfig
@@ -124,6 +125,16 @@ class OsrsLlmHelperPlugin : Plugin() {
     private val chatStore = ChatStore()
     private var cloudChatRunner: CloudChatRunner? = null
     private var cloudChatBackend: CloudChatBackend? = null
+
+    /**
+     * Tier-2 BYO chat runner. NULL in this PR — the actual `DirectChatRunner`
+     * implementation lands in a follow-up. The field is declared now so the
+     * gating logic in [startUp] can be wired correctly without a second
+     * refactor when the runner arrives. See
+     * `docs/architecture/HUB_RELEASE_STRATEGY.md` §"Tier 2 — Free tier".
+     */
+    @Suppress("unused") // placeholder for the BYOK runner — see KDoc above.
+    private var byoChatRunner: Any? = null
     private val claudeRunner = ClaudeRunner(
         mcpUrlSupplier = {
             runCatching {
@@ -155,8 +166,23 @@ class OsrsLlmHelperPlugin : Plugin() {
 
     override fun startUp() {
         LoggingSetup.configure()
-        log.info("Plugin starting (developerMode={}, cloudChatEnabled={})",
-            config.developerMode(), config.cloudChatEnabled())
+        val chatMode = config.chatMode()
+        log.info(
+            "Plugin starting (developerMode={}, cloudChatEnabled={}, chatMode={})",
+            config.developerMode(), config.cloudChatEnabled(), chatMode::class.simpleName,
+        )
+
+        // Cross-flag sanity: `cloudChatEnabled` is the legacy boolean and
+        // `chatMode` is the new source of truth. If the player has set both
+        // ("cloud chat on" + a BYO mode) we LOG A WARNING and obey chatMode,
+        // not silently revert. The BYO path NEVER routes via our backend.
+        if (config.cloudChatEnabled() && chatMode != ChatMode.Cloud && chatMode != ChatMode.ToolsOnly) {
+            log.warn(
+                "Conflicting config: cloudChatEnabled=true but chatMode={}. " +
+                    "Honouring chatMode — Tibbly backend will NOT be used for chat.",
+                chatMode::class.simpleName,
+            )
+        }
 
         // Freeze consent ONCE for this plugin lifetime — see ConsentState KDoc.
         // A mid-session config flip cannot start sending data without a plugin restart.
@@ -208,10 +234,16 @@ class OsrsLlmHelperPlugin : Plugin() {
         }
 
         // Production path: open the WSS connection to the backend and start the chat
-        // runner if the player has accepted consent AND cloud chat is enabled. All
-        // actual sends are funnelled through EgressGate.egress() — there is no other
-        // write path. See `apps/plugin/SECURITY_DESIGN.md`.
-        if (config.consentAccepted() && config.cloudChatEnabled()) {
+        // runner if the player has accepted consent AND cloud chat is enabled AND
+        // chatMode is Cloud. All actual sends are funnelled through
+        // EgressGate.egress() — there is no other write path. See
+        // `apps/plugin/SECURITY_DESIGN.md`.
+        //
+        // chatMode is the new source of truth. If it's set to a BYO variant the
+        // cloud runner DOES NOT START even if cloudChatEnabled is on — the BYO
+        // path talks directly to the provider via DirectChatRunner (next PR).
+        // If it's ToolsOnly the chat surface is intentionally disabled.
+        if (config.consentAccepted() && config.cloudChatEnabled() && chatMode == ChatMode.Cloud) {
             val runner = CloudChatRunner(
                 transport = backendWsClient,
                 egressGate = egressGate,
@@ -265,6 +297,26 @@ class OsrsLlmHelperPlugin : Plugin() {
             )
             runCatching { runner.start() }
                 .onFailure { log.warn("Backend connect failed: {}", it.message) }
+        }
+
+        // BYO chat path (Tier 2 — hub-release strategy). The actual runner lands
+        // in the next PR; today this branch only validates the player has pasted
+        // a key and logs a clear "configure your key" hint otherwise. The chat
+        // surface itself still constructs (so the player sees the panel) but no
+        // outbound request is made until the runner lands.
+        if (config.consentAccepted() && chatMode.isByo) {
+            val keyProvided = config.byoApiKey().isNotBlank()
+            log.info(
+                "BYO chat mode active ({}). API key configured: {}. " +
+                    "DirectChatRunner not yet implemented in this build — see " +
+                    "docs/architecture/HUB_RELEASE_STRATEGY.md §Tier 2 for handoff.",
+                chatMode::class.simpleName, keyProvided,
+            )
+            // byoChatRunner stays null in this PR — placeholder field documents intent.
+        }
+
+        if (chatMode == ChatMode.ToolsOnly) {
+            log.info("ChatMode=ToolsOnly — chat panel surfaces stay live but no provider is wired.")
         }
 
         // On-chat overlay: register slash commands (!ai / ::ai), the overlay renderer,
