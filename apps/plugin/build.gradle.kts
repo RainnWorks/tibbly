@@ -322,6 +322,77 @@ tasks.register("checkAccountPanelNoRawTokens") {
     }
 }
 
+// BYOK guard (HUB_RELEASE_STRATEGY §Tier 2). The plugin now supports a "bring
+// your own LLM key" mode where the player pastes their provider key into the
+// RuneLite config. The key MUST NEVER appear as a literal in the production
+// Kotlin source — it lives in config, is loaded at runtime, and is only ever
+// passed inline as an Authorization header by `DirectChatRunner.kt` (next PR).
+// This task greps the production source set and fails the build on any of:
+//   - a literal "sk-" prefix outside a future DirectChatRunner.kt (which
+//     gets an explicit `// allow-byok-prefix-literal:` comment near the use);
+//   - a literal "OPENAI_API_KEY" / "ANTHROPIC_API_KEY" / "OPENROUTER_API_KEY"
+//     outside the `byoApiKey` config-field name itself (no source code
+//     should reference these env-var-shaped names — the key lives only in
+//     RuneLite config, not in environment variables on the plugin side).
+// Mirrors the :checkAccountPanelNoRawTokens pattern from PR #40.
+tasks.register("checkNoKeyLeak") {
+    group = "verification"
+    description = "Fails if BYO API key literals or env-var-shaped names leak " +
+        "into production Kotlin sources."
+    doLast {
+        val violations = mutableListOf<String>()
+
+        // 1. The "sk-" provider-key prefix. We grep for the literal followed by
+        // at least one continuation char to avoid catching the string in URLs
+        // or random words. DirectChatRunner.kt (when it lands) may legitimately
+        // reference the prefix in a doc comment, in which case the line is
+        // annotated with `// allow-byok-prefix-literal:` and excluded here.
+        val skPattern = Regex("""sk-[A-Za-z0-9_\-]""")
+        val keyNamePatterns = listOf(
+            "OPENAI_API_KEY",
+            "ANTHROPIC_API_KEY",
+            "OPENROUTER_API_KEY",
+        )
+        // The config keyName we ship — these tokens are allowed in-source.
+        val configKeyName = "byoApiKey"
+        productionKotlinTree.files
+            .filter { it.extension == "kt" }
+            .forEach { f ->
+                val lines = f.readLines()
+                lines.forEachIndexed { idx, line ->
+                    if (skPattern.containsMatchIn(line) &&
+                        !line.contains("allow-byok-prefix-literal:")
+                    ) {
+                        violations.add(
+                            "${f.relativeTo(projectDir)}:${idx + 1}  ←  sk- literal: " +
+                                line.trim().take(120),
+                        )
+                    }
+                    keyNamePatterns.forEach { name ->
+                        // Skip lines that are obviously talking about the config
+                        // field name itself (e.g. KDoc on byoApiKey()).
+                        if (line.contains(name) && !line.contains(configKeyName)) {
+                            violations.add(
+                                "${f.relativeTo(projectDir)}:${idx + 1}  ←  $name literal: " +
+                                    line.trim().take(120),
+                            )
+                        }
+                    }
+                }
+            }
+        if (violations.isNotEmpty()) {
+            throw GradleException(
+                "checkNoKeyLeak: BYO API key literal or env-var-shaped key name " +
+                    "found in production Kotlin sources. The key lives ONLY in " +
+                    "RuneLite config (see byoApiKey()). If this is intentional " +
+                    "(e.g. DirectChatRunner referencing the prefix in a comment), " +
+                    "add `// allow-byok-prefix-literal:` to the line.\n  " +
+                    violations.joinToString("\n  "),
+            )
+        }
+    }
+}
+
 tasks.named("check") {
     dependsOn(
         "checkNoHttpServer",
@@ -329,6 +400,7 @@ tasks.named("check") {
         "checkNoPlaintextUrls",
         "checkMcpServerGated",
         "checkAccountPanelNoRawTokens",
+        "checkNoKeyLeak",
         "secretsScan",
     )
 }
