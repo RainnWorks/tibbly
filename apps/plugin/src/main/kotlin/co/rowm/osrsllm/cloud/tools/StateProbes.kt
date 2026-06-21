@@ -37,12 +37,11 @@ import java.util.concurrent.TimeUnit
  *
  * # Out of scope this loop (queued for next)
  *
- *  - `get_farming_state` — catalog §3 (4/5). Flagged at ~600 tokens; the
- *    RuneLite `timetracking.farming` package is package-private (we can't
- *    reach `FarmingTracker` / `FarmingPatch` directly), so a fair-quality
- *    farming probe needs us to mirror the patch→varbit table ourselves. Too
- *    big to land safely in this loop alongside the other four. Tracked in
- *    OPEN_QUESTIONS / next loop pickup.
+ *  - `get_farming_state` (catalog §3 4/5) **shipped as a 2-tool split** —
+ *    see [farmingSummary] + [farmingPatches]. The upstream package
+ *    (`net.runelite.client.plugins.timetracking.farming`) is package-private,
+ *    so we mirror the slice of its patch→varbit table that v1 needs in
+ *    [FarmingTables].
  */
 object StateProbes {
 
@@ -271,6 +270,119 @@ object StateProbes {
         val raw = if (p.name.startsWith("RP_")) p.name.removePrefix("RP_") else p.name
         return raw.replace('_', ' ').lowercase()
             .replaceFirstChar { c -> c.uppercase() }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // Tier 0 (4/5a) — get_farming_summary
+    // ─────────────────────────────────────────────────────────────────────
+
+    @Serializable
+    data class FarmingSummary(
+        /** Count of patches currently READY-to-harvest across all known regions. */
+        val ready: Int,
+        /** Count of patches actively GROWING (not yet harvestable). */
+        val growing: Int,
+        /** Count of DISEASED patches that need curing now. */
+        val diseased: Int,
+        /** Count of DEAD patches that need clearing. */
+        val dead: Int,
+        /** Count of EMPTY patches (raked but not planted). */
+        val emptyPatches: Int,
+        /** Patches we know about but can't classify (e.g. value=UNKNOWN bucket). */
+        val unknown: Int,
+        /** Total patch slots inspected. Equals the sum of the above. */
+        val total: Int,
+        /**
+         * Caveat: live varbit reads only reflect the player's CURRENT region.
+         * Patches in regions the player isn't standing in report their
+         * last-seen value (usually 0/EMPTY) until the player visits.
+         */
+        val note: String = "Live varbit read — patches outside the current region read 0 until visited. See get_farming_patches for per-region detail.",
+    )
+
+    fun farmingSummary(client: Client, clientThread: ClientThread): String =
+        farmingSummary(onClientThread(clientThread) { readFarmingSummary(client) })
+
+    /** Aggregate every patch in every known region into a 5-bucket histogram. */
+    fun readFarmingSummary(client: Client): FarmingSummary {
+        var ready = 0; var growing = 0; var diseased = 0
+        var dead = 0; var empty = 0; var unknown = 0
+        for (region in FarmingTables.REGIONS) {
+            for (patch in region.patches) {
+                val raw = runCatching { client.getVarbitValue(patch.varbitId) }.getOrDefault(0)
+                when (FarmingTables.decode(patch.type, raw)) {
+                    FarmingTables.CropState.READY -> ready++
+                    FarmingTables.CropState.GROWING -> growing++
+                    FarmingTables.CropState.DISEASED -> diseased++
+                    FarmingTables.CropState.DEAD -> dead++
+                    FarmingTables.CropState.EMPTY -> empty++
+                    FarmingTables.CropState.UNKNOWN -> unknown++
+                }
+            }
+        }
+        return FarmingSummary(
+            ready = ready, growing = growing, diseased = diseased,
+            dead = dead, emptyPatches = empty, unknown = unknown,
+            total = ready + growing + diseased + dead + empty + unknown,
+        )
+    }
+
+    fun farmingSummary(value: FarmingSummary): String =
+        json.encodeToString(FarmingSummary.serializer(), value)
+
+    // ─────────────────────────────────────────────────────────────────────
+    // Tier 0 (4/5b) — get_farming_patches(region)
+    // ─────────────────────────────────────────────────────────────────────
+
+    @Serializable
+    data class FarmingPatchEntry(
+        val patchName: String,
+        /** HERB / ALLOTMENT / FRUIT_TREE / TREE / BUSH / FLOWER. */
+        val type: String,
+        /** READY / GROWING / DISEASED / DEAD / EMPTY / UNKNOWN. */
+        val state: String,
+        /** Raw transmit-varbit value — useful for downstream wiki disambiguation. */
+        val rawVarbit: Int,
+    )
+
+    @Serializable
+    data class FarmingPatchesReport(
+        val region: String,
+        val patches: List<FarmingPatchEntry>,
+    )
+
+    @Serializable
+    data class FarmingPatchesError(
+        val error: String,
+        val knownRegions: List<String>,
+    )
+
+    fun farmingPatches(client: Client, clientThread: ClientThread, region: String): String =
+        onClientThread(clientThread) { farmingPatchesString(client, region) }
+
+    /** Pure projection — broken out for testability. */
+    fun farmingPatchesString(client: Client, region: String): String {
+        val resolved = FarmingTables.resolveRegion(region)
+            ?: return json.encodeToString(
+                FarmingPatchesError.serializer(),
+                FarmingPatchesError(
+                    error = "Unknown region '$region'. See knownRegions for valid values.",
+                    knownRegions = FarmingTables.knownRegionNames,
+                ),
+            )
+        val entries = resolved.patches.map { patch ->
+            val raw = runCatching { client.getVarbitValue(patch.varbitId) }.getOrDefault(0)
+            FarmingPatchEntry(
+                patchName = patch.patchName,
+                type = patch.type.name,
+                state = FarmingTables.decode(patch.type, raw).name,
+                rawVarbit = raw,
+            )
+        }
+        return json.encodeToString(
+            FarmingPatchesReport.serializer(),
+            FarmingPatchesReport(region = resolved.name, patches = entries),
+        )
     }
 
     // ─────────────────────────────────────────────────────────────────────
