@@ -29,6 +29,7 @@ then jump as needed.
 - [`product/VISION.md`](product/VISION.md) — the productized SaaS vision
 - [`product/PERSONAS.md`](product/PERSONAS.md) — who pays and why
 - [`product/PRICING.md`](product/PRICING.md) — tiers + sample math
+- [`product/EMBODIED_COMPANION.md`](product/EMBODIED_COMPANION.md) — strategic spec for the client-side companion entity
 
 ## Architecture
 
@@ -77,6 +78,7 @@ then jump as needed.
   - [`research/community/pain-points.md`](research/community/pain-points.md) — 13 pain points with sourced evidence + top-50 plugin install corpus
   - [`research/community/creators.md`](research/community/creators.md) — J1mmy / Soup / Settled / Limpwurt / B0aty profiles + outreach principles
   - [`research/community/trends.md`](research/community/trends.md) — Leagues 6, Sailing, Varlamore, calendar opportunities
+  - [`research/community/mobile-companion.md`](research/community/mobile-companion.md) — OSRS mobile companion landscape + Tibbly Pocket MVP shape *(loop-mplus9)*
 - [`research/memory-systems/`](research/memory-systems/) — how to do durable agent memory
 - [`research/llm-providers/`](research/llm-providers/) — OpenRouter model + pricing
   - [`research/llm-providers/_SUMMARY.md`](research/llm-providers/_SUMMARY.md) — TL;DR + hand-off map
