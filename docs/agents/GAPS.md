@@ -132,15 +132,25 @@ source-of-truth and would have been pointed at dead links.
   Linear timeline backfills it, but it's a gap in the documented memory
   contract.
 
-### A7 — RuneLite-API research folder empty (RAI-5 not started)
+### A7 — RuneLite-API research folder empty (RAI-5 not started) — **RESOLVED**
 
 - **Spec:** `docs/INDEX.md` line 71 says `research/runelite-api/` exists.
   RAI-5 is the issue.
-- **Actual:** the directory does not exist; RAI-5 is in **Backlog**.
-- **Severity:** low (research, not a blocker). But it's the input for
-  Token Optimizer's family tag refinement (RAI-25 acceptance criteria
-  reference it as "refine after R1 lands"). Without it, family tags are
-  guesses.
+- **Status (2026-06-21, post-RAI-5):** the directory now exists. RAI-5
+  shipped a 100+ entry catalog (`docs/research/runelite-api/catalog.md`)
+  + one-page recommendation (`_SUMMARY.md`). The catalog enumerates
+  every existing MCP tool with its RL API call site, plus 60+ proposed
+  additions clustered by family with token cost + gating heuristic +
+  Kotlin sketch. Tier 0 names the five next tools to ship. Tier 1
+  proposes new `ToolFamily.kt` values (`RAIDS`, `LEAGUES`, `FARMING`,
+  `APPEARANCE`, `AMBIENT`) and folds (`QUEST_ITEMS` → `QUEST`,
+  `FISHING` → `SKILLS`, `PARTY` → `SOCIAL`). RAI-25's family-tag
+  refinement now has the input it needed; the "guesses" framing in
+  this row no longer applies.
+- **Adjacent finding:** CLAUDE.md says "72 MCP tools" but
+  `ToolRegistry.kt` has 73 entries (the 73rd is the `enable_tools`
+  meta-tool). Not corrected in this PR; logged as Q-RAI5-1 in the
+  catalog's open-questions section.
 
 ---
 
