@@ -15,6 +15,8 @@ import { secureHeaders } from "hono/secure-headers";
 
 import { createAdminUsageRouter } from "./api/admin/usage";
 import type { CreateAdminUsageOptions } from "./api/admin/usage";
+import { createPairingRouter } from "./api/pairing";
+import type { CreatePairingRouterOptions } from "./api/pairing";
 import { createStripeWebhookRouter } from "./api/webhooks/stripe";
 import type { StripeWebhookDeps } from "./api/webhooks/stripe";
 import { env } from "./env";
@@ -34,6 +36,12 @@ export interface CreateAppOptions {
    * don't care about admin can keep using the bare app.
    */
   admin?: CreateAdminUsageOptions | "auto";
+  /**
+   * Pairing-code router config (RAI-18). Pass `{ db }` to mount the
+   * `/v1/pairing/*` endpoints. Omit in tests that don't exercise pairing
+   * so the bare app stays DB-free.
+   */
+  pairing?: CreatePairingRouterOptions;
   /**
    * Stripe webhook router (RAI-19). Pass the meter + db to mount
    * `POST /api/webhooks/stripe`. Omitted in dev/test by default so a
@@ -77,6 +85,10 @@ export function createApp(options: CreateAppOptions = {}): Hono {
   if (options.admin) {
     const adminOpts = options.admin === "auto" ? {} : options.admin;
     app.route("/admin", createAdminUsageRouter(adminOpts));
+  }
+
+  if (options.pairing) {
+    app.route("/v1/pairing", createPairingRouter(options.pairing));
   }
 
   if (options.stripeWebhook) {

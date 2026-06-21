@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import overallIcon from "@osrs-llm-helper/osrs-assets/skill_icons/overall.png";
 
 export type PresenceResponse = {
   readonly count: number;
@@ -47,20 +48,32 @@ export function LiveCounter() {
     <section
       data-testid="live-counter"
       id="live"
-      className="border-b border-osrs-border bg-osrs-surface/60 px-6 py-16 text-center"
+      className="border-b border-osrs-border bg-osrs-surface/60 px-6 py-20 text-center"
     >
       <div className="mx-auto max-w-3xl">
-        <p className="mb-2 font-mono text-xs uppercase tracking-widest text-osrs-gold-dim">
-          Live network
-        </p>
-        <h2 className="mb-4 text-3xl md:text-4xl">Agents online right now</h2>
+        <div className="mb-5 flex items-center justify-center gap-3">
+          <img
+            src={overallIcon}
+            alt=""
+            aria-hidden="true"
+            className="h-7 w-7"
+          />
+          <p className="font-mono text-xs uppercase tracking-[0.4em] text-osrs-gold-dim">
+            Live network
+          </p>
+        </div>
+        <h2 className="mb-4 text-3xl md:text-4xl">
+          Players online with Tibbly, right now.
+        </h2>
         <div
           data-testid="live-counter-value"
-          className="mb-6 font-heading text-6xl text-osrs-gold md:text-7xl"
+          className="mb-2 font-heading text-6xl text-osrs-gold live-glow md:text-8xl"
           aria-live="polite"
         >
           {isLoading || data === undefined ? (
-            <span data-testid="live-counter-loading">Connecting…</span>
+            <span data-testid="live-counter-loading" className="text-osrs-gold-dim">
+              Connecting…
+            </span>
           ) : isError ? (
             <span data-testid="live-counter-error" className="text-osrs-danger">
               Offline
@@ -71,6 +84,9 @@ export function LiveCounter() {
             </span>
           )}
         </div>
+        <p className="mb-8 font-mono text-xs uppercase tracking-widest text-osrs-muted">
+          Updated every 5 seconds · presence is opt-in
+        </p>
         {data && data.regions.length > 0 && (
           <ul
             data-testid="live-counter-regions"
@@ -79,9 +95,14 @@ export function LiveCounter() {
             {data.regions.map((region) => (
               <li
                 key={region.name}
-                className="border border-osrs-border bg-osrs-bg px-3 py-1 text-sm text-osrs-text/90"
+                className="flex items-center gap-2 border border-osrs-border bg-osrs-bg px-3 py-1 text-sm text-osrs-text/90"
               >
-                <span className="text-osrs-gold-dim">{region.name}</span>{" "}
+                <span className="font-mono text-osrs-gold-dim">
+                  {region.name}
+                </span>
+                <span aria-hidden="true" className="text-osrs-muted">
+                  ·
+                </span>
                 <span className="font-mono text-osrs-gold">
                   {region.count.toLocaleString()}
                 </span>
