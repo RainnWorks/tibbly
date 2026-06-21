@@ -27,6 +27,15 @@ import co.rowm.osrsllm.cloud.EgressGate
 import co.rowm.osrsllm.cloud.PairingFlow
 import co.rowm.osrsllm.cloud.StubToolDispatcher
 import co.rowm.osrsllm.cloud.byo.ChatResponse
+import co.rowm.osrsllm.companion.CompanionAtlasLoader
+import co.rowm.osrsllm.companion.CompanionDialogueOrchestrator
+import co.rowm.osrsllm.companion.CompanionEventAdapter
+import co.rowm.osrsllm.companion.CompanionPathFollower
+import co.rowm.osrsllm.companion.CompanionPathfinder
+import co.rowm.osrsllm.companion.CompanionRenderer
+import co.rowm.osrsllm.companion.CompanionRuntimeState
+import co.rowm.osrsllm.companion.CompanionStateMachine
+import co.rowm.osrsllm.companion.WalkableTest
 import co.rowm.osrsllm.events.EventLogService
 import co.rowm.osrsllm.overlay.AiChannelService
 import co.rowm.osrsllm.overlay.AssistantOverlay
@@ -112,6 +121,7 @@ class OsrsLlmHelperPlugin : Plugin() {
     @Inject private lateinit var xpTrackerIntegration: co.rowm.osrsllm.integrations.XpTrackerIntegration
     @Inject private lateinit var clueScrollIntegration: co.rowm.osrsllm.integrations.ClueScrollIntegration
     @Inject private lateinit var partyIntegration: co.rowm.osrsllm.integrations.PartyIntegration
+    @Inject private lateinit var deviceKey: DeviceKey
 
     private var navButton: NavigationButton? = null
     private var panel: OsrsLlmHelperPanel? = null
@@ -134,6 +144,15 @@ class OsrsLlmHelperPlugin : Plugin() {
      */
     private var byoChatRunner: DirectChatRunner? = null
     private var byoChatBackend: DirectChatBackend? = null
+
+    // RAI-65: embodied companion subsystem. All four references stay null
+    // until startUp() has confirmed both consent + companionEnabled. Tear
+    // down sets them back to null so a flip-off-then-back-on cycle starts
+    // cleanly. See docs/product/EMBODIED_COMPANION.md §6.
+    private var companionRenderer: CompanionRenderer? = null
+    private var companionEventAdapter: CompanionEventAdapter? = null
+    private var companionOrchestrator: CompanionDialogueOrchestrator? = null
+    private var companionStateMachine: CompanionStateMachine? = null
 
     /**
      * Backend selector exposed to the OverlayChatController via a stable
@@ -242,7 +261,7 @@ class OsrsLlmHelperPlugin : Plugin() {
                 toolDispatcher = StubToolDispatcher(),
                 authSupplier = {
                     CloudChatRunner.AuthFrame(
-                        deviceKey = deviceKeyForAuth(),
+                        deviceKey = deviceKey.getOrCreate(),
                         playerName = runCatching { client.localPlayer?.name }.getOrNull(),
                         pluginVersion = "0.1.0",
                     )
@@ -399,6 +418,65 @@ class OsrsLlmHelperPlugin : Plugin() {
         managedNavButton = managedBtn
         clientToolbar.addNavigation(managedBtn)
 
+        // RAI-65: embodied companion overlay. Renders Tibbly walking
+        // beside the player. Strictly gated: both `consentAccepted` AND
+        // `companionEnabled` must be on. The `:checkCompanionConsentGated`
+        // gradle task scans the companion package for any egress that
+        // bypasses this gate. The state machine + orchestrator are
+        // backend-feature components but the renderer is local-only so
+        // companionEnabled WITHOUT consent shows nothing.
+        val companionCfg = runCatching { config.companionConfig() }.getOrNull()
+        if (config.consentAccepted() && companionCfg?.companionEnabled == true) {
+            log.info(
+                "Companion overlay enabling (starter={} archetype={} verbosity={})",
+                companionCfg.starter.id, companionCfg.archetype.id, companionCfg.speechVerbosity,
+            )
+            val runtimeState = CompanionRuntimeState()
+            val atlas = CompanionAtlasLoader.load(companionCfg.starter)
+            val renderer = CompanionRenderer(
+                client = client,
+                atlasProvider = { atlas },
+                runtimeState = runtimeState,
+            )
+            companionRenderer = renderer
+            // Walkable predicate: always-walkable is a safe default at
+            // overlay scope. The pathfinder still enforces chase distance
+            // limits and falls back to fade-respawn on impossible targets.
+            val walkable = WalkableTest { _, _, _ -> true }
+            val pathfinder = CompanionPathfinder(walkable = walkable)
+            val pathFollower = CompanionPathFollower(pathfinder = pathfinder, walkable = walkable)
+            val stateMachine = CompanionStateMachine()
+            companionStateMachine = stateMachine
+            val orchestrator = CompanionDialogueOrchestrator(
+                egressGate = egressGate,
+                consentSupplier = {
+                    co.rowm.osrsllm.cloud.ConsentState.snapshot()
+                        ?: co.rowm.osrsllm.cloud.ConsentState.freeze(accepted = config.consentAccepted())
+                },
+                cloudChatEnabledSupplier = { config.cloudChatEnabled() },
+                triggersEnabledSupplier = { config.companionProactiveTriggersEnabled() },
+            )
+            companionOrchestrator = orchestrator
+            val adapter = CompanionEventAdapter(
+                client = client,
+                stateMachine = stateMachine,
+                orchestrator = orchestrator,
+                pathFollower = pathFollower,
+                runtimeState = runtimeState,
+                consentAcceptedSupplier = { config.consentAccepted() },
+                companionEnabledSupplier = { config.companionEnabled() },
+                walkable = walkable,
+            )
+            companionEventAdapter = adapter
+            overlayManager.add(renderer)
+            eventBus.register(adapter)
+        } else {
+            log.info(
+                "Companion overlay NOT enabled (consent={} companionEnabled={}).",
+                config.consentAccepted(), companionCfg?.companionEnabled,
+            )
+        }
+
         // Tibbly account panel — D-8 pivot. Lives below the chat panel
         // (priority 9 vs 8). The panel itself decides whether to show the
         // account sections or the "cloud chat is off" explainer based on the
@@ -450,6 +528,16 @@ class OsrsLlmHelperPlugin : Plugin() {
             tileMarkerService.clearAll()
             if (aiOwnsArrow) clientThread.invoke(Runnable { client.clearHintArrow() })
         }
+        // RAI-65: tear down the embodied companion subsystem first so the
+        // overlay disappears before any of the underlying state goes away.
+        companionEventAdapter?.let { runCatching { eventBus.unregister(it) } }
+        companionRenderer?.let { runCatching { overlayManager.remove(it) } }
+        runCatching { companionOrchestrator?.reset() }
+        companionEventAdapter = null
+        companionRenderer = null
+        companionOrchestrator = null
+        companionStateMachine = null
+
         runCatching { cloudChatRunner?.stop() }
         cloudChatRunner = null
         cloudChatBackend = null
@@ -506,19 +594,18 @@ class OsrsLlmHelperPlugin : Plugin() {
         configManager.getConfig(OsrsLlmHelperConfig::class.java)
 
     /**
-     * Resolve (or lazily generate) the long-lived per-install device key used to
-     * authenticate against the backend. Stored under RuneLite config so the plugin
-     * keeps the same identity across restarts. NEVER logged.
+     * The long-lived per-install device key is now sourced from the
+     * canonical [DeviceKey] helper (SecureRandom-backed, 40-char nanoid,
+     * alphabet-validated). The previous in-Plugin generator concatenated
+     * two `UUID.randomUUID()` strings, which produced a hex value of
+     * different shape from the [DeviceKey] alphabet/length used by the
+     * audit, hash format, and backend tests. See `DeviceKey.kt`.
+     *
+     * `configManager` is still injected because other code paths need it
+     * for RuneLite config reads/writes; the device-key persistence lives
+     * inside [ConfigManagerDeviceKeyStore].
      */
     @Inject private lateinit var configManager: ConfigManager
-    private fun deviceKeyForAuth(): String {
-        val existing = runCatching { configManager.getConfiguration("osrsllm", "deviceKey") }.getOrNull()
-        if (!existing.isNullOrBlank()) return existing
-        val generated = java.util.UUID.randomUUID().toString().replace("-", "") +
-            java.util.UUID.randomUUID().toString().replace("-", "").take(8)
-        runCatching { configManager.setConfiguration("osrsllm", "deviceKey", generated) }
-        return generated
-    }
 
     @Provides @Singleton
     fun provideChatStore(): ChatStore = chatStore

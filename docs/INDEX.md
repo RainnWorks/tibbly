@@ -32,6 +32,7 @@ then jump as needed.
 - [`product/PRICING.md`](product/PRICING.md) — tiers + sample math
 - [`product/EMBODIED_COMPANION.md`](product/EMBODIED_COMPANION.md) — strategic spec for the client-side companion entity *(loop M+9)*
 - [`product/SOCIAL_COMPANION.md`](product/SOCIAL_COMPANION.md) — social-fabric layer stacked on the solo embodied companion *(loop M+9)*
+- [`product/COMPANION_VISUAL_BIBLE.md`](product/COMPANION_VISUAL_BIBLE.md) — visual bible + asset commissioning plan for the four starter forms *(loop M+15, RAI-64)*
 
 ## Architecture
 

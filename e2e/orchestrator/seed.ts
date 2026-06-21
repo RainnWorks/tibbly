@@ -134,3 +134,55 @@ export async function getBalance(ctx: OrchestratorContext, userId: string): Prom
     .limit(1);
   return row?.balanceTokens ?? 0;
 }
+
+/**
+ * Drive the real admin-login flow (`POST /admin/login`) and extract the
+ * `ops_session` cookie. This mirrors what the ops console does in the
+ * browser, so the cookie carried back is byte-identical to production.
+ *
+ * Audit C2 closed the legacy `x-admin-email` trust root (PR #69). E2E
+ * scenarios that touch /admin/* MUST authenticate via this helper now;
+ * sending the legacy header gets 401, which is the right invariant.
+ */
+export async function loginAsAdmin(
+  ctx: OrchestratorContext,
+  email: string = ctx.env.ADMIN_EMAIL,
+): Promise<{ cookie: string }> {
+  const res = await fetch(`${ctx.backendUrl}/admin/login`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ email }),
+  });
+  if (!res.ok) {
+    throw new Error(`loginAsAdmin: /admin/login ${res.status}: ${await res.text()}`);
+  }
+  const setCookie = res.headers.get("set-cookie");
+  if (!setCookie) {
+    throw new Error("loginAsAdmin: /admin/login response missing Set-Cookie");
+  }
+  // Strip cookie attributes (Path=, HttpOnly, etc.); we only need name=value.
+  const firstPair = setCookie.split(";")[0];
+  if (!firstPair || !firstPair.startsWith("ops_session=")) {
+    throw new Error(
+      `loginAsAdmin: unexpected Set-Cookie shape: ${setCookie.slice(0, 80)}`,
+    );
+  }
+  return { cookie: firstPair };
+}
+
+/**
+ * Harness self-test: hit `/health` and assert 200. Called at the top of
+ * every scenario so a future orchestrator regression that fails to boot
+ * the backend fails LOUDLY instead of silently zero-ing the rest of the
+ * assertions (test-quality-001 finding 1: the kind of bug that lets a
+ * suite pass without exercising anything).
+ */
+export async function assertHarnessHealthy(ctx: OrchestratorContext): Promise<void> {
+  const res = await fetch(`${ctx.backendUrl}/health`);
+  if (res.status !== 200) {
+    throw new Error(
+      `harness self-test: /health returned ${res.status} (expected 200). ` +
+        "The orchestrator did not boot a working backend; refusing to run.",
+    );
+  }
+}

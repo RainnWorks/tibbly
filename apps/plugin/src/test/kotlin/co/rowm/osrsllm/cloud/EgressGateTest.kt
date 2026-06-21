@@ -114,6 +114,10 @@ class EgressGateTest {
             "ToolResult",
             "ChatCancel",
             "SessionHeartbeat",
+            // RAI-65: embodied companion variants.
+            "CompanionTrigger",
+            "CompanionInteractionEvent",
+            "CompanionMemoryHint",
         )
         assertEquals(
             "OutboundPayload's sealed children must match DATA_DISCLOSURE.md exactly. " +

@@ -52,6 +52,41 @@ grep gates, because it is the developer-only code path documented in
 section 4 — but it is NEVER excluded from `:checkNoSubprocess` (subprocess
 invocation is forbidden everywhere).
 
+## 3b. Embodied companion (RAI-65)
+
+When the player turns on the Tibbly companion overlay (off by default
+until they have ALSO accepted consent), the plugin renders a small
+sprite that walks next to their character and occasionally speaks. The
+companion subsystem keeps the same egress posture as the rest of the
+plugin:
+
+- The renderer, animation atlas, pathfinder, path follower, state
+  machine, and speech bubble are LOCAL ONLY. None of them touch
+  `EgressGate`. They observe `Client.localPlayer.location`, recompute
+  a follow tile, animate, and draw. Nothing leaves the device.
+- The only companion code that egresses is
+  `CompanionDialogueOrchestrator`, and it goes through the same
+  `EgressGate.egress(...)` function as the chat path. The three new
+  sealed `OutboundPayload` variants
+  (`CompanionTrigger`, `CompanionInteractionEvent`,
+  `CompanionMemoryHint`) are documented in `DATA_DISCLOSURE.md §C`.
+- The Gradle task `:checkCompanionConsentGated` greps the
+  `co/rowm/osrsllm/companion/` package for any call to
+  `egressGate.egress` without a co-resident consent check
+  (`consentAccepted`, `consentSupplier`, `consent.accepted`,
+  `ConsentState.snapshot`). If a future PR adds a new egress site
+  without a consent gate, the build breaks.
+- `CompanionConsentGateTest` exercises the runtime half of the
+  contract: with `consent.accepted = false`, every call to
+  `consider(...)`, `recordInteraction(...)`, and `submitMemoryHint(...)`
+  is a noop.
+
+The asset atlas is bundled inside the plugin jar (PNG sprites loaded
+via `ImageIO.read`). It is read-only and embedded; the loader has no
+filesystem write path. If no commissioned art is on the classpath, the
+plugin falls back to a flat-coloured placeholder so the renderer is
+never blocked on disk.
+
 ## 3a. Tier-2 BYO direct egress (`DirectChatRunner`)
 
 When the player picks a `Direct: …` chat mode and pastes their own LLM

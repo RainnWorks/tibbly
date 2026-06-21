@@ -82,6 +82,70 @@ turn so we can publish an uptime dashboard for the BYO path. The ping
 **never** includes your messages, your API key, your model id, or any
 game state. See `DATA_DISCLOSURE.md` §D-tris-4.
 
+## Tibbly Companion
+
+Renders Tibbly as a small animated sprite that walks alongside your
+character inside the RuneLite client. The companion is an overlay only.
+It cannot click, walk, attack, or otherwise touch the game state. It
+just exists, watches the same world you watch, and occasionally has
+something to say.
+
+The companion is gated by **both** consent (top-level) AND the
+`Show Tibbly companion` toggle. With either off the renderer is never
+instantiated.
+
+### Show Tibbly companion
+
+Default: on. When on, the sprite renders at a configurable follow
+distance behind your character. When off, the companion disappears
+immediately and all subscriptions tear down. No data is recorded.
+
+### Companion form
+
+Pick which Tibbly form walks beside you. Four choices at launch:
+
+| Choice | Feel |
+|---|---|
+| **Veteran** *(default)* | A small hooded humanoid in a deliberately non-OSRS art style. Reads as "this is mine" rather than "this is a Jagex asset". |
+| **Fox** | A small fox-like creature in OSRS-pet silhouette, for players who want the companion to vibe with their pet collection. |
+| **Wisp** | A floating moth-wisp with a face. Soft, glowing, expressive. |
+| **Golem** | A small wooden golem. Tank-shaped, sturdy, deliberate. |
+
+Each starter has its own commissioned animation atlas. Until commission
+lands the plugin uses a flat-coloured 32 by 32 placeholder so you can
+still see where the companion is and the state machine still works.
+
+### Companion name
+
+Optional. Used by the backend personality engine as your companion's
+nickname. Leave blank to be prompted on first launch. Renaming later is
+fine and is handled by the dashboard / Tibbly account panel.
+
+### Personality archetype
+
+Voice style. Each starter has a sensible default but any archetype can
+go with any visual.
+
+| Archetype | Feel |
+|---|---|
+| **Dry wiki veteran** *(Veteran default)* | Sparse, accurate, occasionally biting. Reads the wiki at you. |
+| **Soft, confused friend** *(Wisp default)* | Sweet, a little lost, cheers you on when you do well. |
+| **Sardonic veteran** *(Fox default)* | Been there, killed that. Says less than they know. |
+| **Earnest helper** *(Golem default)* | Genuinely wants to help. Always polite. Mostly upbeat. |
+
+### Speech verbosity
+
+Slider from 1 (mostly silent) to 5 (chatty). Default 3. Even at the
+chattiest setting the companion respects hard cooldown limits: at most
+one proactive line every 30 seconds, at most 8 per rolling hour, with
+a decaying probability the longer you play. Dead air is sacred.
+
+### Proactive lines
+
+On by default. When off, Tibbly never speaks unless you click on the
+sprite or address her in chat. Useful for streamers, content creators,
+and anyone who wants the companion as visual presence only.
+
 ## Developer mode (advanced)
 
 Off by default. Only useful when developing the plugin locally — turns

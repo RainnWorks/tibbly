@@ -378,6 +378,45 @@ describe("Stripe webhook receiver", () => {
     expect(rows.find((r) => r.eventId === "evt_random_thing")).toBeDefined();
   });
 
+  it("refuses to upsert when current_period_start is null (does not credit against new Date(0))", async () => {
+    await seedUserWithCustomer(f.handle, "cus_test_001");
+    const ev = subEvent("customer.subscription.created");
+    // Simulate Stripe shipping a payload where the period timestamps are
+    // missing. Pre-fix this would silently credit against 1970-01-01.
+    const obj = (ev as unknown as { data: { object: Record<string, unknown> } }).data.object;
+    obj["current_period_start"] = null;
+    obj["current_period_end"] = null;
+
+    const res = await post(f.app, ev);
+    expect(res.status).toBe(200); // handler should not throw; idempotency row stays
+
+    // No subscription row was written; the meter is untouched.
+    const rows = await f.handle.db.select().from(subscriptions);
+    expect(rows).toHaveLength(0);
+
+    // No funnel / created events emitted either; meaningless period must
+    // not propagate into analytics.
+    expect(f.events.find((e) => e.type === "billing.subscription.created")).toBeUndefined();
+    expect(f.events.find((e) => e.type === "funnel.first_paid")).toBeUndefined();
+  });
+
+  it("gracefully ignores an unknown event.type with no observable side-effects", async () => {
+    // Distinct from "unknown event types with a 200": that test pins the
+    // 200 + idempotency-row contract. This pins the BUS contract: nothing
+    // is published when the type does not match a known case.
+    const ev = {
+      id: "evt_truly_unknown_001",
+      type: "customer.cash_balance.funds_available",
+      data: { object: { id: "cb_test_001" } },
+    };
+    const res = await post(f.app, ev);
+    expect(res.status).toBe(200);
+
+    expect(f.events).toEqual([]);
+    const rows = await f.handle.db.select().from(subscriptions);
+    expect(rows).toHaveLength(0);
+  });
+
   it("balance row + idempotency row stay in sync after credit", async () => {
     await seedUserWithCustomer(f.handle, "cus_test_001");
     await post(f.app, subEvent("customer.subscription.created"));
