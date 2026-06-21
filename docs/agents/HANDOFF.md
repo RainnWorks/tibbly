@@ -4,27 +4,57 @@
 
 ## What's new since the previous HANDOFF refresh
 
-- **GAPS.md A1 closed** — re-inspection found `McpServerService.start()`
-  is already gated by `if (config.developerMode() && config.localMcpEnabled())`
-  at `OsrsLlmHelperPlugin.kt:198` (both defaults `false`). The plugin is
-  structurally hub-PR-compliant. Belt-and-braces: added a Gradle
-  `checkMcpServerGated` task wired into `:check` that fails the build if
-  any production-source `mcpServerService.start(` or `.restartWith(` call
-  is missing a `developerMode()` guard within the preceding 20 lines.
-- **GAPS.md A3 closed** — Stripe webhook idempotency leak was already
-  fixed by `unclaimEvent()` in the catch path (`stripe.ts:109`).
-- **GAPS.md A4 closed** — `/admin/*` router uses a deny-by-default
-  middleware (`admin/usage.ts:50-57`) checking `x-admin-email` against
-  `ADMIN_EMAILS`, with 3 explicit 401 test cases in
-  `admin-usage.test.ts`. Header-based auth still wants a session
-  upgrade pre-launch — captured as a non-blocking hardening note.
-- **Marketing og:image polish** — added `apps/marketing/public/og-card.svg`
-  (1200x630 OSRS chat-window theme) and `scripts/build-og.mjs` to render
-  the PNG at build time via `@resvg/resvg-js`. Rendered PNG is 138 KB.
-  `index.html` now declares full `og:image` metadata (width/height/alt).
-- **RAI-5 catalog agent dispatched** — running in worktree; will land
+**Loop M+1 — six gaps closed, one PR-driven follow-up (RAI-16) shipped,
+one research agent dispatched.**
+
+Closed gaps (re-inspection found them already resolved or one tiny
+delta away):
+
+- **A1** — `McpServerService.start()` already gated by
+  `if (config.developerMode() && config.localMcpEnabled())` at
+  `OsrsLlmHelperPlugin.kt:198` (both defaults `false`). Plugin is
+  hub-PR-compliant. Added belt-and-braces Gradle `checkMcpServerGated`
+  task wired into `:check`.
+- **A3** — Stripe webhook idempotency leak was already fixed by
+  `unclaimEvent()` in the catch path (`stripe.ts:109`).
+- **A4** — `/admin/*` router uses deny-by-default middleware
+  (`admin/usage.ts:50-57`) with 3 explicit 401 tests. Header-based
+  auth wants a session upgrade pre-launch (non-blocking hardening).
+- **A6** — `LOOP_LOG.md` exists; backfilled the Loop M+1 entry.
+- **M1.4 / M3.1 (RAI-16)** — OpenRouter proxy is fully shipped, not
+  a stub. `runStream` + `buildRemoteTools` + tier-aware `chooseModel`
+  + `computeCostMicroUsd` all on disk. Added explicit `maxRetries`
+  (default 3) for transient 429/5xx hardening. Linear issue Done.
+- **M2.2** — marketing copy already on Tibbly; all `osrs-llm-helper`
+  matches are workspace package imports, the GitHub repo URL, or the
+  deliberate "Tibbly · the OSRS LLM Helper" tagline.
+
+Shipped this loop:
+
+- **Marketing og:image** — `apps/marketing/public/og-card.svg`
+  (1200x630 OSRS chat-window theme) + `scripts/build-og.mjs` PNG
+  renderer via `@resvg/resvg-js` (with `sharp` fallback). 138 KB PNG
+  emitted at build time. `index.html` now declares full og/twitter
+  metadata (type/width/height/alt).
+- **`openrouter.ts` maxRetries** (3 by default) closes RAI-16's
+  retry-acceptance criterion.
+
+In flight:
+
+- **RAI-5 catalog agent** running in worktree
+  `agent/rai-5/runelite-api-catalog`. Will land
   `docs/research/runelite-api/catalog.md` (60+ tools) + `_SUMMARY.md`,
-  open a PR closing RAI-5, and add Linear completion notes.
+  open a PR closing RAI-5, post Linear completion notes.
+
+Still open from GAPS.md (next loops):
+
+- **A5 / STATUS.md** is from Loop 0 — needs a rebuild from
+  `gh pr list --state merged` + Linear Done list.
+- **M3.5** — `apps/backend/src/api/me.ts` has 8 pre-existing TS
+  errors and references non-existent modules. The GDPR Art. 17
+  right-to-erasure flow is a stub. Needs real deletion.
+- **M2.3 / M2.4** — Lighthouse perf/a11y/SEO targets unverified.
+- **M1.6** — RuneLite Plugin Hub submission PR not yet opened.
 
 ## TL;DR (one paragraph)
 

@@ -123,15 +123,12 @@ source-of-truth and would have been pointed at dead links.
   the Linear Done list. We're partially fixing this in RAI-32 (this PR)
   by appending the final-state section.
 
-### A6 — `LOOP_LOG.md` missing
+### A6 — `LOOP_LOG.md` — **RESOLVED 2026-06-21 (loop M+1)**
 
-- **Spec:** `docs/agents/MEMORY_ARCHITECTURE.md` says "Append-only timeline.
-  Each loop adds: Read / Worked on / Spawned / Deferred / Next loop
-  should." `INDEX.md` line 13 links it.
-- **Actual:** file is missing from `docs/agents/`.
-- **Severity:** medium — we lost the per-loop episodic log this run. The
-  Linear timeline backfills it, but it's a gap in the documented memory
-  contract.
+- **Resolution:** the file exists at `docs/agents/LOOP_LOG.md` (the gap
+  report missed it). Backfilled the Loop M+1 entry per the
+  `docs/agents/MEMORY_ARCHITECTURE.md` contract (Read / Worked on /
+  Spawned / Merged / Deferred / Next loop should).
 
 ### A7 — RuneLite-API research folder empty (RAI-5 not started)
 
@@ -154,7 +151,7 @@ source-of-truth and would have been pointed at dead links.
 | **M1.1 — Legacy localhost MCP listener still starts** (A1 above). RuneLite Plugin Hub blocker. | `apps/plugin/.../plugin/OsrsLlmHelperPlugin.kt:197,363` | PR-blocker |
 | **M1.2 — `RAI-23` plugin pairing UI still in review** (PR #22). No green path from "plugin installed" to "paired" without merging this. | `apps/plugin/.../auth/DeviceKey.kt` (per RAI-23 spec) | High |
 | **M1.3 — Token-budget HUD in chat sidebar (RAI-24) not started** — backlog. Means the chat panel doesn't surface remaining quota. | `apps/plugin/.../chat/ChatPanel.kt` | Medium |
-| **M1.4 — `RAI-16` OpenRouter proxy still in backlog.** Backend can't actually call OpenRouter end-to-end. The schema, the routing strategy, the meter, and the WS protocol all exist; the *actual outbound LLM call* hasn't shipped. | `apps/backend/src/llm/openrouter.ts` exists as a stub (per RAI-14) | **High** — without this, no chat actually runs |
+| **M1.4 — `RAI-16` OpenRouter proxy** ✅ resolved loop M+1. Re-inspection showed `apps/backend/src/llm/openrouter.ts` is fully shipped (not a stub): `runStream`, `buildRemoteTools`, tool-dispatcher pattern. `router.ts` has tier-aware `chooseModel`. `cost.ts` has `computeCostMicroUsd`. WS handler at `ws/plugin.ts:40-48` wires it up. Explicit `maxRetries` (default 3) added loop M+1 to close the last acceptance gap. RAI-16 marked Done in Linear. | `apps/backend/src/llm/{openrouter,router,cost}.ts` | ~~High~~ resolved |
 | **M1.5 — Family-tag refinement requires RAI-5** (the RuneLite API depth scan). Without it, tool-gating families are guesses. Hard to validate the ≤1.5K cap on real workloads. | `apps/plugin/.../cloud/ToolFamily.kt` | Medium |
 | **M1.6 — Plugin hub submission package isn't actually submitted.** The compliance docs exist; the PR to `runelite/plugin-hub` does not. | none — needs new PR upstream | High (gating launch) |
 
@@ -163,7 +160,7 @@ source-of-truth and would have been pointed at dead links.
 | Gap | Where | Severity |
 |---|---|---|
 | **M2.1 — `LiveCounter` polls `GET /v1/presence` but `RAI-21` (presence endpoint) is still in review** (PR #24). | `apps/marketing/src/sections/LiveCounter.tsx` (probably) + `apps/backend/src/ws/presence.ts` (probably) | High |
-| **M2.2 — Marketing copy still says "osrs-llm-helper" in some places** — `CLAUDE.md` says placeholder name lives in code; rename to Tibbly happens in marketing copy first. Search for "osrs-llm-helper" in `apps/marketing/src/` before launch. | `apps/marketing/src/**` | Low |
+| **M2.2 — Marketing copy already on Tibbly** ✅ resolved loop M+1. All `osrs-llm-helper` matches in `apps/marketing/src/sections/*.tsx` are either workspace package imports (`@osrs-llm-helper/osrs-assets`), the GitHub repo URL (`RainnWorks/osrs-llm-helper`), or the deliberate "Tibbly · the OSRS LLM Helper" tagline. No stray placeholder user-facing copy. | `apps/marketing/src/**` | ~~Low~~ resolved |
 | **M2.3 — Lighthouse target (≥85 Perf / ≥95 A11y / ≥95 SEO) unverified.** RAI-28 + RAI-29 + RAI-30 all merged but no Lighthouse run reported in any PR description. | n/a — needs Claude-in-Chrome QA pass | Medium |
 | **M2.4 — Hero hits a ≤1s local-load target unverified** — same as M2.3. | n/a | Medium |
 | **M2.5 — SEO basics (meta, sitemap, opengraph) not confirmed in PR descriptions.** | `apps/marketing/index.html` + `apps/marketing/public/` | Medium |
@@ -173,7 +170,7 @@ source-of-truth and would have been pointed at dead links.
 
 | Gap | Where | Severity |
 |---|---|---|
-| **M3.1 — `RAI-16` OpenRouter proxy not implemented** (same as M1.4). No actual LLM calls happen. | `apps/backend/src/llm/openrouter.ts` | **Highest** — gates the actual product |
+| **M3.1 — `RAI-16` OpenRouter proxy** ✅ resolved loop M+1 (same as M1.4 above). | `apps/backend/src/llm/openrouter.ts` | ~~Highest~~ resolved |
 | **M3.2 — Stripe webhook handler idempotency leak under handler failure** (A3 above). | `apps/backend/src/api/webhooks/stripe.ts` | Medium |
 | **M3.3 — Admin endpoints auth-guard unverified** (A4 above). | `apps/backend/src/api/admin/usage.ts` + `apps/backend/src/api/_auth.ts` | High (security) |
 | **M3.4 — Dashboard `/billing` route assumes Stripe portal URL is provided by backend; portal-link generation lives in `billing-portal.ts` but there's no spec doc for the redirect-back URL.** | `apps/backend/src/api/billing-portal.ts` | Low |
