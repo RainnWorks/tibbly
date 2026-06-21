@@ -85,6 +85,24 @@ class ContextRouter @Inject constructor() {
             "kill", "kills", "killing", "boss", "bosses", "fight", "fighting",
             "monster", "monsters", "dps", "pvm", "pvp"),
 
+        // prayer flick / protect / piety / rigour / augury / projectile / tick → combat
+        // (RAI-5 catalog §3 — supports get_active_prayers + get_target_projectiles.)
+        rule(setOf(ToolFamily.COMBAT),
+            "prayer", "prayers", "flick", "flicking", "protect", "piety", "rigour", "rigor",
+            "augury", "chivalry", "projectile", "projectiles", "tick", "ticks", "nuke"),
+
+        // raid / cox / tob / toa / boss-name shortcuts → raids + combat
+        // (RAI-5 catalog §3 — supports get_raid_layout. Verzik / Olm / etc.
+        // already pull COMBAT via the kill/boss rule; we add RAIDS here.)
+        rule(setOf(ToolFamily.RAIDS, ToolFamily.COMBAT),
+            "raid", "raids", "raiding",
+            "cox", "chambers",
+            "tob", "theatre", "theater",
+            "toa", "tombs", "invocation", "invocations",
+            "verzik", "sotetseg", "xarpus", "nylocas", "maiden",
+            "olm", "vasa", "vespula", "vanguards", "tekton", "muttadiles",
+            "akkha", "baba", "kephri", "zebak", "wardens", "warden"),
+
         // ge / grand exchange / buy / sell / price → ge
         rule(setOf(ToolFamily.GE),
             "ge", "grand", "exchange", "buy", "buying", "sell", "selling", "price", "prices", "flip"),
