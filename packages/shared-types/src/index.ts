@@ -13,4 +13,11 @@ export const SHARED_TYPES_PACKAGE_NAME = "@osrs-llm-helper/shared-types" as cons
 export type DeviceKeyId = string & { readonly __brand: "DeviceKeyId" };
 
 /** Placeholder identifier for an OSRS player name. */
-export type PlayerName = string & { readonly __brand: "PlayerName" };
+export type PlayerNameBrand = string & { readonly __brand: "PlayerName" };
+
+/**
+ * RAI-17 — plugin ↔ backend chat WebSocket protocol.
+ * Re-exported here so consumers can `import { ClientToServer } from
+ * "@osrs-llm-helper/shared-types"`.
+ */
+export * from "./protocol";
