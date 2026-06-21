@@ -98,21 +98,21 @@ export function Demo() {
                 <span className="demo-cursor ml-1" aria-hidden="true" />
               </p>
               <p className="mt-3 font-mono text-[10px] uppercase tracking-widest text-osrs-muted">
-                Sonnet 4.6 · 1,420 input · 312 output · $0.0067
+                Sonnet 4.6 · routed for this question
               </p>
             </div>
           </div>
 
-          {/* Stat panel — live cost / token meter */}
+          {/* Live activity panel — player-friendly proxy, no token math. */}
           <aside
             className="border border-osrs-border bg-osrs-bg p-6"
-            aria-label="Token + cost meter"
+            aria-label="Live activity"
           >
             <p className="mb-1 font-mono text-xs uppercase tracking-widest text-osrs-gold-dim">
               This turn
             </p>
             <p className="mb-5 font-heading text-4xl text-osrs-gold live-glow">
-              $0.0067
+              Routed to Sonnet
             </p>
 
             <dl className="space-y-3 text-sm">
@@ -121,25 +121,21 @@ export function Demo() {
                 <dd className="font-mono text-osrs-text">Sonnet 4.6</dd>
               </div>
               <div className="flex justify-between border-b border-osrs-border pb-2">
-                <dt className="text-osrs-muted">Input tokens</dt>
-                <dd className="font-mono text-osrs-text">1,420</dd>
-              </div>
-              <div className="flex justify-between border-b border-osrs-border pb-2">
-                <dt className="text-osrs-muted">Output tokens</dt>
-                <dd className="font-mono text-osrs-text">312</dd>
+                <dt className="text-osrs-muted">Tier</dt>
+                <dd className="font-mono text-osrs-text">Pro</dd>
               </div>
               <div className="flex justify-between border-b border-osrs-border pb-2">
                 <dt className="text-osrs-muted">Tools called</dt>
                 <dd className="font-mono text-osrs-text">3</dd>
               </div>
               <div className="flex justify-between">
-                <dt className="text-osrs-muted">Tool surface</dt>
-                <dd className="font-mono text-osrs-success">1.5K · gated</dd>
+                <dt className="text-osrs-muted">Today</dt>
+                <dd className="font-mono text-osrs-success">Plenty left</dd>
               </div>
             </dl>
 
             <p className="mt-6 font-mono text-[10px] uppercase tracking-widest text-osrs-muted">
-              Every turn is metered. No surprise bills.
+              Capped per tier. No surprise bills.
             </p>
           </aside>
         </div>
