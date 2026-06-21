@@ -1,5 +1,4 @@
 import { useQuery } from "@tanstack/react-query";
-import overallIcon from "@osrs-llm-helper/osrs-assets/skill_icons/overall.png";
 
 /**
  * Presence payload shared with the backend (RAI-21).
@@ -54,8 +53,19 @@ export async function fetchPresence(
   };
 }
 
+/*
+ * Thin top status-bar strip per canonical IA §2 ("the standalone LiveCounter
+ * section becomes a thin nav-adjacent indicator instead").
+ *
+ * Renders a single mono line above the page: green dot when the backend
+ * answers, dim dot when it does not. Never the hero-sized count: a small
+ * count in a hero-sized slot actively hurts at launch (IA §5 verdict #10).
+ *
+ * The detailed region breakdown stays available for the dashboard, served
+ * via the same fetchPresence helper which is exported above.
+ */
 export function LiveCounter() {
-  const { data, isLoading, isError } = useQuery({
+  const { data, isError, isLoading } = useQuery({
     queryKey: ["presence"],
     queryFn: ({ signal }) => fetchPresence(signal),
     refetchInterval: 5000,
@@ -63,66 +73,49 @@ export function LiveCounter() {
     staleTime: 4000,
   });
 
+  const isOnline = data !== undefined && !isError;
+
   return (
-    <section
+    <aside
       data-testid="live-counter"
       id="live"
-      className="border-b border-osrs-border bg-osrs-surface/60 px-6 py-20 text-center"
+      aria-label="Live network status"
+      className="border-b border-osrs-border bg-osrs-bg px-6 py-2"
     >
-      <div className="mx-auto max-w-3xl">
-        <div className="mb-5 flex items-center justify-center gap-3">
-          <img
-            src={overallIcon}
-            alt=""
+      <div className="mx-auto flex max-w-6xl items-center justify-between gap-3">
+        <p className="flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.32em] text-osrs-muted">
+          <span
             aria-hidden="true"
-            className="h-7 w-7"
+            className={`inline-block h-2 w-2 rounded-full ${
+              isOnline
+                ? "bg-osrs-success shadow-[0_0_8px_rgba(90,138,58,0.65)]"
+                : "bg-osrs-muted/40"
+            }`}
           />
-          <p className="font-mono text-xs uppercase tracking-[0.4em] text-osrs-gold-dim">
-            Live network
-          </p>
-        </div>
-        <h2 className="mb-4 text-3xl md:text-4xl">
-          Players online with Tibbly, right now.
-        </h2>
-        <div
-          data-testid="live-counter-value"
-          className="mb-2 font-heading text-6xl text-osrs-gold live-glow md:text-8xl"
-          aria-live="polite"
-        >
-          {isLoading || data === undefined ? (
-            <span data-testid="live-counter-loading" className="text-osrs-gold-dim">
-              Connecting…
-            </span>
-          ) : isError ? (
-            <span data-testid="live-counter-error" className="text-osrs-danger">
-              Offline
-            </span>
-          ) : (
-            <span data-testid="live-counter-count">
-              {data.count.toLocaleString()}
-            </span>
-          )}
-        </div>
-        <p className="mb-8 font-mono text-xs uppercase tracking-widest text-osrs-muted">
-          Updated every 5 seconds · presence is opt-in
+          <span aria-live="polite">
+            {data === undefined && isLoading ? (
+              <span data-testid="live-counter-loading">connecting</span>
+            ) : isError || data === undefined ? (
+              <span data-testid="live-counter-error">offline</span>
+            ) : (
+              <>
+                <span data-testid="live-counter-count">
+                  {data.count.toLocaleString()}
+                </span>{" "}
+                players online
+              </>
+            )}
+          </span>
         </p>
         {data && data.regions.length > 0 && (
           <ul
             data-testid="live-counter-regions"
-            className="flex flex-wrap justify-center gap-3"
+            className="hidden items-center gap-3 font-mono text-[11px] uppercase tracking-widest text-osrs-muted md:flex"
           >
-            {data.regions.map((region) => (
-              <li
-                key={region.name}
-                className="flex items-center gap-2 border border-osrs-border bg-osrs-bg px-3 py-1 text-sm text-osrs-text/90"
-              >
-                <span className="font-mono text-osrs-gold-dim">
-                  {region.name}
-                </span>
-                <span aria-hidden="true" className="text-osrs-muted">
-                  ·
-                </span>
-                <span className="font-mono text-osrs-gold">
+            {data.regions.slice(0, 3).map((region) => (
+              <li key={region.name} className="flex items-center gap-1">
+                <span className="text-osrs-gold-dim">{region.name}</span>
+                <span className="text-osrs-text/80">
                   {region.count.toLocaleString()}
                 </span>
               </li>
@@ -130,6 +123,6 @@ export function LiveCounter() {
           </ul>
         )}
       </div>
-    </section>
+    </aside>
   );
 }

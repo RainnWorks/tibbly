@@ -1,4 +1,4 @@
-import { SKILL_ICONS, type SkillIconKey } from "@osrs-llm-helper/osrs-assets";
+import { type SkillIconKey } from "@osrs-llm-helper/osrs-assets";
 import attackIcon from "@osrs-llm-helper/osrs-assets/skill_icons/attack.png";
 import strengthIcon from "@osrs-llm-helper/osrs-assets/skill_icons/strength.png";
 import defenceIcon from "@osrs-llm-helper/osrs-assets/skill_icons/defence.png";
@@ -61,36 +61,35 @@ const BACKGROUND_SKILLS: ReadonlyArray<{
   readonly scale: number;
   readonly opacity: number;
 }> = [
-  { key: "attack", left: "5%", delaySec: 0, durationSec: 18, scale: 0.6, opacity: 0.18 },
-  { key: "slayer", left: "12%", delaySec: 4, durationSec: 22, scale: 0.9, opacity: 0.22 },
-  { key: "prayer", left: "20%", delaySec: 8, durationSec: 20, scale: 0.7, opacity: 0.16 },
-  { key: "magic", left: "28%", delaySec: 2, durationSec: 24, scale: 1.0, opacity: 0.24 },
-  { key: "ranged", left: "36%", delaySec: 11, durationSec: 19, scale: 0.6, opacity: 0.15 },
-  { key: "hitpoints", left: "44%", delaySec: 5, durationSec: 21, scale: 0.8, opacity: 0.2 },
-  { key: "agility", left: "52%", delaySec: 14, durationSec: 23, scale: 0.7, opacity: 0.17 },
-  { key: "herblore", left: "60%", delaySec: 1, durationSec: 26, scale: 0.9, opacity: 0.2 },
-  { key: "smithing", left: "68%", delaySec: 9, durationSec: 20, scale: 0.6, opacity: 0.16 },
-  { key: "mining", left: "76%", delaySec: 3, durationSec: 25, scale: 0.8, opacity: 0.22 },
-  { key: "fishing", left: "84%", delaySec: 12, durationSec: 22, scale: 0.7, opacity: 0.18 },
-  { key: "farming", left: "92%", delaySec: 6, durationSec: 24, scale: 0.9, opacity: 0.2 },
+  { key: "attack", left: "5%", delaySec: 0, durationSec: 18, scale: 0.6, opacity: 0.14 },
+  { key: "slayer", left: "12%", delaySec: 4, durationSec: 22, scale: 0.9, opacity: 0.16 },
+  { key: "prayer", left: "20%", delaySec: 8, durationSec: 20, scale: 0.7, opacity: 0.12 },
+  { key: "magic", left: "28%", delaySec: 2, durationSec: 24, scale: 1.0, opacity: 0.18 },
+  { key: "ranged", left: "36%", delaySec: 11, durationSec: 19, scale: 0.6, opacity: 0.12 },
+  { key: "hitpoints", left: "44%", delaySec: 5, durationSec: 21, scale: 0.8, opacity: 0.15 },
+  { key: "agility", left: "52%", delaySec: 14, durationSec: 23, scale: 0.7, opacity: 0.13 },
+  { key: "herblore", left: "60%", delaySec: 1, durationSec: 26, scale: 0.9, opacity: 0.15 },
+  { key: "smithing", left: "68%", delaySec: 9, durationSec: 20, scale: 0.6, opacity: 0.12 },
+  { key: "mining", left: "76%", delaySec: 3, durationSec: 25, scale: 0.8, opacity: 0.16 },
+  { key: "fishing", left: "84%", delaySec: 12, durationSec: 22, scale: 0.7, opacity: 0.13 },
+  { key: "farming", left: "92%", delaySec: 6, durationSec: 24, scale: 0.9, opacity: 0.15 },
 ];
 
-const FEATURED_KEYS: ReadonlyArray<SkillIconKey> = [
-  "attack",
-  "magic",
-  "slayer",
-  "prayer",
-  "agility",
-  "herblore",
+// Tool-call chips shown in the placeholder hero-right illustration slot.
+// This is the worn-parchment chatbox snippet called out in IA Phase 4 as a
+// fall-back until the commissioned hero art lands.
+const HERO_SAMPLE_TOOLS: ReadonlyArray<{ name: string; icon: string }> = [
+  { name: "get_quest_state", icon: prayerIcon },
+  { name: "get_inventory", icon: hitpointsIcon },
 ];
 
 export function Hero() {
   return (
     <section
       data-testid="hero"
-      className="relative overflow-hidden border-b border-osrs-border px-6 py-28 text-center"
+      className="relative overflow-hidden border-b border-osrs-border px-6 pt-20 pb-24"
     >
-      {/* Animated background — falling skill icons. CSS keyframes defined in styles.css. */}
+      {/* Animated background: falling skill icons. CSS keyframes defined in styles.css. */}
       <div
         aria-hidden="true"
         className="pointer-events-none absolute inset-0 select-none"
@@ -115,60 +114,92 @@ export function Hero() {
         <div className="absolute inset-0 bg-gradient-to-b from-osrs-bg/60 via-osrs-bg/30 to-osrs-bg/95" />
       </div>
 
-      <div className="relative mx-auto max-w-4xl">
-        <p className="mb-4 font-mono text-xs uppercase tracking-[0.4em] text-osrs-gold-dim">
-          Tibbly · the OSRS co-pilot
-        </p>
-        <h1 className="mb-6 text-5xl font-bold text-osrs-gold drop-shadow-[0_2px_0_rgba(0,0,0,0.6)] md:text-7xl">
-          Stop alt-tabbing. Start playing.
-        </h1>
-        <p className="mx-auto mb-4 max-w-3xl text-lg text-osrs-text/90 md:text-xl">
-          The only OSRS co-pilot that sees your game live, billed monthly with
-          a hard cap. No API keys, no copy-paste, no botting.
-        </p>
-        <p className="mx-auto mb-10 max-w-2xl text-base text-osrs-muted md:text-lg">
-          You don't have to describe your inventory. Tibbly already sees it.
-        </p>
-        <div className="flex flex-col items-center justify-center gap-4 sm:flex-row">
-          <a
-            href="#pricing"
-            className="inline-flex items-center gap-2 border-2 border-osrs-gold bg-osrs-gold/10 px-8 py-3 font-heading text-lg text-osrs-gold transition hover:bg-osrs-gold/25 hover:shadow-[0_0_24px_rgba(255,204,0,0.35)]"
-            aria-label="Get started — install the RuneLite plugin"
-          >
-            <span aria-hidden="true">⚔</span> Get started · install plugin
-          </a>
-          <a
-            href="#demo"
-            className="inline-flex items-center gap-2 border border-osrs-border bg-osrs-surface/60 px-8 py-3 font-heading text-lg text-osrs-text transition hover:border-osrs-gold-dim hover:text-osrs-gold"
-            aria-label="See demo — see it in action"
-          >
-            <span aria-hidden="true">▶</span> See demo · see it in action
-          </a>
+      {/* Asymmetric chatbox-frame left at ~60% / illustration slot right at ~40%. */}
+      <div className="relative mx-auto grid max-w-6xl gap-10 lg:grid-cols-[3fr_2fr] lg:items-center">
+        <div>
+          <p className="mb-4 font-mono text-xs uppercase tracking-[0.4em] text-osrs-gold-dim">
+            tibbly · the OSRS co-pilot
+          </p>
+          <h1 className="mb-6 text-4xl text-osrs-gold drop-shadow-[0_2px_0_rgba(0,0,0,0.6)] sm:text-5xl md:text-6xl">
+            Stop alt-tabbing. Start playing.
+          </h1>
+          <p className="mb-10 max-w-2xl text-base text-osrs-text/90 md:text-lg">
+            Tibbly reads your bank, your quest log, and your inventory. It
+            never moves your character, never clicks a tile, never types in
+            chat. The same plugin shape as Quest Helper, with a wiki-fluent
+            helper sitting next to you.
+          </p>
+          <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-center">
+            <a
+              href="#pricing"
+              className="inline-flex items-center gap-2 border-2 border-osrs-gold bg-osrs-gold/15 px-7 py-3 text-base font-bold text-osrs-gold transition hover:bg-osrs-gold/30 hover:shadow-[0_0_24px_rgba(243,199,90,0.35)]"
+              aria-label="Install the RuneLite plugin"
+              data-cta="install-plugin"
+              data-section="hero"
+            >
+              <span aria-hidden="true">⚔</span> install plugin
+            </a>
+            <a
+              href="#demo"
+              className="inline-flex items-center gap-2 border border-osrs-border bg-osrs-surface/60 px-7 py-3 text-base font-bold text-osrs-text transition hover:border-osrs-gold-dim hover:text-osrs-gold"
+              aria-label="See the demo"
+              data-cta="see-the-demo"
+              data-section="hero"
+            >
+              <span aria-hidden="true">▶</span> see the demo
+            </a>
+          </div>
         </div>
-        <ul
-          aria-label="Featured skills"
-          className="mt-14 flex flex-wrap justify-center gap-3"
+
+        {/*
+         * Hero-right placeholder per IA Phase 4: worn-parchment chatbox snippet
+         * with a real exchange in the brand voice. One-file swap when the
+         * commissioned 1600x1200 WebP arrives.
+         */}
+        <aside
+          aria-label="Sample chat with Tibbly"
+          className="relative hidden border border-osrs-border bg-osrs-parchment/30 p-6 shadow-[inset_0_0_28px_rgba(0,0,0,0.45)] lg:block"
         >
-          {FEATURED_KEYS.map((key) => {
-            const asset = SKILL_ICONS[key];
-            return (
-              <li
-                key={asset.id}
-                className="flex h-14 w-14 items-center justify-center border border-osrs-border bg-osrs-surface/80 shadow-[inset_0_0_12px_rgba(255,204,0,0.06)] transition hover:border-osrs-gold-dim"
-                title={key}
+          <p className="mb-4 font-mono text-[10px] uppercase tracking-[0.32em] text-osrs-gold-dim">
+            sample · brand voice
+          </p>
+          <div className="mb-4">
+            <p className="mb-1 font-mono text-[11px] uppercase tracking-widest text-osrs-muted">
+              You
+            </p>
+            <p className="text-sm text-osrs-text/95">
+              stuck on dragon slayer 2 after the vorkath cutscene, where do
+              i go
+            </p>
+          </div>
+          <div className="mb-4 flex flex-wrap gap-2">
+            {HERO_SAMPLE_TOOLS.map((tool) => (
+              <span
+                key={tool.name}
+                className="inline-flex items-center gap-2 border border-osrs-border bg-osrs-surface px-2 py-1 text-[11px]"
               >
                 <img
-                  src={SKILL_PNGS[key]}
-                  alt={`${key} skill icon`}
-                  className="h-8 w-8"
+                  src={tool.icon}
+                  alt=""
+                  className="h-3.5 w-3.5"
+                  aria-hidden="true"
                 />
-              </li>
-            );
-          })}
-        </ul>
-        <p className="mt-6 font-mono text-xs uppercase tracking-widest text-osrs-muted">
-          Helps you play. Never plays for you.
-        </p>
+                <span className="font-mono text-osrs-gold-dim">
+                  {tool.name}
+                </span>
+              </span>
+            ))}
+          </div>
+          <div>
+            <p className="mb-1 font-mono text-[11px] uppercase tracking-widest text-osrs-gold-dim">
+              Tibbly
+            </p>
+            <p className="text-sm text-osrs-text/95">
+              Back to Ava in Draynor Manor. She has the next step. Anti-dragon
+              shield is in your bank tab 7, I tagged it.
+            </p>
+          </div>
+        </aside>
       </div>
     </section>
   );

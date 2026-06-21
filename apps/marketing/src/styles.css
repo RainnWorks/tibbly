@@ -1,23 +1,63 @@
 @import "tailwindcss";
 
+/*
+ * Marketing palette (IA Phase 2). Evolved from the previous warm-gold-on-near-black
+ * tokens. Documented purpose per colour per the canonical IA in docs/marketing/IA.md.
+ *
+ *   --osrs-bg          page background, warm-tinted near-black
+ *   --osrs-surface     cards, nav strip, footer
+ *   --osrs-parchment   chatbox interior, trust-strip, free-tier strip
+ *   --osrs-border      hairlines, chatbox stroke
+ *   --osrs-gold        H1, primary CTA fill, focus ring, accents (desaturated
+ *                      from #ffcc00 to #f3c75a so WCAG AA holds at smaller sizes)
+ *   --osrs-gold-ink    text on filled gold CTAs (warm near-black)
+ *   --osrs-gold-dim    helper micro-copy that wants to feel gold-adjacent
+ *   --osrs-text        body copy on --osrs-bg
+ *   --osrs-muted       helper copy, tag labels
+ *   --osrs-success     online dot, plugin-connected pill (reserved)
+ *   --osrs-danger      hard-cap callout, error states (reserved)
+ *
+ * Type:
+ *   --font-display     pixel RuneScape display, RuneStar CC0 (H1 only)
+ *   --font-body        Inter Tight variable, body + UI
+ *   --font-mono        JetBrains Mono variable, tool chips + monosignals
+ */
+
+/* Variable webfonts (body + mono). Self-hosted via @fontsource. */
+@import "@fontsource-variable/inter-tight/index.css";
+@import "@fontsource-variable/jetbrains-mono/index.css";
+
+/* Pixel display face for the H1 only. RuneStar CC0, vendored as WOFF2. */
+@font-face {
+  font-family: "RuneScape Pixel";
+  src: url("/fonts/runescape_bold.woff2") format("woff2");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
 @theme {
-  --color-osrs-bg: #0f0a06;
-  --color-osrs-surface: #1a1410;
-  --color-osrs-border: #3a2f1f;
-  --color-osrs-gold: #ffcc00;
-  --color-osrs-gold-dim: #c8b675;
+  --color-osrs-bg: #0b0703;
+  --color-osrs-surface: #1a1006;
+  --color-osrs-parchment: #3a2a16;
+  --color-osrs-border: #5a3e1a;
+  --color-osrs-gold: #f3c75a;
+  --color-osrs-gold-ink: #0b0703;
+  --color-osrs-gold-dim: #c8a04f;
   --color-osrs-text: #f4e9c1;
   --color-osrs-muted: #a08a5a;
   --color-osrs-danger: #b22222;
   --color-osrs-success: #5a8a3a;
 
-  --font-heading:
-    "IM Fell English SC", "Trajan Pro", "Cinzel", Georgia, "Times New Roman",
-    serif;
+  --font-display:
+    "RuneScape Pixel", "Press Start 2P", "Courier New", monospace;
   --font-body:
-    "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
+    "Inter Tight Variable", "Inter Tight", system-ui, -apple-system,
+    "Segoe UI", sans-serif;
   --font-mono:
-    "JetBrains Mono", "Fira Code", ui-monospace, SFMono-Regular, Menlo, monospace;
+    "JetBrains Mono Variable", "JetBrains Mono", ui-monospace,
+    SFMono-Regular, Menlo, monospace;
+  --font-heading: var(--font-body);
 }
 
 :root {
@@ -32,14 +72,33 @@ body {
   margin: 0;
   padding: 0;
   -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
-h1,
+/*
+ * H1 uses the pixel display face. Pixel-perfect rendering keeps the
+ * RuneScape cue without smoothing it into mush.
+ *
+ * H2 and below use Inter Tight heavy via the heading variable, per IA
+ * section 3 ("constrain pixel display to the H1 and nothing else").
+ */
+h1 {
+  font-family: var(--font-display);
+  color: var(--color-osrs-gold);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  image-rendering: pixelated;
+  -webkit-font-smoothing: none;
+  -moz-osx-font-smoothing: grayscale;
+}
+
 h2,
 h3,
 h4 {
-  font-family: var(--font-heading);
+  font-family: var(--font-body);
+  font-weight: 700;
   color: var(--color-osrs-gold);
+  letter-spacing: -0.01em;
 }
 
 /* Hero — falling skill icons rain. */
@@ -80,10 +139,10 @@ h4 {
 @keyframes gold-pulse {
   0%,
   100% {
-    box-shadow: 0 0 0 rgba(255, 204, 0, 0);
+    box-shadow: 0 0 0 rgba(243, 199, 90, 0);
   }
   50% {
-    box-shadow: 0 0 18px rgba(255, 204, 0, 0.3);
+    box-shadow: 0 0 18px rgba(243, 199, 90, 0.3);
   }
 }
 
@@ -131,8 +190,8 @@ h4 {
 /* LiveCounter — golden glow. */
 .live-glow {
   text-shadow:
-    0 0 10px rgba(255, 204, 0, 0.5),
-    0 0 24px rgba(255, 204, 0, 0.25);
+    0 0 10px rgba(243, 199, 90, 0.5),
+    0 0 24px rgba(243, 199, 90, 0.25);
 }
 
 /* Image rendering for every imported pixel icon. */

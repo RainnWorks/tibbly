@@ -23,7 +23,7 @@ describe("<LiveCounter />", () => {
     vi.restoreAllMocks();
   });
 
-  it('shows "Connecting…" on first paint before the request resolves', () => {
+  it("shows the connecting state on first paint before the request resolves", () => {
     (globalThis.fetch as unknown as ReturnType<typeof vi.fn>).mockImplementation(
       () => new Promise(() => {}),
     );

@@ -40,7 +40,7 @@ export function Demo() {
           </p>
           <h2 className="text-3xl md:text-4xl">See it in action.</h2>
           <p className="mx-auto mt-3 max-w-2xl text-osrs-text/80">
-            A real Dragon Slayer II turn, with real tool calls. Pure CSS — no
+            A real Dragon Slayer II turn, with real tool calls. Pure CSS. No
             video, no copy-paste.
           </p>
         </div>
@@ -91,19 +91,19 @@ export function Demo() {
                 Tibbly
               </p>
               <p className="text-osrs-text/95">
-                Back to Ava in Draynor Manor — she's got the next step. You'll
+                Back to Ava in Draynor Manor. She has the next step. You will
                 want an anti-dragon shield and an antifire in your inventory;
-                the next leg has a couple of nasty hits. Your shield's already
-                in bank tab 7, I've tagged it. Walk over.
+                the next leg has a couple of nasty hits. Your shield is
+                already in bank tab 7, I have tagged it. Walk over.
                 <span className="demo-cursor ml-1" aria-hidden="true" />
               </p>
               <p className="mt-3 font-mono text-[10px] uppercase tracking-widest text-osrs-muted">
-                Sonnet 4.6 · routed for this question
+                Routed to deep mode for this question.
               </p>
             </div>
           </div>
 
-          {/* Live activity panel — player-friendly proxy, no token math. */}
+          {/* Live activity panel: player-friendly proxy, no model name, no token math. */}
           <aside
             className="border border-osrs-border bg-osrs-bg p-6"
             aria-label="Live activity"
@@ -111,22 +111,18 @@ export function Demo() {
             <p className="mb-1 font-mono text-xs uppercase tracking-widest text-osrs-gold-dim">
               This turn
             </p>
-            <p className="mb-5 font-heading text-4xl text-osrs-gold live-glow">
-              Routed to Sonnet
+            <p className="mb-5 text-3xl text-osrs-gold live-glow">
+              Deep mode.
             </p>
 
             <dl className="space-y-3 text-sm">
               <div className="flex justify-between border-b border-osrs-border pb-2">
-                <dt className="text-osrs-muted">Model</dt>
-                <dd className="font-mono text-osrs-text">Sonnet 4.6</dd>
+                <dt className="text-osrs-muted">Tools called</dt>
+                <dd className="font-mono text-osrs-text">3</dd>
               </div>
               <div className="flex justify-between border-b border-osrs-border pb-2">
                 <dt className="text-osrs-muted">Tier</dt>
-                <dd className="font-mono text-osrs-text">Pro</dd>
-              </div>
-              <div className="flex justify-between border-b border-osrs-border pb-2">
-                <dt className="text-osrs-muted">Tools called</dt>
-                <dd className="font-mono text-osrs-text">3</dd>
+                <dd className="font-mono text-osrs-text">Hobbyist</dd>
               </div>
               <div className="flex justify-between">
                 <dt className="text-osrs-muted">Today</dt>
