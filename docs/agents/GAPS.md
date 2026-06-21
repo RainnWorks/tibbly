@@ -112,16 +112,13 @@ source-of-truth and would have been pointed at dead links.
   any deployment must strip client-supplied `x-admin-email` at the edge.
   Document this in `docs/architecture/IDENTITY.md` when it's written.
 
-### A5 — `docs/agents/STATUS.md` is from Loop 0
+### A5 — `STATUS.md` rebuilt — **RESOLVED 2026-06-21 (loop M+2)**
 
-- **Actual:** `STATUS.md` headline says "Last updated: Loop 0 — initial
-  setup. Loop counter: 0." Every Stage 1/2/3 row shows "pending" except
-  A1 / R2 / R3 (and even those are inaccurate post-merges).
-- **Severity:** medium — STATUS.md is supposed to be the live board. It's
-  the *initial* board. Real state lives in Linear + HANDOFF.md.
-- **Fix path:** rebuild STATUS.md from `gh pr list --state merged` and
-  the Linear Done list. We're partially fixing this in RAI-32 (this PR)
-  by appending the final-state section.
+- **Resolution:** rewrote `docs/agents/STATUS.md` as a live milestone
+  board with M1/M2/M3 percentages, per-issue state, in-flight agent
+  view, and open-questions surface. Source of truth (Linear + merged
+  PR list) is referenced rather than copy-pasted, so the board doesn't
+  rot between rebuilds.
 
 ### A6 — `LOOP_LOG.md` — **RESOLVED 2026-06-21 (loop M+1)**
 
