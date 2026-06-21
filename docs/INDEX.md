@@ -40,6 +40,8 @@ then jump as needed.
 - [`architecture/MONOREPO.md`](architecture/MONOREPO.md) — layout, scripts, conventions
 - [`architecture/PROTOCOL.md`](architecture/PROTOCOL.md) — WS protocol plugin ↔ backend
 - [`architecture/DATA_FLOW.md`](architecture/DATA_FLOW.md) — Mermaid sequence diagrams of every wire crossing *(r10 / RAI-35)*
+- [`architecture/LICENSING.md`](architecture/LICENSING.md) — hybrid licensing: MIT plugin, proprietary backend *(loop M+9 / D-10)*
+- [`architecture/REPO_SPLIT.md`](architecture/REPO_SPLIT.md) — public/private repo migration plan *(loop M+9 / D-10)*
 
 ## RuneLite Plugin Hub compliance *(r10 / RAI-35)*
 
