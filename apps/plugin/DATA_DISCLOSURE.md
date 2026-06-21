@@ -61,6 +61,86 @@ Sent on a low-frequency timer while the socket is open. Carries no game
 data — only an uptime counter. Lets the backend drop abandoned sessions
 promptly so a paying customer isn't charged for sockets they aren't using.
 
+## §D-quater — Tier-2 BYO direct egress (Anthropic / OpenAI / OpenRouter)
+
+This section covers the §"Tier 2 — Free tier" path from
+`docs/architecture/HUB_RELEASE_STRATEGY.md`. When the player selects a
+BYO chat mode (`Direct: Anthropic`, `Direct: OpenAI`, `Direct: OpenRouter`)
+the plugin talks DIRECTLY to the chosen provider using the player's own
+API key. **No request ever touches the Tibbly backend in BYO mode.**
+
+The implementation lives in `cloud/DirectChatRunner.kt` and the provider
+abstraction in `cloud/byo/ByoProvider.kt`. Every direct HTTP call goes
+through `EgressGate.egressHttp(host, path, …)` which enforces an
+exact-match host allow-list:
+
+| Provider | Host | Path | Auth header |
+|---|---|---|---|
+| Anthropic | `api.anthropic.com` | `/v1/messages` | `x-api-key: <player key>` |
+| OpenAI | `api.openai.com` | `/v1/chat/completions` | `Authorization: Bearer <player key>` |
+| OpenRouter | `openrouter.ai` | `/api/v1/chat/completions` | `Authorization: Bearer <player key>` |
+
+Any other host is refused with `EgressBlockedException` before a socket
+opens.
+
+### §D-quater-1 — what each request body contains
+
+| Field | Source | Why |
+|---|---|---|
+| `model` | RuneLite config `byoModel` (or per-provider default) | Names the model the player wants billed against their key. |
+| `system` / `system` role message | locally-built `HarnessContext` preamble | Compact game-state preamble so the model can answer accurately. |
+| `messages[0].content` (user) | the literal chat input | The player's message. |
+| `max_tokens` | provider default (1024) | Caps the response size. |
+
+The exact wire shape is provider-specific:
+
+- **Anthropic** — top-level `system` field, single user message in `messages[]`,
+  `anthropic-version: 2023-06-01` header.
+- **OpenAI** — `messages[]` with system as the first entry, user as the second.
+- **OpenRouter** — OpenAI-compatible body. Plugin adds `HTTP-Referer:
+  https://tibbly.app` and `X-Title: Tibbly RuneLite plugin` so usage shows
+  up correctly on the player's OpenRouter dashboard. Neither header
+  carries player data.
+
+### §D-quater-2 — API key handling
+
+- The key lives in RuneLite config (`osrsllm.byoApiKey`, `secret = true`).
+- Read into a local val per `send()` call, attached to the right header,
+  then dropped. Never stored on the runner instance.
+- Never written to `AuditLog`. Audit rows record only
+  `Http:POST <host><path> size=<bytes>`.
+- Never echoed in chat replies, callbacks, exception messages, or
+  thrown stack traces. Any provider-side echo is redacted via
+  `DirectChatRunner.redactKey`.
+- The Gradle gate `:checkNoKeyLeak` fails the build on any literal that
+  looks like an API key or env-var-shaped key name in production
+  sources.
+
+### §D-quater-3 — what does NOT leave in BYO mode
+
+- The Tibbly backend never sees the request, the response, the key, or
+  the player's identity. We have no usage record of your BYO turns.
+- We do not send `deviceKey`, `playerName`, or any other Tibbly-account
+  field on the BYO path.
+- We do not forward tool call results from the BYO path through any
+  Tibbly host — the runner only talks to the provider.
+
+### §D-quater-4 — optional anonymous telemetry
+
+Off by default. When the player flips the
+`Share anonymous BYO usage telemetry` toggle on, the plugin emits a
+single fire-and-forget ping per turn containing ONLY:
+
+```
+{ provider: "anthropic" | "openai" | "openrouter",
+  ok: boolean,
+  latencyMs: number }
+```
+
+No message content. No API key. No model id. No game state. No player
+name or device key. The ping is dropped silently on failure so the
+chat reply is never delayed by it.
+
 ## What is NOT sent
 
 - Anything from the player's filesystem outside the plugin's RuneLite config
@@ -69,3 +149,5 @@ promptly so a paying customer isn't charged for sockets they aren't using.
 - Any RuneLite credentials, JWS tokens, or session cookies.
 - Anything from RuneLite plugins other than the explicit integrations the
   player has enabled (slayer, XP tracker, clue scroll, party).
+- In BYO mode: no traffic to Tibbly at all (except the opt-in anonymous
+  telemetry ping described above).

@@ -33,8 +33,9 @@ your chat messages go.
 
 When a BYO mode is selected the plugin **never** routes the request
 through Tibbly. We don't see your messages, your key, or your model
-choice. See `docs/runelite-hub/DATA_DISCLOSURE.md` §D-tris for the
-exact wire shape and the host allow-list.
+choice. See `DATA_DISCLOSURE.md` §D-quater for the exact wire shape and
+the host allow-list. The runner that implements this path is
+`apps/plugin/src/main/kotlin/co/rowm/osrsllm/cloud/DirectChatRunner.kt`.
 
 ### BYO API key
 
@@ -101,7 +102,7 @@ Hub-installed plugins should leave this off.
 | off | * | * | No network egress. Plugin is fully local. |
 | on | off | Cloud | Tibbly backend NOT connected (cloud chat still requires the legacy flag). |
 | on | on | Cloud | Tibbly backend connected; chat goes via the cloud runner. |
-| on | * | ByoAnthropic / ByoOpenAi / ByoOpenRouter | Tibbly backend NOT connected. Chat goes via DirectChatRunner (next PR). |
+| on | * | ByoAnthropic / ByoOpenAi / ByoOpenRouter | Tibbly backend NOT connected. Chat goes via `DirectChatRunner` straight to the provider's API. |
 | on | * | ToolsOnly | Chat panel disabled; tool overlays + panels still live. |
 
 If both `cloudChatEnabled = on` AND `chatMode != Cloud` (e.g.
