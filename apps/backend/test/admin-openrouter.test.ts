@@ -125,12 +125,8 @@ describe("GET /admin/openrouter/revenue", () => {
       adminOpenRouter: {
         db: handle.db,
         adminEmails: [ADMIN],
-<<<<<<< HEAD
         jwtSecret: OPS_SESSION_SECRET,
-        tierPriceUsdCents: { hobbyist: 700, pro: 1900, iron: 4900 },
-=======
         tierPricePence: { hobbyist: 700, pro: 1900, iron: 4900 },
->>>>>>> origin/main
       },
     });
     const cookie = await opsSessionCookieHeader(ADMIN);

@@ -18,7 +18,7 @@ import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 
 import { connectFakePlugin, makeDeviceKey } from "../harness/fake-plugin";
 import { bootOrchestrator, type OrchestratorContext } from "../orchestrator/boot";
-import { pairUser } from "../orchestrator/seed";
+import { assertHarnessHealthy, pairUser } from "../orchestrator/seed";
 
 let ctx: OrchestratorContext;
 
@@ -53,6 +53,7 @@ async function waitForCount(
 
 describe("05 presence counter", () => {
   it("starts at zero, increments when a plugin connects, and clears after grace", async () => {
+    await assertHarnessHealthy(ctx);
     expect(await presenceCount(ctx)).toBe(0);
 
     const deviceKey = makeDeviceKey();
@@ -68,6 +69,7 @@ describe("05 presence counter", () => {
   });
 
   it("counts two concurrent plugins as two and recovers cleanly", async () => {
+    await assertHarnessHealthy(ctx);
     const a = makeDeviceKey();
     const b = makeDeviceKey();
     await pairUser(ctx, { deviceKey: a });

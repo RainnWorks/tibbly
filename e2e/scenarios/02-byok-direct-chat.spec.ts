@@ -28,7 +28,7 @@ import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 
 import { connectFakePlugin, makeDeviceKey } from "../harness/fake-plugin";
 import { bootOrchestrator, type OrchestratorContext } from "../orchestrator/boot";
-import { getBalance, pairUser } from "../orchestrator/seed";
+import { assertHarnessHealthy, getBalance, pairUser } from "../orchestrator/seed";
 
 let ctx: OrchestratorContext;
 
@@ -41,6 +41,7 @@ afterEach(async () => {
 
 describe("02 byok direct chat", () => {
   it("when an OpenRouter key is present, drives a real chat turn (skipped otherwise)", async () => {
+    await assertHarnessHealthy(ctx);
     if (!ctx.env.OPENROUTER_API_KEY) {
       // Document the skip so the suite output is honest about what ran.
       // We still exercise a no-cost turn below so the BYOK code path has
@@ -54,6 +55,7 @@ describe("02 byok direct chat", () => {
   });
 
   it("simulates BYOK by setting next-turn usage to zero and asserts balance is unchanged", async () => {
+    await assertHarnessHealthy(ctx);
     const deviceKey = makeDeviceKey();
     const paired = await pairUser(ctx, { deviceKey, tier: "iron", creditTokens: 50_000 });
 

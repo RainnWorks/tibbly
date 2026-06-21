@@ -81,22 +81,28 @@ export function createStripeWebhookRouter(deps: StripeWebhookDeps): Hono {
     }
 
     try {
+      // The `event.type` discriminant narrows `event.data.object` to the
+      // exact `Stripe.X` subtype via the SDK's discriminated union, so we
+      // never need an `as Stripe.X` cast inside the handlers. The previous
+      // shape (`event.data.object as Stripe.Subscription` x4 plus a parallel
+      // double-cast for the period fields) bypassed the SDK's type checks
+      // and would silently compile when Stripe ships a new dated API.
       switch (event.type) {
         case "checkout.session.completed":
-          await onCheckoutCompleted(event.data.object as Stripe.Checkout.Session);
+          await onCheckoutCompleted(event.data.object);
           break;
         case "customer.subscription.created":
         case "customer.subscription.updated":
-          await onSubscriptionUpserted(event);
+          await onSubscriptionUpserted(event.data.object);
           break;
         case "customer.subscription.deleted":
-          await onSubscriptionDeleted(event.data.object as Stripe.Subscription);
+          await onSubscriptionDeleted(event.data.object);
           break;
         case "invoice.payment_succeeded":
-          await onInvoicePaid(event.data.object as Stripe.Invoice);
+          await onInvoicePaid(event.data.object);
           break;
         case "invoice.payment_failed":
-          await onInvoiceFailed(event.data.object as Stripe.Invoice);
+          await onInvoiceFailed(event.data.object);
           break;
         default:
           // Stripe sends a lot of types we don't care about; just log + 200.
@@ -152,8 +158,7 @@ export function createStripeWebhookRouter(deps: StripeWebhookDeps): Hono {
     log.info({ userId, customerId }, "stripe webhook: linked customer to user");
   }
 
-  async function onSubscriptionUpserted(event: Stripe.Event): Promise<void> {
-    const sub = event.data.object as Stripe.Subscription;
+  async function onSubscriptionUpserted(sub: Stripe.Subscription): Promise<void> {
     const customerId = typeof sub.customer === "string" ? sub.customer : sub.customer.id;
     const userRow = await findUserByCustomer(customerId);
     if (!userRow) {
@@ -177,16 +182,19 @@ export function createStripeWebhookRouter(deps: StripeWebhookDeps): Hono {
       return;
     }
 
-    const subEnvelope = sub as unknown as {
-      current_period_start: number;
-      current_period_end: number;
-      status: Stripe.Subscription.Status;
-      cancel_at_period_end: boolean;
-    };
-    const status = subEnvelope.status;
-    const cancelAtPeriodEnd = subEnvelope.cancel_at_period_end ? 1 : 0;
-    const periodStart = new Date(subEnvelope.current_period_start * 1000);
-    const periodEnd = new Date(subEnvelope.current_period_end * 1000);
+    const period = readSubscriptionPeriod(sub);
+    if (!period) {
+      log.warn(
+        { subId: sub.id, customerId },
+        "stripe webhook: subscription missing current_period_start/end; refusing to upsert " +
+          "(would have credited against new Date(0))",
+      );
+      return;
+    }
+    const status = sub.status;
+    const cancelAtPeriodEnd = sub.cancel_at_period_end ? 1 : 0;
+    const periodStart = period.start;
+    const periodEnd = period.end;
 
     const values: NewSubscription = {
       userId: userRow.id,
@@ -302,9 +310,7 @@ export function createStripeWebhookRouter(deps: StripeWebhookDeps): Hono {
     if (linePriceId) tier = tierForStripePriceId(linePriceId, deps.envSource);
     if (!tier) {
       // Fallback: walk our local subscriptions table to find the tier.
-      const subId = (
-        invoice as unknown as { subscription?: string | null }
-      ).subscription ?? null;
+      const subId = readInvoiceSubscriptionId(invoice);
       if (subId) {
         const local = await deps.db
           .select({ tier: subscriptions.tier })
@@ -381,4 +387,68 @@ export function createStripeWebhookRouter(deps: StripeWebhookDeps): Hono {
   }
 
   return router;
+}
+
+/**
+ * Resolve `current_period_start` / `current_period_end` from a Stripe
+ * subscription with explicit null-tolerance.
+ *
+ * Stripe's TS types for the 2026 dated APIs declare these fields on
+ * `Stripe.Subscription`, but the runtime payload may omit them (e.g. on
+ * paused or incomplete subscriptions, or when Stripe ships a new API
+ * variant that moves the fields to `parent.subscription_details`). The
+ * original code did `new Date(maybe_null * 1000)` which silently produced
+ * `1970-01-01`, then credited `tier.quotaTokens` against a meaningless
+ * period.
+ *
+ * Returns `null` when either timestamp is missing/non-numeric. The caller
+ * MUST refuse the upsert in that case so a corrupt envelope cannot land
+ * `new Date(0)` in the meter.
+ */
+/**
+ * Resolve the subscription id from a Stripe invoice across API versions.
+ *
+ * Stripe moved the field between `invoice.subscription` (pre-2024) and
+ * `invoice.parent.subscription_details.subscription` (2026 dated APIs).
+ * The SDK type for the current dated API drops the top-level field, but
+ * older accounts may still surface it. We check both, in preference
+ * order, and return null when neither carries it. Returning null is safe
+ * here because the calling site only uses the id for a fallback lookup
+ * and a tier fallback (the credit math comes from the price-id route).
+ */
+export function readInvoiceSubscriptionId(invoice: Stripe.Invoice): string | null {
+  const view = invoice as unknown as {
+    subscription?: unknown;
+    parent?: { subscription_details?: { subscription?: unknown } };
+  };
+  if (typeof view.subscription === "string" && view.subscription.length > 0) {
+    return view.subscription;
+  }
+  const nested = view.parent?.subscription_details?.subscription;
+  if (typeof nested === "string" && nested.length > 0) {
+    return nested;
+  }
+  return null;
+}
+
+export function readSubscriptionPeriod(
+  sub: Stripe.Subscription,
+): { start: Date; end: Date } | null {
+  // Read via an `unknown` view that does NOT lie about presence. The SDK
+  // typings for these fields are non-nullable numbers on paper, but the
+  // wire payload can legitimately drop them. Treat them as `unknown` until
+  // we have proven both are valid epoch-seconds.
+  const view = sub as unknown as {
+    current_period_start?: unknown;
+    current_period_end?: unknown;
+  };
+  const startSec = view.current_period_start;
+  const endSec = view.current_period_end;
+  if (typeof startSec !== "number" || typeof endSec !== "number") return null;
+  if (!Number.isFinite(startSec) || !Number.isFinite(endSec)) return null;
+  if (startSec <= 0 || endSec <= 0) return null;
+  return {
+    start: new Date(startSec * 1000),
+    end: new Date(endSec * 1000),
+  };
 }

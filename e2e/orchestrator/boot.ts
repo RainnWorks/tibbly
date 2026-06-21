@@ -335,8 +335,13 @@ export async function bootOrchestrator(options: BootOptions = {}): Promise<Orche
   const opsJwtSecret = new TextEncoder().encode(env.OPS_JWT_SECRET);
 
   const app = createApp({
-    admin: { db, adminEmails: [env.ADMIN_EMAIL] },
-    adminUsers: { db, adminEmails: [env.ADMIN_EMAIL], stripe: stripeStubs.admin },
+    admin: { db, adminEmails: [env.ADMIN_EMAIL], jwtSecret: opsJwtSecret },
+    adminUsers: {
+      db,
+      adminEmails: [env.ADMIN_EMAIL],
+      stripe: stripeStubs.admin,
+      jwtSecret: opsJwtSecret,
+    },
     adminLogin: { adminEmails: [env.ADMIN_EMAIL], jwtSecret: opsJwtSecret, cookieSecure: false },
     pairing: { db },
     presence: { tracker: presence },
