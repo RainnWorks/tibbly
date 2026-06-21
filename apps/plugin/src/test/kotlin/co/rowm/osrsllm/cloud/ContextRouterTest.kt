@@ -187,6 +187,74 @@ class ContextRouterTest {
         }
     }
 
+    // ── RAI-5 Tier 0 catalog additions ───────────────────────────────────
+
+    @Test
+    fun `prayer flick protect piety rigour augury routes to combat`() {
+        for (msg in listOf(
+            "what prayer should i use",
+            "how do i flick prayers at akkha",
+            "should i pray protect from magic",
+            "is piety better than rigour here",
+            "augury vs mystic might at zulrah",
+        )) {
+            val out = router.route(msg)
+            assertTrue("[$msg] expected COMBAT, got $out", out.contains(ToolFamily.COMBAT))
+        }
+    }
+
+    @Test
+    fun `projectile and tick keywords route to combat`() {
+        for (msg in listOf(
+            "what's the projectile from vorkath",
+            "tick eat the dragonfire",
+            "how many ticks until the nuke",
+        )) {
+            val out = router.route(msg)
+            assertTrue("[$msg] expected COMBAT, got $out", out.contains(ToolFamily.COMBAT))
+        }
+    }
+
+    @Test
+    fun `raid cox tob toa keywords route to raids plus combat`() {
+        for (msg in listOf(
+            "starting a raid",
+            "how do cox points work",
+            "tob verzik phase 3",
+            "chambers of xeric strategy",
+            "toa 500 invocation",
+            "theatre of blood entry req",
+            "tombs of amascut scaling",
+        )) {
+            val out = router.route(msg)
+            assertTrue("[$msg] expected RAIDS, got $out", out.contains(ToolFamily.RAIDS))
+            assertTrue("[$msg] expected COMBAT, got $out", out.contains(ToolFamily.COMBAT))
+        }
+    }
+
+    @Test
+    fun `raid boss names route to raids plus combat`() {
+        for (msg in listOf(
+            "olm head phase",
+            "akkha sand crab spawn",
+            "kephri scarab swarms",
+            "sotetseg maze tile",
+            "verzik p2 bounce",
+        )) {
+            val out = router.route(msg)
+            assertTrue("[$msg] expected RAIDS, got $out", out.contains(ToolFamily.RAIDS))
+            assertTrue("[$msg] expected COMBAT, got $out", out.contains(ToolFamily.COMBAT))
+        }
+    }
+
+    @Test
+    fun `routeWire includes raids on wire for raid messages`() {
+        val wire = router.routeWire("how do i beat verzik phase 2")
+        assertTrue("raids on the wire", wire.contains("raids"))
+        assertTrue("combat on the wire", wire.contains("combat"))
+        assertTrue("core on the wire", wire.contains("core"))
+    }
+
     @Test
     fun `loot drop stack routes to groundstate`() {
         for (msg in listOf(

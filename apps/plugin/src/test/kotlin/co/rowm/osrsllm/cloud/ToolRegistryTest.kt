@@ -112,9 +112,21 @@ class ToolRegistryTest {
 
     @Test
     fun `every family has at least one tool except deliberately-empty placeholders`() {
+        // RAI-5 catalog (PR #31) reserved enum slots for families we plan to
+        // fill incrementally. As each catalog tool ships, the family flips
+        // from "expected empty" to "must have ≥1". Drop it from the allowlist
+        // in the same PR that adds the first tool.
+        val expectedEmpty = setOf(
+            ToolFamily.LEAGUES,     // Tier 1 §4.6 — seasonal-only
+            ToolFamily.FARMING,     // Tier 0 §3 (4/5) — queued for next loop
+            ToolFamily.APPEARANCE,  // Tier 1 §4.11
+            ToolFamily.AMBIENT,     // Tier 1 §4.7
+            ToolFamily.PETS,        // Tier 1 §4.1 row 3
+        )
         for (family in ToolFamily.values()) {
             val tools = ToolRegistry.toolsIn(family)
             assertNotNull(tools)
+            if (family in expectedEmpty) continue
             assertTrue(
                 "family $family has no tools — drop it or assign one",
                 tools.isNotEmpty(),

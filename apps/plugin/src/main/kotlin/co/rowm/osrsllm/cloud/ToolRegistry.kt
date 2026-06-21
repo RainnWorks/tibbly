@@ -43,6 +43,7 @@ object ToolRegistry {
         "enable_tools" to ToolFamily.CORE,
         "find_item" to ToolFamily.CORE,
         "ge_price" to ToolFamily.CORE,
+        "get_account_identity" to ToolFamily.CORE,
         "get_active_clue" to ToolFamily.CORE,
         "get_equipment" to ToolFamily.CORE,
         "get_event_log" to ToolFamily.CORE,
@@ -84,6 +85,7 @@ object ToolRegistry {
         "show_path_to" to ToolFamily.NAV,
 
         // ── COMBAT ────────────────────────────────────────────────────────
+        "get_active_prayers" to ToolFamily.COMBAT,
         "get_attack_style" to ToolFamily.COMBAT,
         "get_buffs" to ToolFamily.COMBAT,
         "get_combat_achievements" to ToolFamily.COMBAT,
@@ -92,6 +94,7 @@ object ToolRegistry {
         "get_npc_max_hp" to ToolFamily.COMBAT,
         "get_poh" to ToolFamily.COMBAT,
         "get_spellbook" to ToolFamily.COMBAT,
+        "get_target_projectiles" to ToolFamily.COMBAT,
 
         // ── GE ────────────────────────────────────────────────────────────
         "get_ge_offers" to ToolFamily.GE,
@@ -138,6 +141,9 @@ object ToolRegistry {
 
         // ── SLAYER ────────────────────────────────────────────────────────
         "get_slayer_task" to ToolFamily.SLAYER,
+
+        // ── RAIDS (RAI-5 Tier 0) ──────────────────────────────────────────
+        "get_raid_layout" to ToolFamily.RAIDS,
     )
 
     /**
@@ -179,6 +185,8 @@ object ToolRegistry {
         "get_combat_info", "get_diary_progress", "get_spellbook", "get_attack_style",
         "get_session_loot", "get_hitsplat_history", "get_combat_achievements",
         "get_poh", "get_buffs", "get_player_state",
+        // RAI-5 Tier 0 state-probes (see cloud/tools/StateProbes.kt)
+        "get_account_identity", "get_raid_layout", "get_target_projectiles", "get_active_prayers",
         // registerHighlightTools — 4 families × 3 verbs
         "add_npc_highlights", "remove_npc_highlight", "list_npc_highlights",
         "add_object_highlights", "remove_object_highlight", "list_object_highlights",

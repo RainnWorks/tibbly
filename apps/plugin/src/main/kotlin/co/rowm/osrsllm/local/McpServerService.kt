@@ -409,6 +409,59 @@ class McpServerService @Inject constructor(
                 "prayer, run energy, and special attack energy."
         ) { tools.player() }
 
+        // ── RAI-5 Tier 0 state-probes (catalog §3) ──────────────────────────
+        // All four read-only. Implementations live in `cloud/tools/StateProbes.kt`
+        // so they're trivially re-usable by the cloud→local tool dispatcher
+        // when it lands (today the cloud path is StubToolDispatcher).
+        addLoggedTool(server, "get_account_identity",
+            "First-turn account anchor. Returns {name, accountType (NORMAL/IRONMAN/" +
+                "ULTIMATE_IRONMAN/HARDCORE_IRONMAN/GROUP_IRONMAN/HARDCORE_GROUP_IRONMAN), " +
+                "isIronman, isGroupIronman, world, worldFlags[] (MEMBERS/PVP/DEADMAN/" +
+                "SEASONAL/TOURNAMENT_WORLD/...), worldHost, launcherName}. The LLM should " +
+                "call this BEFORE giving any account-type-specific advice (e.g. don't " +
+                "suggest GE trades to an Ultimate Iron, don't risk HCIM at Vorkath turn 1)."
+        ) {
+            try { co.rowm.osrsllm.cloud.tools.StateProbes.accountIdentity(client, clientThread) }
+            catch (t: Throwable) { "{\"error\":\"get_account_identity failed: ${t.message}\"}" }
+        }
+
+        addLoggedTool(server, "get_raid_layout",
+            "Read the active raid state — CoX / ToB / ToA. Returns {activeRaid (NONE/COX/" +
+                "TOB/TOA), mapRegions[], coxInRaid, coxState, coxTotalPoints, tobState, " +
+                "tobPartyOrbs[5] (alive/dead/dc), toaInvocation (e.g. 300/500), " +
+                "toaPartyDamage, toaPartyHp[8]}. activeRaid==NONE outside a raid; in that " +
+                "case the numeric varbits all read 0 and the LLM can short-circuit. Use for " +
+                "phase / room / scaling questions (Verzik phase X, Akkha sand crab, Olm " +
+                "head-phase mage / range, etc.)."
+        ) {
+            try { co.rowm.osrsllm.cloud.tools.StateProbes.raidLayout(client, clientThread) }
+            catch (t: Throwable) { "{\"error\":\"get_raid_layout failed: ${t.message}\"}" }
+        }
+
+        addLoggedTool(server, "get_target_projectiles",
+            "Read projectiles currently flying toward the local player or their current " +
+                "interaction target — the data behind 'prayer flick' advice. Returns up to " +
+                "8 entries of {id, remainingTicks (game ticks, not client cycles), " +
+                "targetIsLocalPlayer, targetName, sourceName}. Empty array == nothing " +
+                "incoming. Pair with get_active_prayers / get_event_log to decide flick " +
+                "timing for boss attacks (Akkha mage/range, Verzik dawn, Vorkath dragonfire)."
+        ) {
+            try { co.rowm.osrsllm.cloud.tools.StateProbes.targetProjectiles(client, clientThread) }
+            catch (t: Throwable) { "{\"error\":\"get_target_projectiles failed: ${t.message}\"}" }
+        }
+
+        addLoggedTool(server, "get_active_prayers",
+            "Read the prayers currently active on the local player. Returns {active[] " +
+                "(standard book), ruinous[] (Ruinous Powers book), prayerPoints (current), " +
+                "prayerMax (real level), quickPrayer (true if quick-prayer is toggled on)}. " +
+                "Names are human-readable ('Piety', 'Protect from magic', not the enum " +
+                "form). Use to verify the player is on the right prayer before / during " +
+                "combat — pairs with get_target_projectiles for tick-perfect flick advice."
+        ) {
+            try { co.rowm.osrsllm.cloud.tools.StateProbes.activePrayers(client, clientThread) }
+            catch (t: Throwable) { "{\"error\":\"get_active_prayers failed: ${t.message}\"}" }
+        }
+
         server.addTool(
             name = "get_quests",
             description = "Get quest progress. Optional argument: state (one of ALL, IN_PROGRESS, " +
