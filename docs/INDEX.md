@@ -39,6 +39,7 @@ then jump as needed.
 - [`architecture/MONOREPO.md`](architecture/MONOREPO.md) — layout, scripts, conventions
 - [`architecture/PROTOCOL.md`](architecture/PROTOCOL.md) — WS protocol plugin ↔ backend
 - [`architecture/DATA_FLOW.md`](architecture/DATA_FLOW.md) — Mermaid sequence diagrams of every wire crossing *(r10 / RAI-35)*
+- [`architecture/MODEL_PLATFORM.md`](architecture/MODEL_PLATFORM.md) — 5-layer model platform: live catalog (step 1 shipped), routing policies / segments / experiments / sandbox *(loop M+9, D-9)*
 
 ## RuneLite Plugin Hub compliance *(r10 / RAI-35)*
 

@@ -675,3 +675,89 @@ export type MetricsErrorsDailyRow = typeof metricsErrorsDaily.$inferSelect;
  */
 export type PairingCodeRow = PairingCode;
 export type NewPairingCodeRow = NewPairingCode;
+
+/* -------------------------------------------------------------------------- */
+/*  model_catalog (model-platform step 1)                                     */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Live catalog of every model exposed by OpenRouter, refreshed nightly by
+ * `llm/catalog/ingest.ts`. The catalog is the future source of truth for
+ * routing decisions, segment experiments, and per-tier model choice.
+ *
+ * D-9: no model id is ever hardcoded in plugin, backend, or marketing copy.
+ * The legacy constants in `llm/router.ts` + `llm/cost.ts` are tracked but
+ * not yet consumed from this table; step 2 (routing policies) flips the
+ * consumer over. Step 1 ships the ingester + ops view.
+ *
+ * Pricing model:
+ *   - OpenRouter publishes prompt/completion prices as USD-per-token decimal
+ *     strings (e.g. `"0.000003"` for $3 / 1M tokens). Floating point on the
+ *     write path = drift across millions of small turns.
+ *   - We convert at ingest into `*_micro_usd_per_million`, a `bigint` integer:
+ *       priceMicroUsdPerMillion = round(priceUsdPerToken * 1e12)
+ *     i.e. micro-USD per 1 000 000 tokens. Sonnet's $3/M reads as 3 000 000
+ *     in this column. Per-call cost math always pulls from here so the
+ *     billing meter and the ops display agree to the integer.
+ *
+ * Lifecycle:
+ *   - `firstSeenAt` is the first ingest that observed the id.
+ *   - `lastSeenAt` is the most recent ingest that saw it.
+ *   - `retiredAt` is set when an ingest run completes without seeing the id.
+ *     Cleared if the id re-emerges later (OpenRouter has unretired models
+ *     before — e.g. a preview that returns as GA under the same slug).
+ */
+export const modelCatalog = pgTable(
+  "model_catalog",
+  {
+    /** OpenRouter model id, e.g. "anthropic/claude-sonnet-4.6". */
+    id: text("id").primaryKey(),
+    /** First slash-segment of the id, e.g. "anthropic". */
+    provider: text("provider").notNull(),
+    /** Human-friendly model name (from OpenRouter's `name` field). */
+    displayName: text("display_name").notNull(),
+    /** Total context window in tokens. */
+    contextLength: integer("context_length").notNull(),
+    /** Prompt-token price, in micro-USD per 1 000 000 tokens. */
+    inputPriceMicroUsdPerMillion: bigint("input_price_micro_usd_per_million", {
+      mode: "number",
+    }).notNull(),
+    /** Completion-token price, in micro-USD per 1 000 000 tokens. */
+    outputPriceMicroUsdPerMillion: bigint("output_price_micro_usd_per_million", {
+      mode: "number",
+    }).notNull(),
+    /**
+     * Input modalities from OpenRouter's `architecture.input_modalities` —
+     * e.g. `["text"]`, `["text","image"]`. Used by future routing to gate
+     * multimodal prompts.
+     */
+    inputModalities: jsonb("input_modalities")
+      .$type<string[]>()
+      .notNull()
+      .default(sql`'[]'::jsonb`),
+    /**
+     * Opaque OpenRouter capability blob (tokenizer, instruct_type, modality,
+     * top_provider, etc.). Pinned as jsonb so future routing can branch on
+     * fields without a schema migration.
+     */
+    capabilities: jsonb("capabilities")
+      .$type<Record<string, unknown>>()
+      .notNull()
+      .default(sql`'{}'::jsonb`),
+    firstSeenAt: timestamp("first_seen_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    lastSeenAt: timestamp("last_seen_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    /** Non-null = the model wasn't in the most recent ingest. */
+    retiredAt: timestamp("retired_at", { withTimezone: true }),
+  },
+  (t) => [
+    index("model_catalog_provider_idx").on(t.provider),
+    index("model_catalog_retired_idx").on(t.retiredAt),
+  ],
+);
+
+export type ModelCatalogRow = typeof modelCatalog.$inferSelect;
+export type NewModelCatalogRow = typeof modelCatalog.$inferInsert;

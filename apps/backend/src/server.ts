@@ -18,6 +18,7 @@ import { startAggregationCron } from "./events/aggregate";
 import { attachEventPersister, getDefaultBus } from "./events";
 import { startRetentionCron } from "./jobs/retention-sweeper";
 import { log } from "./lib/log";
+import { startModelCatalogScheduler } from "./llm/catalog/scheduler";
 import type { BalanceMeter } from "./ws/plugin";
 import { bridgeEventLoggerToBus, pluginWsHandler } from "./ws/plugin";
 import { presenceWsHandler } from "./ws/presence";
@@ -37,6 +38,10 @@ attachEventPersister(getDefaultBus(), { db });
 const aggregationCron = startAggregationCron({ db });
 const retentionCron = startRetentionCron({ db });
 
+// Model platform step 1: live OpenRouter catalog. Boot refresh (5s
+// deferred) + nightly 03:17 UTC tick. See docs/architecture/MODEL_PLATFORM.md.
+const catalogScheduler = startModelCatalogScheduler({ db });
+
 // RAI-20: real token meter. When STRIPE_WEBHOOK_SECRET is configured we trust
 // the meter to be live and use it as the WS BalanceMeter port; otherwise we
 // fall back to the dev stub so local agents can iterate without Stripe.
@@ -49,6 +54,7 @@ const balanceMeter: BalanceMeter = useRealMeter ? meterToBalancePort(meter) : de
 const app = createApp({
   admin: "auto",
   presence: { tracker: presenceTracker },
+  adminCatalog: { db },
   ...(useRealMeter ? { stripeWebhook: { db, meter, bus: getDefaultBus() } } : {}),
 });
 
@@ -147,6 +153,7 @@ const shutdown = (signal: string): void => {
   log.info({ signal }, "backend: shutting down");
   aggregationCron.stop();
   retentionCron.stop();
+  catalogScheduler.stop();
   presenceWs.stop();
   server.stop();
   process.exit(0);
