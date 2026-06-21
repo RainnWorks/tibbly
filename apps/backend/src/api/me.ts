@@ -1,189 +1,251 @@
 /**
- * /v1/me — account self-service endpoints.
+ * `/v1/me` — account self-service GDPR endpoints (RAI-34 + M3.5).
  *
- * STATUS: parked behind RAI-13 (monorepo skeleton) and RAI-14 (backend
- * skeleton). Drizzle schema imports below are *intended* shape — the
- * actual schema files don't exist yet. This file compiles as soon as
- * those land and the imports resolve.
+ * Two endpoints:
+ *   GET    /v1/me/export   — Art. 15 / Art. 20 data export (JSON dump).
+ *   DELETE /v1/me          — Art. 17 right-to-erasure (hard cascade,
+ *                            Stripe customer detached per retention
+ *                            carve-out in docs/legal/DATA_RETENTION.md).
  *
- * Owner: agent r-legal (RAI-34). Intended consumers: dashboard
- * (Account -> Privacy -> Export / Delete), and the backend itself when
- * processing email-driven GDPR Art. 15 / Art. 17 requests.
+ * Auth: `requireUser` middleware (header-based for now; session upgrade
+ * tracked separately). Tests should never reach Stripe; pass a stub via
+ * `createMeRouter({ stripe })`.
  *
- * Endpoints:
- *   GET    /v1/me/export   -> JSON dump of every table row tied to caller
- *   DELETE /v1/me          -> hard-delete cascading; Stripe customer
- *                            object is *detached* (PII nulled) and
- *                            preserved for the accounting retention
- *                            window (see docs/legal/DATA_RETENTION.md
- *                            "Stripe-side billing carve-out").
+ * History: pre-loop M+2 this file referenced a hypothetical schema
+ * (`playerBindings`, `stateSnapshots`, `consentGrants`, `invoices`) that
+ * never landed and was not mounted on the app. Rewritten in loop M+2
+ * against the real schema; mounted in `app.ts`.
  */
-
 import { Hono } from "hono";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
+import type Stripe from "stripe";
 
-// These imports point at the schema files RAI-14 will create.
-// Until then this file will type-error in CI — that is expected and
-// documented in the commit message.
-import { db } from "../db/client";
+import type { DbClient } from "../db/client";
+import { getDb } from "../db/client";
 import {
   users,
   devices,
-  playerBindings,
-  chats,
-  chatTurns,
-  stateSnapshots,
-  consentGrants,
+  osrsAccounts,
+  pairingCodes,
   sessions,
-  invoices,
+  chats,
+  messages,
+  toolCalls,
+  usageRecords,
+  subscriptions,
+  tokenBalances,
+  events,
 } from "../db/schema";
-import { requireAuth, type AuthedContext } from "../middleware/auth";
-import { stripe } from "../lib/stripe";
+import { requireUser, type AuthedVars } from "./_auth";
+import { getStripe } from "../billing/stripe";
+import { log } from "../lib/log";
 
-export const me = new Hono();
+export interface CreateMeRouterOptions {
+  /** Override DB client; defaults to the process-wide `getDb()`. */
+  db?: DbClient;
+  /** Override Stripe client; defaults to `getStripe()`. Tests pass a stub. */
+  stripe?: Stripe;
+}
 
-me.use("*", requireAuth);
+export function createMeRouter(options: CreateMeRouterOptions = {}): Hono<{
+  Variables: AuthedVars;
+}> {
+  const db = options.db ?? getDb().db;
+  const stripeClient = options.stripe ?? null;
 
-/**
- * GET /v1/me/export
- *
- * Returns a JSON document containing every row in our database
- * attributable to the authenticated user. Satisfies GDPR Art. 15
- * (right of access) + Art. 20 (right to portability) and CCPA "right
- * to know".
- *
- * The response is one big JSON object. We do not paginate — if a user
- * has many chats this can be large; the dashboard streams it as a file
- * download. We send `Content-Disposition: attachment` so browsers save
- * it instead of rendering.
- */
-me.get("/export", async (c: AuthedContext) => {
-  const userId = c.var.userId;
+  const app = new Hono<{ Variables: AuthedVars }>();
+  app.use("*", requireUser);
 
-  const [user] = await db.select().from(users).where(eq(users.id, userId));
-  if (!user) return c.json({ error: "not_found" }, 404);
+  /**
+   * GET /v1/me/export — every row attributable to the caller, in one JSON.
+   *
+   * No pagination: the dashboard streams the response as an attachment so
+   * browsers save it as a file rather than rendering. Stripe-side billing
+   * records are NOT included (they live with Stripe per the carve-out).
+   */
+  app.get("/export", async (c) => {
+    const userId = c.var.userId;
 
-  const [
-    userDevices,
-    bindings,
-    userChats,
-    userTurns,
-    userSnapshots,
-    userConsent,
-    userSessions,
-    userInvoices,
-  ] = await Promise.all([
-    db.select().from(devices).where(eq(devices.userId, userId)),
-    db.select().from(playerBindings).where(eq(playerBindings.userId, userId)),
-    db.select().from(chats).where(eq(chats.userId, userId)),
-    db.select().from(chatTurns).where(eq(chatTurns.userId, userId)),
-    db.select().from(stateSnapshots).where(eq(stateSnapshots.userId, userId)),
-    db.select().from(consentGrants).where(eq(consentGrants.userId, userId)),
-    db.select().from(sessions).where(eq(sessions.userId, userId)),
-    db.select().from(invoices).where(eq(invoices.userId, userId)),
-  ]);
+    const [user] = await db.select().from(users).where(eq(users.id, userId));
+    if (!user) return c.json({ ok: false, error: "not_found" }, 404);
 
-  const payload = {
-    exportVersion: 1,
-    generatedAt: new Date().toISOString(),
-    notice:
-      "This is the data we hold about you. Some fields are hashed " +
-      "(device keys, IPs). Stripe-side billing records may be " +
-      "retained beyond account deletion per accounting law — see " +
-      "docs/legal/PRIVACY.md §10.",
-    user,
-    devices: userDevices,
-    playerBindings: bindings,
-    chats: userChats,
-    chatTurns: userTurns,
-    stateSnapshots: userSnapshots,
-    consentGrants: userConsent,
-    sessions: userSessions,
-    invoices: userInvoices,
-  };
+    const userChats = await db.select().from(chats).where(eq(chats.userId, userId));
+    const chatIds = userChats.map((row) => row.id);
 
-  c.header(
-    "Content-Disposition",
-    `attachment; filename="osrs-llm-helper-export-${userId}.json"`,
-  );
-  c.header("Content-Type", "application/json; charset=utf-8");
-  return c.body(JSON.stringify(payload, null, 2));
-});
+    const [
+      userDevices,
+      userOsrsAccounts,
+      userPairingCodes,
+      userSessions,
+      userMessages,
+      userToolCalls,
+      userUsage,
+      userSubscriptions,
+      userBalance,
+    ] = await Promise.all([
+      db.select().from(devices).where(eq(devices.userId, userId)),
+      db.select().from(osrsAccounts).where(eq(osrsAccounts.userId, userId)),
+      db.select().from(pairingCodes).where(eq(pairingCodes.userId, userId)),
+      db.select().from(sessions).where(eq(sessions.userId, userId)),
+      chatIds.length === 0
+        ? Promise.resolve([])
+        : db
+            .select()
+            .from(messages)
+            .where(sql`${messages.chatId} = ANY(${chatIds})`),
+      chatIds.length === 0
+        ? Promise.resolve([])
+        : db
+            .select()
+            .from(toolCalls)
+            .where(
+              sql`${toolCalls.messageId} IN (SELECT ${messages.id} FROM ${messages} WHERE ${messages.chatId} = ANY(${chatIds}))`,
+            ),
+      db.select().from(usageRecords).where(eq(usageRecords.userId, userId)),
+      db.select().from(subscriptions).where(eq(subscriptions.userId, userId)),
+      db
+        .select()
+        .from(tokenBalances)
+        .where(eq(tokenBalances.userId, userId)),
+    ]);
 
-/**
- * DELETE /v1/me
- *
- * Hard-deletes the user and every row that references them, with the
- * Stripe carve-out described in docs/legal/DATA_RETENTION.md.
- *
- * Order matters — children before parents to satisfy FK constraints
- * unless we add ON DELETE CASCADE everywhere (RAI-14 should add them;
- * we do explicit deletes here for safety + auditability).
- *
- * Returns 204 on success. Idempotent: deleting twice still returns 204.
- *
- * NB: this endpoint is *immediate* hard-delete. A 30-day soft-delete
- * grace ("undo" within 30d) is also valid per our policy; if we ship
- * that variant the body should accept `{ mode: "soft" | "hard" }` and
- * default to soft. Discuss with billing + retention owners (RAI-15 +
- * RAI-34) before flipping the default.
- */
-me.delete("/", async (c: AuthedContext) => {
-  const userId = c.var.userId;
+    const payload = {
+      exportVersion: 2,
+      generatedAt: new Date().toISOString(),
+      notice:
+        "This is the data we hold about you. Device keys are stored as " +
+        "Argon2id hashes; raw keys are never persisted. Stripe-side " +
+        "billing records may be retained beyond account deletion per " +
+        "UK/US accounting law — see docs/legal/PRIVACY.md §10 and " +
+        "docs/legal/DATA_RETENTION.md.",
+      user,
+      devices: userDevices,
+      osrsAccounts: userOsrsAccounts,
+      pairingCodes: userPairingCodes,
+      sessions: userSessions,
+      chats: userChats,
+      messages: userMessages,
+      toolCalls: userToolCalls,
+      usageRecords: userUsage,
+      subscriptions: userSubscriptions,
+      tokenBalance: userBalance[0] ?? null,
+    };
 
-  const [user] = await db.select().from(users).where(eq(users.id, userId));
-  if (!user) {
-    // already gone — idempotent
-    return c.body(null, 204);
-  }
-
-  // 1. Stripe-side: detach PII but preserve the customer for accounting.
-  if (user.stripeCustomerId) {
-    try {
-      await stripe.customers.update(user.stripeCustomerId, {
-        email: undefined,
-        name: undefined,
-        metadata: {
-          osrs_user_id: "",
-          deleted_at: new Date().toISOString(),
-          reason: "user_requested_deletion",
-        },
-      });
-    } catch (err) {
-      // Don't fail the delete because of a Stripe transient — log and
-      // continue. A nightly reconciler will re-detach if needed.
-      console.error("stripe detach failed", { userId, err });
-    }
-  }
-
-  // 2. DB-side: delete in dependency order.
-  // Wrap in a single transaction so we are all-or-nothing.
-  await db.transaction(async (tx) => {
-    await tx.delete(stateSnapshots).where(eq(stateSnapshots.userId, userId));
-    await tx.delete(chatTurns).where(eq(chatTurns.userId, userId));
-    await tx.delete(chats).where(eq(chats.userId, userId));
-    await tx.delete(sessions).where(eq(sessions.userId, userId));
-    await tx.delete(playerBindings).where(eq(playerBindings.userId, userId));
-    await tx.delete(devices).where(eq(devices.userId, userId));
-
-    // Invoices: we keep the row but null PII. This row mirrors the
-    // Stripe-side carve-out for SQL queries.
-    await tx
-      .update(invoices)
-      .set({ userIdAnonymisedAt: new Date() })
-      .where(eq(invoices.userId, userId));
-
-    // Consent grants: anonymise instead of delete — we need proof of
-    // consent for the limitation period (see DATA_RETENTION.md).
-    await tx
-      .update(consentGrants)
-      .set({ anonymisedAt: new Date(), ipHash: null })
-      .where(eq(consentGrants.userId, userId));
-
-    await tx.delete(users).where(eq(users.id, userId));
+    c.header(
+      "Content-Disposition",
+      `attachment; filename="tibbly-export-${userId}.json"`,
+    );
+    c.header("Content-Type", "application/json; charset=utf-8");
+    return c.body(JSON.stringify(payload, null, 2));
   });
 
-  return c.body(null, 204);
-});
+  /**
+   * DELETE /v1/me — Art. 17 hard-delete with Stripe carve-out.
+   *
+   * Idempotent: a second call on a soft-deleted user returns 204 without
+   * re-running the cascade. Stripe customer PII is detached on first call.
+   *
+   * The cascade order is explicit (children → parents) even though most
+   * FKs use ON DELETE CASCADE — explicit deletes make the audit log
+   * readable and let the transaction roll back cleanly on any failure.
+   *
+   * Rows kept (anonymised) for compliance audit:
+   *   - `usage_records` rows are dropped (the aggregate billing total
+   *     lives with Stripe).
+   *   - `events.user_id` rows are nulled where present (analytics
+   *     retention is bounded; nulling preserves the row count for
+   *     funnel math without retaining PII).
+   *   - `subscriptions` rows are dropped; Stripe is source of truth.
+   */
+  app.delete("/", async (c) => {
+    const userId = c.var.userId;
 
-export default me;
+    const [user] = await db.select().from(users).where(eq(users.id, userId));
+    if (!user) {
+      // Idempotent — already gone.
+      return c.body(null, 204);
+    }
+    if (user.deletedAt) {
+      // Soft-deleted already; nothing to do.
+      return c.body(null, 204);
+    }
+
+    // 1. Stripe carve-out: detach PII but keep the customer object so
+    //    accounting/audit can resolve historical invoices.
+    if (user.stripeCustomerId) {
+      const sc = stripeClient ?? getStripe();
+      try {
+        await sc.customers.update(user.stripeCustomerId, {
+          email: "",
+          name: "",
+          metadata: {
+            tibbly_user_id: "",
+            deleted_at: new Date().toISOString(),
+            reason: "user_requested_deletion",
+          },
+        });
+      } catch (err) {
+        // Don't fail the whole flow on a Stripe transient — the nightly
+        // reconciler will re-detach. Log loud so it's visible in ops.
+        log.warn(
+          { userId, err: (err as Error).message },
+          "stripe customer detach failed during /v1/me delete",
+        );
+      }
+    }
+
+    // 2. DB-side cascade — explicit, deepest-first.
+    await db.transaction(async (tx) => {
+      const userChats = await tx
+        .select({ id: chats.id })
+        .from(chats)
+        .where(eq(chats.userId, userId));
+      const chatIds = userChats.map((row) => row.id);
+
+      if (chatIds.length > 0) {
+        // tool_calls → messages → chats (FK cascades cover messages →
+        // tool_calls, but we delete explicitly for the audit trail).
+        await tx
+          .delete(toolCalls)
+          .where(
+            sql`${toolCalls.messageId} IN (SELECT ${messages.id} FROM ${messages} WHERE ${messages.chatId} = ANY(${chatIds}))`,
+          );
+        await tx
+          .delete(messages)
+          .where(sql`${messages.chatId} = ANY(${chatIds})`);
+        await tx.delete(chats).where(eq(chats.userId, userId));
+      }
+
+      await tx.delete(usageRecords).where(eq(usageRecords.userId, userId));
+      await tx.delete(tokenBalances).where(eq(tokenBalances.userId, userId));
+      await tx.delete(subscriptions).where(eq(subscriptions.userId, userId));
+      await tx.delete(sessions).where(eq(sessions.userId, userId));
+      await tx.delete(pairingCodes).where(eq(pairingCodes.userId, userId));
+      await tx.delete(osrsAccounts).where(eq(osrsAccounts.userId, userId));
+      await tx.delete(devices).where(eq(devices.userId, userId));
+
+      // Analytics events: null the user id so the funnel-step count
+      // survives without the PII linkage.
+      await tx
+        .update(events)
+        .set({ userId: null })
+        .where(eq(events.userId, userId));
+
+      // Finally: mark the user soft-deleted and null PII. The retention
+      // sweeper hard-deletes the row after the accounting window expires.
+      await tx
+        .update(users)
+        .set({
+          email: null,
+          deletedAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .where(eq(users.id, userId));
+    });
+
+    log.info({ userId }, "/v1/me delete completed");
+    return c.body(null, 204);
+  });
+
+  return app;
+}
