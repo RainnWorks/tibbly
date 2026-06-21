@@ -13,12 +13,18 @@
 import { Hono } from "hono";
 import { secureHeaders } from "hono/secure-headers";
 
+import { createAccountsRouter } from "./api/accounts";
+import type { CreateAccountsRouterOptions } from "./api/accounts";
 import { createAdminUsageRouter } from "./api/admin/usage";
 import type { CreateAdminUsageOptions } from "./api/admin/usage";
+import { createBillingPortalRouter } from "./api/billing-portal";
+import type { CreateBillingPortalRouterOptions } from "./api/billing-portal";
 import { createPairingRouter } from "./api/pairing";
 import type { CreatePairingRouterOptions } from "./api/pairing";
 import { createStripeWebhookRouter } from "./api/webhooks/stripe";
 import type { StripeWebhookDeps } from "./api/webhooks/stripe";
+import { createUsageRouter } from "./api/usage";
+import type { CreateUsageRouterOptions } from "./api/usage";
 import { env } from "./env";
 import { log } from "./lib/log";
 
@@ -48,6 +54,21 @@ export interface CreateAppOptions {
    * missing webhook secret doesn't crash boot.
    */
   stripeWebhook?: StripeWebhookDeps;
+  /**
+   * Usage summary router (RAI-27). Pass `{ db }` to mount
+   * `/v1/usage/*`. Omit in tests that don't exercise usage.
+   */
+  usage?: CreateUsageRouterOptions;
+  /**
+   * Linked-accounts router (RAI-27). Pass `{ db }` to mount
+   * `/v1/accounts/*`. Omit in tests that don't exercise it.
+   */
+  accounts?: CreateAccountsRouterOptions;
+  /**
+   * Stripe customer portal router (RAI-27). Pass `{ db, stripe }` to
+   * mount `/v1/billing/*`. Omit in tests that don't exercise billing.
+   */
+  billing?: CreateBillingPortalRouterOptions;
 }
 
 export function createApp(options: CreateAppOptions = {}): Hono {
@@ -93,6 +114,18 @@ export function createApp(options: CreateAppOptions = {}): Hono {
 
   if (options.stripeWebhook) {
     app.route("/api/webhooks", createStripeWebhookRouter(options.stripeWebhook));
+  }
+
+  if (options.usage) {
+    app.route("/v1/usage", createUsageRouter(options.usage));
+  }
+
+  if (options.accounts) {
+    app.route("/v1/accounts", createAccountsRouter(options.accounts));
+  }
+
+  if (options.billing) {
+    app.route("/v1/billing", createBillingPortalRouter(options.billing));
   }
 
   app.notFound((c) => c.json({ ok: false, error: "not_found" }, 404));

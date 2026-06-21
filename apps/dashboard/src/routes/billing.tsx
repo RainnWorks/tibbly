@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { useMutation } from "@tanstack/react-query";
 import {
   Card,
   CardContent,
@@ -8,6 +9,7 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
+import { apiFetch } from "@/lib/api";
 
 type Tier = {
   readonly id: "hobbyist" | "pro" | "iron";
@@ -42,20 +44,40 @@ const TIERS: ReadonlyArray<Tier> = [
   },
 ];
 
+interface PortalResponse {
+  readonly url: string;
+}
+
+export async function openBillingPortal(): Promise<PortalResponse> {
+  return apiFetch<PortalResponse>("/v1/billing/portal", {
+    method: "POST",
+    authenticated: true,
+  });
+}
+
 export function RouteBilling(): ReactNode {
   const { push } = useToast();
 
-  function openPortal(): void {
-    push({
-      title: "Stripe portal",
-      description: "Skeleton only — RAI-27 wires the real customer portal URL.",
-    });
-  }
+  const portalMutation = useMutation({
+    mutationFn: openBillingPortal,
+    onSuccess: (data) => {
+      if (typeof window !== "undefined" && data.url) {
+        window.location.href = data.url;
+      }
+    },
+    onError: (err) => {
+      push({
+        title: "Couldn't open Stripe portal",
+        description: err instanceof Error ? err.message : "Try again shortly.",
+        variant: "danger",
+      });
+    },
+  });
 
   function selectTier(tier: Tier): void {
     push({
       title: `Selected ${tier.name}`,
-      description: "Checkout link arrives once RAI-27 is in.",
+      description: "Checkout link arrives once /v1/billing/checkout lands.",
       variant: "success",
     });
   }
@@ -73,12 +95,18 @@ export function RouteBilling(): ReactNode {
 
       <Card>
         <CardHeader>
-          <CardTitle>Current plan</CardTitle>
-          <CardDescription>No active subscription (skeleton).</CardDescription>
+          <CardTitle>Manage subscription</CardTitle>
+          <CardDescription>
+            Update payment method, see past invoices, pause or cancel.
+          </CardDescription>
         </CardHeader>
         <CardContent className="flex justify-end">
-          <Button variant="secondary" onClick={openPortal}>
-            Open Stripe portal
+          <Button
+            variant="secondary"
+            onClick={() => portalMutation.mutate()}
+            disabled={portalMutation.isPending}
+          >
+            {portalMutation.isPending ? "Opening…" : "Open Stripe portal"}
           </Button>
         </CardContent>
       </Card>

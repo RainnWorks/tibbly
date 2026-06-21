@@ -1,4 +1,5 @@
 import { useState, type ReactNode } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Card,
   CardContent,
@@ -15,46 +16,67 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useToast } from "@/components/ui/toast";
+import { apiFetch } from "@/lib/api";
 
-type LinkedAccount = {
+export interface AccountDTO {
   readonly id: string;
   readonly displayName: string;
-  readonly accountType: "main" | "ironman" | "group ironman" | "ultimate ironman";
-  readonly linkedAt: string;
-};
+  readonly accountType: string;
+  readonly status: string;
+  readonly lastVerifiedAt: string | null;
+  readonly createdAt: string;
+}
 
-// Placeholder data — RAI-27 swaps for real /accounts query.
-const PLACEHOLDER_ACCOUNTS: ReadonlyArray<LinkedAccount> = [
-  {
-    id: "acct_demo_1",
-    displayName: "Zezima",
-    accountType: "main",
-    linkedAt: "2026-06-21",
-  },
-  {
-    id: "acct_demo_2",
-    displayName: "B0aty",
-    accountType: "ironman",
-    linkedAt: "2026-06-20",
-  },
-];
+interface AccountListResponse {
+  readonly accounts: ReadonlyArray<AccountDTO>;
+}
+
+export async function fetchAccounts(): Promise<AccountListResponse> {
+  return apiFetch<AccountListResponse>("/v1/accounts", { authenticated: true });
+}
+
+export async function deleteAccount(id: string): Promise<void> {
+  await apiFetch(`/v1/accounts/${encodeURIComponent(id)}`, {
+    method: "DELETE",
+    authenticated: true,
+  });
+}
 
 export function RouteAccounts(): ReactNode {
   const { push } = useToast();
+  const qc = useQueryClient();
   const [confirmingId, setConfirmingId] = useState<string | null>(null);
 
-  const confirming =
-    PLACEHOLDER_ACCOUNTS.find((a) => a.id === confirmingId) ?? null;
+  const accountsQuery = useQuery({
+    queryKey: ["accounts"],
+    queryFn: fetchAccounts,
+  });
 
-  function onUnlink(): void {
-    if (!confirming) return;
-    push({
-      title: "Account unlinked",
-      description: `${confirming.displayName} removed (skeleton only — wires up in RAI-27)`,
-      variant: "info",
-    });
-    setConfirmingId(null);
-  }
+  const accounts = accountsQuery.data?.accounts ?? [];
+  const confirming = accounts.find((a) => a.id === confirmingId) ?? null;
+
+  const deleteMutation = useMutation({
+    mutationFn: deleteAccount,
+    onSuccess: (_void, id) => {
+      const removed = accounts.find((a) => a.id === id);
+      push({
+        title: "Account unlinked",
+        description: removed
+          ? `${removed.displayName} removed from this subscription.`
+          : "Account removed.",
+        variant: "info",
+      });
+      void qc.invalidateQueries({ queryKey: ["accounts"] });
+      setConfirmingId(null);
+    },
+    onError: (err) => {
+      push({
+        title: "Couldn't unlink account",
+        description: err instanceof Error ? err.message : "Try again shortly.",
+        variant: "danger",
+      });
+    },
+  });
 
   return (
     <div className="flex flex-col gap-6">
@@ -68,27 +90,49 @@ export function RouteAccounts(): ReactNode {
         </p>
       </header>
 
-      <div className="grid gap-3 md:grid-cols-2">
-        {PLACEHOLDER_ACCOUNTS.map((account) => (
-          <Card key={account.id}>
-            <CardHeader>
-              <CardTitle>{account.displayName}</CardTitle>
-              <CardDescription>
-                {account.accountType} &middot; linked {account.linkedAt}
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="flex justify-end">
-              <Button
-                variant="ghost"
-                onClick={() => setConfirmingId(account.id)}
-                aria-label={`Unlink ${account.displayName}`}
-              >
-                Unlink
-              </Button>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+      {accountsQuery.isLoading ? (
+        <p className="text-[color:var(--color-osrs-gold-soft)]/70">Loading…</p>
+      ) : accountsQuery.isError ? (
+        <p role="alert" className="text-[color:var(--color-osrs-danger)]">
+          Failed to load accounts:{" "}
+          {accountsQuery.error instanceof Error
+            ? accountsQuery.error.message
+            : "unknown error"}
+        </p>
+      ) : accounts.length === 0 ? (
+        <Card>
+          <CardHeader>
+            <CardTitle>No accounts yet</CardTitle>
+            <CardDescription>
+              Pair the RuneLite plugin and log in once to bind your first
+              character.
+            </CardDescription>
+          </CardHeader>
+        </Card>
+      ) : (
+        <div className="grid gap-3 md:grid-cols-2">
+          {accounts.map((account) => (
+            <Card key={account.id}>
+              <CardHeader>
+                <CardTitle>{account.displayName}</CardTitle>
+                <CardDescription>
+                  {account.accountType} &middot; {account.status} &middot;{" "}
+                  linked {new Date(account.createdAt).toLocaleDateString()}
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="flex justify-end">
+                <Button
+                  variant="ghost"
+                  onClick={() => setConfirmingId(account.id)}
+                  aria-label={`Unlink ${account.displayName}`}
+                >
+                  Unlink
+                </Button>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
 
       <Dialog
         open={confirming !== null}
@@ -109,8 +153,14 @@ export function RouteAccounts(): ReactNode {
             <Button variant="secondary" onClick={() => setConfirmingId(null)}>
               Cancel
             </Button>
-            <Button variant="danger" onClick={onUnlink}>
-              Unlink
+            <Button
+              variant="danger"
+              onClick={() => {
+                if (confirming) deleteMutation.mutate(confirming.id);
+              }}
+              disabled={deleteMutation.isPending}
+            >
+              {deleteMutation.isPending ? "Unlinking…" : "Unlink"}
             </Button>
           </div>
         </DialogContent>
