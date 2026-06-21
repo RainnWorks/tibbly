@@ -18,8 +18,16 @@ redirected:
    dials before writing UI code. Hard bans: no Inter default, no
    em-dashes, no 3-equal-card grids, no beige+brass+oxblood.
 4. **Marketing page stays public.** Only ops gets the auth wall.
-5. **Plugin work continues.** The RAI-5 unblockers agent (5 new
-   tools) is in flight and is unaffected by the pivot.
+5. **Plugin work continues.** The RAI-5 unblockers agent **landed
+   PR #36** (merged) — 4 of 5 Tier 0 tools shipped:
+   `get_account_identity`, `get_raid_layout`,
+   `get_target_projectiles`, `get_active_prayers`. 17 new tests
+   green, `:check` green incl. `:checkMcpServerGated`. New
+   `StateProbes.kt` in `cloud/tools/` is positioned for the future
+   cloud→local dispatcher (replacing `StubToolDispatcher`).
+   Deferred: `get_farming_state` (RuneLite `timetracking.farming` is
+   package-private; needs split into `get_farming_summary` +
+   `get_farming_patches(region=)`).
 
 Full pivot writeup: `docs/agents/DECISION_LOG.md` D-8.
 Open questions waiting on Tom: Q-19, Q-20, Q-21 in
