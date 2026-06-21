@@ -11,6 +11,8 @@ import co.rowm.osrsllm.chat.ChatStore
 import co.rowm.osrsllm.chat.ClaudeRunner
 import co.rowm.osrsllm.chat.HarnessContext
 import co.rowm.osrsllm.chat.LocalClaudeBackend
+import co.rowm.osrsllm.cloud.AccountPanel
+import co.rowm.osrsllm.cloud.AccountSummaryClient
 import co.rowm.osrsllm.cloud.BackendUrl
 import co.rowm.osrsllm.cloud.BackendWsClient
 import co.rowm.osrsllm.cloud.CloudChatBackend
@@ -77,6 +79,7 @@ class OsrsLlmHelperPlugin : Plugin() {
     @Inject private lateinit var backendWsClient: BackendWsClient
     @Inject private lateinit var pairingFlow: PairingFlow
     @Inject private lateinit var egressGate: EgressGate
+    @Inject private lateinit var accountSummaryClient: AccountSummaryClient
     @Inject private lateinit var contextRouter: ContextRouter
     @Inject private lateinit var widgetTracker: WidgetTracker
     @Inject private lateinit var bankTagService: BankTagService
@@ -115,6 +118,9 @@ class OsrsLlmHelperPlugin : Plugin() {
     private var chatPanel: ChatPanel? = null
     private var managedNavButton: NavigationButton? = null
     private var managedPanel: co.rowm.osrsllm.managed.ManagedVisualsPanel? = null
+    private var accountNavButton: NavigationButton? = null
+    private var accountPanel: AccountPanel? = null
+    private var accountRefreshTimer: javax.swing.Timer? = null
     private val chatStore = ChatStore()
     private var cloudChatRunner: CloudChatRunner? = null
     private var cloudChatBackend: CloudChatBackend? = null
@@ -295,11 +301,38 @@ class OsrsLlmHelperPlugin : Plugin() {
         val managedBtn = NavigationButton.builder()
             .tooltip("OSRS LLM — Manage agent visuals")
             .icon(createStatusIcon())
-            .priority(9)
+            .priority(10)
             .panel(managed)
             .build()
         managedNavButton = managedBtn
         clientToolbar.addNavigation(managedBtn)
+
+        // Tibbly account panel — D-8 pivot. Lives below the chat panel
+        // (priority 9 vs 8). The panel itself decides whether to show the
+        // account sections or the "cloud chat is off" explainer based on the
+        // current config snapshot, so it's safe to register unconditionally.
+        val accountSidebar = AccountPanel(
+            config = config,
+            accountClient = accountSummaryClient,
+            pairingFlow = pairingFlow,
+            clientSupplier = { client },
+        )
+        accountPanel = accountSidebar
+        val accountBtn = NavigationButton.builder()
+            .tooltip("Tibbly account")
+            .icon(createAccountIcon())
+            .priority(9)
+            .panel(accountSidebar)
+            .build()
+        accountNavButton = accountBtn
+        clientToolbar.addNavigation(accountBtn)
+
+        // Refresh once at start, then every 30s while the panel is mounted.
+        accountSidebar.refresh()
+        val timer = javax.swing.Timer(30_000) { accountSidebar.refresh() }
+        timer.isRepeats = true
+        timer.start()
+        accountRefreshTimer = timer
     }
 
     override fun shutDown() {
@@ -345,15 +378,20 @@ class OsrsLlmHelperPlugin : Plugin() {
         navButton?.let { clientToolbar.removeNavigation(it) }
         chatNavButton?.let { clientToolbar.removeNavigation(it) }
         managedNavButton?.let { clientToolbar.removeNavigation(it) }
+        accountNavButton?.let { clientToolbar.removeNavigation(it) }
         navButton = null
         chatNavButton = null
         managedNavButton = null
+        accountNavButton = null
         panel?.stop()
         panel = null
         chatPanel?.detach()
         chatPanel = null
         managedPanel?.detach()
         managedPanel = null
+        runCatching { accountRefreshTimer?.stop() }
+        accountRefreshTimer = null
+        accountPanel = null
         gameStateStore.clear()
     }
 
@@ -408,6 +446,8 @@ class OsrsLlmHelperPlugin : Plugin() {
         PairingFlow.BackendUrlSupplier { BackendUrl(cfg.backendUrl()) }
 
     private fun createStatusIcon(): BufferedImage = textIcon("AI", Color(74, 144, 226))
+
+    private fun createAccountIcon(): BufferedImage = textIcon("T", Color(220, 180, 100))
 
     private fun createChatIcon(): BufferedImage {
         val size = 24

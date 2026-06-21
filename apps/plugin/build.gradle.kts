@@ -280,12 +280,55 @@ tasks.register("secretsScan") {
     }
 }
 
+// D-8: the in-RuneLite account panel must NEVER show raw token math to the
+// player. The backend computes a tier-aware proxy ("23 / 30 messages used",
+// "subscription active — renews on 14 Jan", or nothing for Iron tier). This
+// gate greps the panel + client source files for the four field names that
+// would indicate a regression and fails the build if any appear. Keep the
+// allow-list tight — adding a file here is intentional, not casual.
+tasks.register("checkAccountPanelNoRawTokens") {
+    group = "verification"
+    description = "Fails if raw token field names appear in the account-panel UI sources."
+    doLast {
+        val needles = listOf(
+            "balance_tokens",
+            "balanceTokens",
+            "promptTokens",
+            "completionTokens",
+            "usedTokens",
+        )
+        val targets = fileTree("src/main/kotlin/co/rowm/osrsllm/cloud") {
+            include(
+                "AccountPanel*.kt",
+                "AccountSummaryClient*.kt",
+            )
+        }
+        val hits = targets.files
+            .filter { it.extension == "kt" }
+            .flatMap { f ->
+                val text = f.readText()
+                needles.mapNotNull { n -> if (text.contains(n)) f to n else null }
+            }
+        if (hits.isNotEmpty()) {
+            val rendered = hits.joinToString("\n  ") { (f, n) ->
+                "$n  ←  ${f.relativeTo(projectDir)}"
+            }
+            throw GradleException(
+                "checkAccountPanelNoRawTokens: raw-token field name found in account panel " +
+                    "UI sources. The panel must render the tier-aware proxy verbatim from " +
+                    "the backend — no token arithmetic in the plugin.\n  $rendered",
+            )
+        }
+    }
+}
+
 tasks.named("check") {
     dependsOn(
         "checkNoHttpServer",
         "checkNoReflection",
         "checkNoPlaintextUrls",
         "checkMcpServerGated",
+        "checkAccountPanelNoRawTokens",
         "secretsScan",
     )
 }
