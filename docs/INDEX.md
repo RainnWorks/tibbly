@@ -15,6 +15,7 @@ then jump as needed.
 - [`agents/OPEN_QUESTIONS.md`](agents/OPEN_QUESTIONS.md) — flagged for user review
 - [`agents/HANDOFF.md`](agents/HANDOFF.md) — what to show the user on wake-up
 - [`agents/GAPS.md`](agents/GAPS.md) — current gap analysis *(auto-maintained)*
+- [`agents/CODE_QUALITY_PROMPTS.md`](agents/CODE_QUALITY_PROMPTS.md) — researched, sourced code-quality review hats for our stack (loop M+11)
 
 ## Apps
 
