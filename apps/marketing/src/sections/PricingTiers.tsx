@@ -1,7 +1,13 @@
+import { useState } from "react";
+
 import attackIcon from "@osrs-llm-helper/osrs-assets/skill_icons/attack.png";
 import slayerIcon from "@osrs-llm-helper/osrs-assets/skill_icons/slayer.png";
 import prayerIcon from "@osrs-llm-helper/osrs-assets/skill_icons/prayer.png";
 import constructionIcon from "@osrs-llm-helper/osrs-assets/skill_icons/construction.png";
+
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL ?? "http://localhost:3000";
+
+type CheckoutSlug = "hobbyist" | "pro" | "iron";
 
 type Tier = {
   readonly name: string;
@@ -12,6 +18,8 @@ type Tier = {
   readonly cta: string;
   readonly highlighted?: boolean;
   readonly footnote?: string;
+  /** Tiers with a checkoutSlug send their CTA to Stripe Checkout. */
+  readonly checkoutSlug?: CheckoutSlug;
 };
 
 // Quotas locked in docs/research/llm-providers/cost-model.md (RAI-8).
@@ -44,6 +52,7 @@ const TIERS: readonly Tier[] = [
     ],
     cta: "Choose Hobbyist",
     highlighted: true,
+    checkoutSlug: "hobbyist",
   },
   {
     name: "Pro",
@@ -57,6 +66,7 @@ const TIERS: readonly Tier[] = [
       "Stream overlay mode · priority routing",
     ],
     cta: "Choose Pro",
+    checkoutSlug: "pro",
   },
   {
     name: "Iron",
@@ -70,10 +80,48 @@ const TIERS: readonly Tier[] = [
       "Direct support · early access to new tools",
     ],
     cta: "Choose Iron",
+    checkoutSlug: "iron",
   },
 ];
 
+async function startCheckout(slug: CheckoutSlug): Promise<{ url?: string; error?: string }> {
+  try {
+    const res = await fetch(`${BACKEND_URL}/v1/billing/checkout/${slug}`, {
+      method: "POST",
+      headers: { accept: "application/json" },
+    });
+    const body = (await res.json().catch(() => ({}))) as { url?: string; error?: string };
+    if (!res.ok || !body.url) {
+      return { error: body.error ?? `http_${res.status}` };
+    }
+    return { url: body.url };
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : "network_error" };
+  }
+}
+
 export function PricingTiers() {
+  const [pending, setPending] = useState<CheckoutSlug | null>(null);
+  const [errorTier, setErrorTier] = useState<CheckoutSlug | null>(null);
+
+  async function onCheckout(slug: CheckoutSlug): Promise<void> {
+    setPending(slug);
+    setErrorTier(null);
+    const { url, error } = await startCheckout(slug);
+    if (url) {
+      window.location.href = url;
+      return;
+    }
+    setPending(null);
+    setErrorTier(slug);
+    if (typeof window !== "undefined" && error) {
+      // Loud but recoverable: the player tried to pay and we couldn't
+      // hand them off to Stripe. Use a soft alert rather than crashing.
+      // eslint-disable-next-line no-console
+      console.warn(`Tibbly checkout failed for ${slug}:`, error);
+    }
+  }
+
   return (
     <section
       data-testid="pricing-tiers"
@@ -147,14 +195,34 @@ export function PricingTiers() {
               )}
               <button
                 type="button"
-                className={`border px-4 py-2 font-heading transition ${
+                onClick={
+                  tier.checkoutSlug
+                    ? () => void onCheckout(tier.checkoutSlug as CheckoutSlug)
+                    : undefined
+                }
+                disabled={tier.checkoutSlug !== undefined && pending !== null}
+                aria-busy={pending === tier.checkoutSlug ? "true" : "false"}
+                data-testid={
+                  tier.checkoutSlug
+                    ? `pricing-cta-${tier.checkoutSlug}`
+                    : "pricing-cta-free"
+                }
+                className={`border px-4 py-2 font-heading transition disabled:cursor-wait disabled:opacity-60 ${
                   tier.highlighted
                     ? "border-osrs-gold bg-osrs-gold/10 text-osrs-gold hover:bg-osrs-gold/25"
                     : "border-osrs-border text-osrs-text hover:border-osrs-gold-dim hover:text-osrs-gold"
                 }`}
               >
-                {tier.cta}
+                {pending === tier.checkoutSlug ? "Opening Stripe…" : tier.cta}
               </button>
+              {errorTier === tier.checkoutSlug && (
+                <p
+                  role="alert"
+                  className="mt-2 font-mono text-[10px] uppercase tracking-widest text-red-400"
+                >
+                  Checkout unavailable. Please try again.
+                </p>
+              )}
             </li>
           ))}
         </ul>

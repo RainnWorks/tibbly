@@ -22,6 +22,8 @@ import { createAdminOpenRouterRouter, type CreateAdminOpenRouterOptions } from "
 import { createAdminUsageRouter } from "./api/admin/usage";
 import type { CreateAdminUsageOptions } from "./api/admin/usage";
 import { createAdminUsersRouter, type CreateAdminUsersOptions } from "./api/admin/users";
+import { createBillingCheckoutRouter } from "./api/billing-checkout";
+import type { CreateBillingCheckoutRouterOptions } from "./api/billing-checkout";
 import { createBillingPortalRouter } from "./api/billing-portal";
 import type { CreateBillingPortalRouterOptions } from "./api/billing-portal";
 import { createMeRouter } from "./api/me";
@@ -104,6 +106,13 @@ export interface CreateAppOptions {
    * mount `/v1/billing/*`. Omit in tests that don't exercise billing.
    */
   billing?: CreateBillingPortalRouterOptions;
+  /**
+   * Stripe Checkout session router for new signups. Pass `{ stripe,
+   * successUrl, cancelUrl }` to mount `POST /v1/billing/checkout/:tier`.
+   * Anonymous (no requireUser) — this is the entry point from the
+   * marketing PricingTiers CTAs.
+   */
+  billingCheckout?: CreateBillingCheckoutRouterOptions;
   /**
    * GDPR Art. 15 / Art. 17 router (M3.5). Pass `{}` to mount the default,
    * or `{ db, stripe }` to override. Omit in tests that don't exercise
@@ -188,6 +197,10 @@ export function createApp(options: CreateAppOptions = {}): Hono {
 
   if (options.billing) {
     app.route("/v1/billing", createBillingPortalRouter(options.billing));
+  }
+
+  if (options.billingCheckout) {
+    app.route("/v1/billing", createBillingCheckoutRouter(options.billingCheckout));
   }
 
   if (options.me) {
