@@ -19,6 +19,8 @@ import { createAdminUsageRouter } from "./api/admin/usage";
 import type { CreateAdminUsageOptions } from "./api/admin/usage";
 import { createBillingPortalRouter } from "./api/billing-portal";
 import type { CreateBillingPortalRouterOptions } from "./api/billing-portal";
+import { createMeRouter } from "./api/me";
+import type { CreateMeRouterOptions } from "./api/me";
 import { createPairingRouter } from "./api/pairing";
 import type { CreatePairingRouterOptions } from "./api/pairing";
 import { createPresenceRouter } from "./api/presence";
@@ -76,6 +78,12 @@ export interface CreateAppOptions {
    * mount `/v1/billing/*`. Omit in tests that don't exercise billing.
    */
   billing?: CreateBillingPortalRouterOptions;
+  /**
+   * GDPR Art. 15 / Art. 17 router (M3.5). Pass `{}` to mount the default,
+   * or `{ db, stripe }` to override. Omit in tests that don't exercise
+   * deletion/export. Requires `requireUser` auth (header-gated for now).
+   */
+  me?: CreateMeRouterOptions | "auto";
 }
 
 export function createApp(options: CreateAppOptions = {}): Hono {
@@ -137,6 +145,11 @@ export function createApp(options: CreateAppOptions = {}): Hono {
 
   if (options.billing) {
     app.route("/v1/billing", createBillingPortalRouter(options.billing));
+  }
+
+  if (options.me) {
+    const meOpts = options.me === "auto" ? {} : options.me;
+    app.route("/v1/me", createMeRouter(meOpts));
   }
 
   app.notFound((c) => c.json({ ok: false, error: "not_found" }, 404));
