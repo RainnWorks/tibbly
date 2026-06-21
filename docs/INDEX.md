@@ -68,7 +68,9 @@ then jump as needed.
 
 ## Research (continuously growing, owned by research agents)
 
-- [`research/runelite-api/`](research/runelite-api/) — APIs we could use we haven't yet
+- [`research/runelite-api/`](research/runelite-api/) — APIs we could use we haven't yet *(r-RAI5)*
+  - [`research/runelite-api/_SUMMARY.md`](research/runelite-api/_SUMMARY.md) — one-page top-5-unblockers + family-tag recommendations
+  - [`research/runelite-api/catalog.md`](research/runelite-api/catalog.md) — 100+ tool catalog, family-by-family, with API + Kotlin sketches + token costs
 - [`research/community/`](research/community/) — OSRS/RuneLite user trends, pain points
   - [`research/community/_SUMMARY.md`](research/community/_SUMMARY.md) — one-page pain-points + creator brief *(r2)*
   - [`research/community/_naming-signals.md`](research/community/_naming-signals.md) — how OSRS tools are named in the wild *(r7 / RAI-11)*
