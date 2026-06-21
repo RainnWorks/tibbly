@@ -15,10 +15,12 @@ import { Hono } from "hono";
 
 import type { DbClient } from "../db/client";
 import { osrsAccounts } from "../db/schema";
-import { requireUser, type AuthedVars } from "./_auth";
+import { requireUserWith, type AuthedVars, type DeviceKeyCache } from "./_auth";
 
 export interface CreateAccountsRouterOptions {
   db: DbClient;
+  /** Optional shared device-key cache; defaults to a per-router cache. */
+  deviceKeyCache?: DeviceKeyCache;
 }
 
 export interface AccountDTO {
@@ -36,7 +38,7 @@ export function createAccountsRouter(
   const { db } = options;
   const app = new Hono<{ Variables: AuthedVars }>();
 
-  app.use("*", requireUser);
+  app.use("*", requireUserWith({ db, ...(options.deviceKeyCache ? { cache: options.deviceKeyCache } : {}) }));
 
   // List handler accepts both "/v1/accounts" and "/v1/accounts/" — Hono
   // treats these as separate routes by default.

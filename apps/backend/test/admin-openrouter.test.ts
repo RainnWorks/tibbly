@@ -1,18 +1,11 @@
 /**
- * Contract for /admin/openrouter/spend + /admin/openrouter/revenue.
- *
- * The spend route reads from `messages` and runs token counts through
- * `llm/cost.ts`. We seed a couple of messages, then assert per-model
- * roll-up + today/week/month totals.
- *
- * The revenue route reads active subscriptions and multiplies by tier
- * prices. We pass an override tier table so the math is deterministic
- * regardless of the production price catalogue.
+ * Contract for /admin/openrouter/spend + /admin/openrouter/revenue (RAI-39).
  */
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 
 import { createApp } from "../src/app";
 import { chats, messages, subscriptions, users } from "../src/db/schema";
+import { OPS_SESSION_SECRET, opsSessionCookieHeader } from "./_auth-fixture";
 import { makeTestDb, type TestDbHandle } from "./_db-fixture";
 
 let handle: TestDbHandle;
@@ -26,12 +19,24 @@ afterEach(async () => {
 });
 
 describe("/admin/openrouter auth gate", () => {
-  it("401s without admin header", async () => {
+  it("401s without any auth", async () => {
     const app = createApp({
-      adminOpenRouter: { db: handle.db, adminEmails: [ADMIN] },
+      adminOpenRouter: { db: handle.db, adminEmails: [ADMIN], jwtSecret: OPS_SESSION_SECRET },
     });
     const res = await app.fetch(
       new Request("http://localhost/admin/openrouter/spend"),
+    );
+    expect(res.status).toBe(401);
+  });
+
+  it("401s when the OLD x-admin-email header is sent (audit C2 closed)", async () => {
+    const app = createApp({
+      adminOpenRouter: { db: handle.db, adminEmails: [ADMIN], jwtSecret: OPS_SESSION_SECRET },
+    });
+    const res = await app.fetch(
+      new Request("http://localhost/admin/openrouter/spend", {
+        headers: { "x-admin-email": ADMIN },
+      }),
     );
     expect(res.status).toBe(401);
   });
@@ -61,21 +66,17 @@ describe("GET /admin/openrouter/spend", () => {
     ]);
 
     const app = createApp({
-      adminOpenRouter: { db: handle.db, adminEmails: [ADMIN] },
+      adminOpenRouter: { db: handle.db, adminEmails: [ADMIN], jwtSecret: OPS_SESSION_SECRET },
     });
+    const cookie = await opsSessionCookieHeader(ADMIN);
     const res = await app.fetch(
-      new Request("http://localhost/admin/openrouter/spend", {
-        headers: { "x-admin-email": ADMIN },
-      }),
+      new Request("http://localhost/admin/openrouter/spend", { headers: cookie }),
     );
     expect(res.status).toBe(200);
     const body = (await res.json()) as {
       windows: { month: { spendMicroUsd: number } };
       byModelMonth: Record<string, { spendMicroUsd: number; messageCount: number }>;
     };
-    // Haiku: 1000*1 + 500*5 = 3500
-    // Sonnet: 2000*3 + 1000*15 = 21000
-    // total month = 24500
     expect(body.windows.month.spendMicroUsd).toBe(24500);
     expect(body.byModelMonth["anthropic/claude-haiku-4.5"]?.spendMicroUsd).toBe(3500);
     expect(body.byModelMonth["anthropic/claude-sonnet-4.6"]?.spendMicroUsd).toBe(21000);
@@ -124,22 +125,29 @@ describe("GET /admin/openrouter/revenue", () => {
       adminOpenRouter: {
         db: handle.db,
         adminEmails: [ADMIN],
+<<<<<<< HEAD
+        jwtSecret: OPS_SESSION_SECRET,
         tierPriceUsdCents: { hobbyist: 700, pro: 1900, iron: 4900 },
+=======
+        tierPricePence: { hobbyist: 700, pro: 1900, iron: 4900 },
+>>>>>>> origin/main
       },
     });
+    const cookie = await opsSessionCookieHeader(ADMIN);
     const res = await app.fetch(
-      new Request("http://localhost/admin/openrouter/revenue", {
-        headers: { "x-admin-email": ADMIN },
-      }),
+      new Request("http://localhost/admin/openrouter/revenue", { headers: cookie }),
     );
     const body = (await res.json()) as {
-      mrrUsdCents: number;
+      currency: string;
+      mrrPence: number;
       activeSubscriptions: number;
       tierCounts: Record<string, number>;
     };
+    expect(body.currency).toBe("gbp");
     expect(body.activeSubscriptions).toBe(2);
     expect(body.tierCounts.hobbyist).toBe(1);
     expect(body.tierCounts.pro).toBe(1);
-    expect(body.mrrUsdCents).toBe(2600);
+    // Hobbyist 700p + Pro 1900p = 2600p
+    expect(body.mrrPence).toBe(2600);
   });
 });

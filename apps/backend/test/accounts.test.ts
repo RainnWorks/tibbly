@@ -1,8 +1,9 @@
 /**
- * RAI-27 — /v1/accounts contract.
+ * RAI-27 — /v1/accounts contract (RAI-39 auth migration).
  *
  * Confirms:
- *   - 401 without a user header.
+ *   - 401 without an Authorization Bearer device key.
+ *   - 401 with the OLD `x-user-id` header (audit C1 attack is closed).
  *   - GET only returns the caller's rows (ownership filter).
  *   - DELETE 404s when the id belongs to another user (no info leak).
  *   - DELETE 200 + row gone when the id is owned by the caller.
@@ -11,7 +12,8 @@ import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import { eq } from "drizzle-orm";
 
 import { createApp } from "../src/app";
-import { osrsAccounts, users } from "../src/db/schema";
+import { osrsAccounts } from "../src/db/schema";
+import { bearerHeaders, seedDevice, type SeededDevice } from "./_auth-fixture";
 import { makeTestDb, type TestDbHandle } from "./_db-fixture";
 
 let handle: TestDbHandle;
@@ -23,36 +25,65 @@ afterEach(async () => {
   await handle.close();
 });
 
-const USER_A = "user_accts_aaaaaaaaaa";
-const USER_B = "user_accts_bbbbbbbbbb";
-
-async function seed(): Promise<{ a1: string; a2: string; b1: string }> {
-  await handle.db.insert(users).values([
-    { id: USER_A, email: "a@example.com" },
-    { id: USER_B, email: "b@example.com" },
-  ]);
+async function seed(): Promise<{
+  a: SeededDevice;
+  b: SeededDevice;
+  a1: string;
+  a2: string;
+  b1: string;
+}> {
+  const a = await seedDevice(handle, { email: "a@example.com" });
+  const b = await seedDevice(handle, { email: "b@example.com" });
   await handle.db.insert(osrsAccounts).values([
-    { id: "acct_A1_xxxxxxxxxxxxx", userId: USER_A, displayName: "Zezima", accountType: "main" },
-    { id: "acct_A2_xxxxxxxxxxxxx", userId: USER_A, displayName: "B0aty", accountType: "ironman" },
-    { id: "acct_B1_xxxxxxxxxxxxx", userId: USER_B, displayName: "Lynx Titan", accountType: "main" },
+    { id: "acct_A1_xxxxxxxxxxxxx", userId: a.userId, displayName: "Zezima", accountType: "main" },
+    { id: "acct_A2_xxxxxxxxxxxxx", userId: a.userId, displayName: "B0aty", accountType: "ironman" },
+    { id: "acct_B1_xxxxxxxxxxxxx", userId: b.userId, displayName: "Lynx Titan", accountType: "main" },
   ]);
-  return { a1: "acct_A1_xxxxxxxxxxxxx", a2: "acct_A2_xxxxxxxxxxxxx", b1: "acct_B1_xxxxxxxxxxxxx" };
+  return {
+    a,
+    b,
+    a1: "acct_A1_xxxxxxxxxxxxx",
+    a2: "acct_A2_xxxxxxxxxxxxx",
+    b1: "acct_B1_xxxxxxxxxxxxx",
+  };
 }
 
 describe("/v1/accounts", () => {
-  it("401s without x-user-id", async () => {
+  it("401s without any auth header", async () => {
     const app = createApp({ accounts: { db: handle.db } });
     const res = await app.fetch(new Request("http://localhost/v1/accounts"));
     expect(res.status).toBe(401);
   });
 
-  it("returns only the caller's accounts", async () => {
-    await seed();
+  it("401s when the OLD x-user-id header is sent (audit C1 attack closed)", async () => {
+    const { a } = await seed();
+    const app = createApp({ accounts: { db: handle.db } });
+    const res = await app.fetch(
+      new Request("http://localhost/v1/accounts", {
+        headers: { "x-user-id": a.userId },
+      }),
+    );
+    expect(res.status).toBe(401);
+  });
+
+  it("401s when the Bearer token is a raw user id (audit C1 second variant closed)", async () => {
+    const { a } = await seed();
+    const app = createApp({ accounts: { db: handle.db } });
+    const res = await app.fetch(
+      new Request("http://localhost/v1/accounts", {
+        headers: { authorization: `Bearer ${a.userId}` },
+      }),
+    );
+    expect(res.status).toBe(401);
+  });
+
+  it("returns only the caller's accounts with a valid device key", async () => {
+    const { a } = await seed();
     const app = createApp({ accounts: { db: handle.db } });
 
     const res = await app.fetch(
       new Request("http://localhost/v1/accounts", {
-        headers: { "x-user-id": USER_A },
+        headers: bearerHeaders(a.rawDeviceKey),
       }),
     );
     expect(res.status).toBe(200);
@@ -60,25 +91,24 @@ describe("/v1/accounts", () => {
       accounts: Array<{ id: string; displayName: string }>;
     };
     expect(body.accounts).toHaveLength(2);
-    expect(body.accounts.map((a) => a.displayName).sort()).toEqual([
+    expect(body.accounts.map((acct) => acct.displayName).sort()).toEqual([
       "B0aty",
       "Zezima",
     ]);
   });
 
   it("DELETE 404s when the account belongs to a different user", async () => {
-    const { b1 } = await seed();
+    const { a, b1 } = await seed();
     const app = createApp({ accounts: { db: handle.db } });
 
     const res = await app.fetch(
       new Request(`http://localhost/v1/accounts/${b1}`, {
         method: "DELETE",
-        headers: { "x-user-id": USER_A },
+        headers: bearerHeaders(a.rawDeviceKey),
       }),
     );
     expect(res.status).toBe(404);
 
-    // B's row still exists.
     const stillThere = await handle.db
       .select()
       .from(osrsAccounts)
@@ -87,13 +117,13 @@ describe("/v1/accounts", () => {
   });
 
   it("DELETE removes the caller's own row", async () => {
-    const { a1 } = await seed();
+    const { a, a1 } = await seed();
     const app = createApp({ accounts: { db: handle.db } });
 
     const res = await app.fetch(
       new Request(`http://localhost/v1/accounts/${a1}`, {
         method: "DELETE",
-        headers: { "x-user-id": USER_A },
+        headers: bearerHeaders(a.rawDeviceKey),
       }),
     );
     expect(res.status).toBe(200);

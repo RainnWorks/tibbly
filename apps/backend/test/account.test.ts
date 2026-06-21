@@ -1,9 +1,10 @@
 /**
- * D-8 plugin account-panel feed.
+ * D-8 plugin account-panel feed (RAI-39 auth migration).
  *
  * Verifies:
- *   - /v1/account/summary 401s without auth, 404s for unknown users,
- *     surfaces tier/devices/osrs accounts, marks `isCurrent` from hints.
+ *   - /v1/account/summary 401s without a real device-key Bearer.
+ *   - 401 on the OLD `x-user-id` header (audit C1 closed).
+ *   - With a real device key in the Bearer header, returns the masked DTO.
  *   - /v1/account/usage-proxy returns the tier-aware shape — and NEVER a
  *     `tokens`/`balance` field. The plugin's grep guard mirrors this rule.
  */
@@ -15,11 +16,12 @@ import {
   osrsAccounts,
   subscriptions,
   usageRecords,
-  users,
 } from "../src/db/schema";
+import { bearerHeaders, seedDevice, type SeededDevice } from "./_auth-fixture";
 import { makeTestDb, type TestDbHandle } from "./_db-fixture";
 
 let handle: TestDbHandle;
+let seeded: SeededDevice;
 
 beforeEach(async () => {
   handle = await makeTestDb();
@@ -28,18 +30,16 @@ afterEach(async () => {
   await handle.close();
 });
 
-const USER_ID = "user_acctpanel_aaaaa";
-
-async function seedUser(): Promise<void> {
-  await handle.db.insert(users).values({
-    id: USER_ID,
+async function seedUser(): Promise<SeededDevice> {
+  seeded = await seedDevice(handle, {
     email: "panel@example.com",
     stripeCustomerId: "cus_PANEL",
   });
+  return seeded;
 }
 
 describe("/v1/account/summary", () => {
-  it("401s without x-user-id", async () => {
+  it("401s without an Authorization Bearer header", async () => {
     const app = createApp({ account: { db: handle.db } });
     const res = await app.fetch(
       new Request("http://localhost/v1/account/summary"),
@@ -47,22 +47,34 @@ describe("/v1/account/summary", () => {
     expect(res.status).toBe(401);
   });
 
-  it("404s for an unknown user", async () => {
+  it("401s when the OLD x-user-id header is supplied (audit C1 attack closed)", async () => {
+    const user = await seedUser();
     const app = createApp({ account: { db: handle.db } });
     const res = await app.fetch(
       new Request("http://localhost/v1/account/summary", {
-        headers: { "x-user-id": "ghost-user-xxxxxx" },
+        headers: { "x-user-id": user.userId },
       }),
     );
-    expect(res.status).toBe(404);
+    expect(res.status).toBe(401);
   });
 
-  it("returns null subscription + empty arrays for a freshly minted user", async () => {
+  it("401s when the Bearer is an unknown raw key", async () => {
     await seedUser();
     const app = createApp({ account: { db: handle.db } });
     const res = await app.fetch(
       new Request("http://localhost/v1/account/summary", {
-        headers: { "x-user-id": USER_ID },
+        headers: bearerHeaders("not-a-real-device-key-aaaaaaaaaaaaaaa"),
+      }),
+    );
+    expect(res.status).toBe(401);
+  });
+
+  it("returns null subscription + empty arrays for a freshly minted user", async () => {
+    const user = await seedUser();
+    const app = createApp({ account: { db: handle.db } });
+    const res = await app.fetch(
+      new Request("http://localhost/v1/account/summary", {
+        headers: bearerHeaders(user.rawDeviceKey),
       }),
     );
     expect(res.status).toBe(200);
@@ -71,15 +83,16 @@ describe("/v1/account/summary", () => {
     expect(body.subscriptionStatus).toBeNull();
     expect(body.renewsAt).toBeNull();
     expect(body.pairedOsrsAccounts).toEqual([]);
-    expect(body.pairedDevices).toEqual([]);
+    // The seeded user has the bound device; surface it.
+    expect((body.pairedDevices as unknown[]).length).toBe(1);
   });
 
   it("surfaces tier + paired OSRS accounts + paired devices", async () => {
-    await seedUser();
+    const user = await seedUser();
 
     const periodEnd = new Date("2026-07-14T00:00:00Z");
     await handle.db.insert(subscriptions).values({
-      userId: USER_ID,
+      userId: user.userId,
       stripeSubscriptionId: "sub_PANEL",
       tier: "pro",
       status: "active",
@@ -89,30 +102,23 @@ describe("/v1/account/summary", () => {
     });
 
     await handle.db.insert(osrsAccounts).values([
-      { id: "acct_main_xxxxxxxxxx", userId: USER_ID, displayName: "Zezima", accountType: "main" },
-      { id: "acct_iron_xxxxxxxxxx", userId: USER_ID, displayName: "B0aty", accountType: "ironman" },
+      { id: "acct_main_xxxxxxxxxx", userId: user.userId, displayName: "Zezima", accountType: "main" },
+      { id: "acct_iron_xxxxxxxxxx", userId: user.userId, displayName: "B0aty", accountType: "ironman" },
     ]);
 
-    await handle.db.insert(devices).values([
-      {
-        id: "dev_home_xxxxxxxxxx",
-        userId: USER_ID,
-        deviceKeyHash: "hash_home",
-        displayName: "Tom's iMac",
-      },
-      {
-        id: "dev_lap_xxxxxxxxxx",
-        userId: USER_ID,
-        deviceKeyHash: "hash_laptop",
-        displayName: "Tom's MacBook",
-      },
-    ]);
+    // Add an extra device alongside the seeded one.
+    await handle.db.insert(devices).values({
+      id: "dev_lap_xxxxxxxxxx",
+      userId: user.userId,
+      deviceKeyHash: "hash_laptop",
+      displayName: "Tom's MacBook",
+    });
 
     const app = createApp({ account: { db: handle.db } });
     const res = await app.fetch(
       new Request("http://localhost/v1/account/summary", {
         headers: {
-          "x-user-id": USER_ID,
+          ...bearerHeaders(user.rawDeviceKey),
           "x-current-player": "zezima",
           "x-device-key": "hash_laptop",
         },
@@ -138,22 +144,20 @@ describe("/v1/account/summary", () => {
 
     const laptop = body.pairedDevices.find((d) => d.displayName === "Tom's MacBook");
     expect(laptop?.isCurrent).toBe(true);
-    const imac = body.pairedDevices.find((d) => d.displayName === "Tom's iMac");
-    expect(imac?.isCurrent).toBe(false);
   });
 
   it("never leaks raw token / Stripe / device-key fields", async () => {
-    await seedUser();
+    const user = await seedUser();
     await handle.db.insert(devices).values({
       id: "dev_secret_xxxxxxxx",
-      userId: USER_ID,
+      userId: user.userId,
       deviceKeyHash: "hash_super_secret",
       displayName: "secret-device",
     });
     const app = createApp({ account: { db: handle.db } });
     const res = await app.fetch(
       new Request("http://localhost/v1/account/summary", {
-        headers: { "x-user-id": USER_ID },
+        headers: bearerHeaders(user.rawDeviceKey),
       }),
     );
     const text = await res.text();
@@ -169,7 +173,7 @@ describe("/v1/account/summary", () => {
 });
 
 describe("/v1/account/usage-proxy", () => {
-  it("401s without x-user-id", async () => {
+  it("401s without an Authorization Bearer header", async () => {
     const app = createApp({ account: { db: handle.db } });
     const res = await app.fetch(
       new Request("http://localhost/v1/account/usage-proxy"),
@@ -178,11 +182,11 @@ describe("/v1/account/usage-proxy", () => {
   });
 
   it("returns free-tier 'messages-left' shape for a freshly minted user", async () => {
-    await seedUser();
+    const user = await seedUser();
     const app = createApp({ account: { db: handle.db } });
     const res = await app.fetch(
       new Request("http://localhost/v1/account/usage-proxy", {
-        headers: { "x-user-id": USER_ID },
+        headers: bearerHeaders(user.rawDeviceKey),
       }),
     );
     expect(res.status).toBe(200);
@@ -193,20 +197,20 @@ describe("/v1/account/usage-proxy", () => {
   });
 
   it("counts only today's usage records, not older ones", async () => {
-    await seedUser();
+    const user = await seedUser();
     const now = new Date();
     const yesterday = new Date(now.getTime() - 36 * 60 * 60 * 1000);
 
     await handle.db.insert(usageRecords).values([
-      { userId: USER_ID, model: "haiku-4.5", promptTokens: 1, completionTokens: 1, createdAt: now },
-      { userId: USER_ID, model: "haiku-4.5", promptTokens: 1, completionTokens: 1, createdAt: now },
-      { userId: USER_ID, model: "haiku-4.5", promptTokens: 1, completionTokens: 1, createdAt: yesterday },
+      { userId: user.userId, model: "haiku-4.5", promptTokens: 1, completionTokens: 1, createdAt: now },
+      { userId: user.userId, model: "haiku-4.5", promptTokens: 1, completionTokens: 1, createdAt: now },
+      { userId: user.userId, model: "haiku-4.5", promptTokens: 1, completionTokens: 1, createdAt: yesterday },
     ]);
 
     const app = createApp({ account: { db: handle.db } });
     const res = await app.fetch(
       new Request("http://localhost/v1/account/usage-proxy", {
-        headers: { "x-user-id": USER_ID },
+        headers: bearerHeaders(user.rawDeviceKey),
       }),
     );
     const body = (await res.json()) as { form: string; messagesUsedToday: number };
@@ -215,10 +219,10 @@ describe("/v1/account/usage-proxy", () => {
   });
 
   it("returns 'subscription-active' for Pro tier", async () => {
-    await seedUser();
+    const user = await seedUser();
     const periodEnd = new Date("2026-07-14T00:00:00Z");
     await handle.db.insert(subscriptions).values({
-      userId: USER_ID,
+      userId: user.userId,
       stripeSubscriptionId: "sub_PRO",
       tier: "pro",
       status: "active",
@@ -230,7 +234,7 @@ describe("/v1/account/usage-proxy", () => {
     const app = createApp({ account: { db: handle.db } });
     const res = await app.fetch(
       new Request("http://localhost/v1/account/usage-proxy", {
-        headers: { "x-user-id": USER_ID },
+        headers: bearerHeaders(user.rawDeviceKey),
       }),
     );
     const body = (await res.json()) as Record<string, unknown>;
@@ -241,9 +245,9 @@ describe("/v1/account/usage-proxy", () => {
   });
 
   it("returns 'unlimited' for Iron tier", async () => {
-    await seedUser();
+    const user = await seedUser();
     await handle.db.insert(subscriptions).values({
-      userId: USER_ID,
+      userId: user.userId,
       stripeSubscriptionId: "sub_IRON",
       tier: "iron",
       status: "active",
@@ -255,7 +259,7 @@ describe("/v1/account/usage-proxy", () => {
     const app = createApp({ account: { db: handle.db } });
     const res = await app.fetch(
       new Request("http://localhost/v1/account/usage-proxy", {
-        headers: { "x-user-id": USER_ID },
+        headers: bearerHeaders(user.rawDeviceKey),
       }),
     );
     const body = (await res.json()) as Record<string, unknown>;
@@ -265,9 +269,9 @@ describe("/v1/account/usage-proxy", () => {
   });
 
   it("falls back to 'messages-left' for canceled subscriptions", async () => {
-    await seedUser();
+    const user = await seedUser();
     await handle.db.insert(subscriptions).values({
-      userId: USER_ID,
+      userId: user.userId,
       stripeSubscriptionId: "sub_DEAD",
       tier: "pro",
       status: "canceled",
@@ -278,7 +282,7 @@ describe("/v1/account/usage-proxy", () => {
     const app = createApp({ account: { db: handle.db } });
     const res = await app.fetch(
       new Request("http://localhost/v1/account/usage-proxy", {
-        headers: { "x-user-id": USER_ID },
+        headers: bearerHeaders(user.rawDeviceKey),
       }),
     );
     const body = (await res.json()) as Record<string, unknown>;
@@ -286,11 +290,11 @@ describe("/v1/account/usage-proxy", () => {
   });
 
   it("never leaks raw token fields", async () => {
-    await seedUser();
+    const user = await seedUser();
     const app = createApp({ account: { db: handle.db } });
     const res = await app.fetch(
       new Request("http://localhost/v1/account/usage-proxy", {
-        headers: { "x-user-id": USER_ID },
+        headers: bearerHeaders(user.rawDeviceKey),
       }),
     );
     const text = await res.text();

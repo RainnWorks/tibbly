@@ -18,6 +18,12 @@
  * plugin. This checkout route exists so the marketing PricingTiers
  * CTAs can do something real. The post-payment UX is "open RuneLite,
  * open Tibbly panel, pair this device".
+ *
+ * Currency: GBP per D-11. The Stripe price ids resolved by `STRIPE_PRICE_*`
+ * env vars carry the currency on the price itself, so we do NOT pass an
+ * explicit `currency` to `checkout.sessions.create` — Stripe rejects the
+ * call if the price currency disagrees with anything we set here. Verify
+ * the production price ids are GBP before flipping prod traffic.
  */
 import { Hono } from "hono";
 import { z } from "zod";

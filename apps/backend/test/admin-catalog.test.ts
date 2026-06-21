@@ -1,12 +1,14 @@
 /**
- * Contract for /admin/catalog/* routes.
+ * Contract for /admin/catalog/* routes (RAI-39 auth migration).
  *
- * Auth gate, list with filters, diff window, manual refresh.
+ * Auth gate (ops_session JWT cookie), list with filters, diff window,
+ * manual refresh.
  */
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 
 import { createApp } from "../src/app";
 import { modelCatalog } from "../src/db/schema";
+import { OPS_SESSION_SECRET, opsSessionCookieHeader } from "./_auth-fixture";
 import { makeTestDb, type TestDbHandle } from "./_db-fixture";
 
 let handle: TestDbHandle;
@@ -18,6 +20,19 @@ beforeEach(async () => {
 afterEach(async () => {
   await handle.close();
 });
+
+function buildApp(extra?: {
+  refresh?: () => Promise<{ added: number; updated: number; retired: number }>;
+}) {
+  return createApp({
+    adminCatalog: {
+      db: handle.db,
+      adminEmails: [ADMIN],
+      jwtSecret: OPS_SESSION_SECRET,
+      ...(extra?.refresh ? { refresh: async () => extra.refresh!() } : {}),
+    },
+  });
+}
 
 async function seedSample(): Promise<void> {
   const now = new Date();
@@ -66,12 +81,18 @@ async function seedSample(): Promise<void> {
 }
 
 describe("/admin/catalog auth gate", () => {
-  it("401s without admin header", async () => {
-    const app = createApp({
-      adminCatalog: { db: handle.db, adminEmails: [ADMIN] },
-    });
-    const res = await app.fetch(
+  it("401s without any auth", async () => {
+    const res = await buildApp().fetch(
       new Request("http://localhost/admin/catalog/models"),
+    );
+    expect(res.status).toBe(401);
+  });
+
+  it("401s when the OLD x-admin-email header is sent", async () => {
+    const res = await buildApp().fetch(
+      new Request("http://localhost/admin/catalog/models", {
+        headers: { "x-admin-email": ADMIN },
+      }),
     );
     expect(res.status).toBe(401);
   });
@@ -80,13 +101,9 @@ describe("/admin/catalog auth gate", () => {
 describe("GET /admin/catalog/models", () => {
   it("lists all models when no filter applied", async () => {
     await seedSample();
-    const app = createApp({
-      adminCatalog: { db: handle.db, adminEmails: [ADMIN] },
-    });
-    const res = await app.fetch(
-      new Request("http://localhost/admin/catalog/models", {
-        headers: { "x-admin-email": ADMIN },
-      }),
+    const cookie = await opsSessionCookieHeader(ADMIN);
+    const res = await buildApp().fetch(
+      new Request("http://localhost/admin/catalog/models", { headers: cookie }),
     );
     expect(res.status).toBe(200);
     const body = (await res.json()) as {
@@ -100,14 +117,9 @@ describe("GET /admin/catalog/models", () => {
 
   it("filters by provider", async () => {
     await seedSample();
-    const app = createApp({
-      adminCatalog: { db: handle.db, adminEmails: [ADMIN] },
-    });
-    const res = await app.fetch(
-      new Request(
-        "http://localhost/admin/catalog/models?provider=openai",
-        { headers: { "x-admin-email": ADMIN } },
-      ),
+    const cookie = await opsSessionCookieHeader(ADMIN);
+    const res = await buildApp().fetch(
+      new Request("http://localhost/admin/catalog/models?provider=openai", { headers: cookie }),
     );
     const body = (await res.json()) as {
       ok: true;
@@ -120,13 +132,9 @@ describe("GET /admin/catalog/models", () => {
 
   it("hides retired when retired=false", async () => {
     await seedSample();
-    const app = createApp({
-      adminCatalog: { db: handle.db, adminEmails: [ADMIN] },
-    });
-    const res = await app.fetch(
-      new Request("http://localhost/admin/catalog/models?retired=false", {
-        headers: { "x-admin-email": ADMIN },
-      }),
+    const cookie = await opsSessionCookieHeader(ADMIN);
+    const res = await buildApp().fetch(
+      new Request("http://localhost/admin/catalog/models?retired=false", { headers: cookie }),
     );
     const body = (await res.json()) as {
       ok: true;
@@ -141,15 +149,12 @@ describe("GET /admin/catalog/models", () => {
 describe("GET /admin/catalog/diff", () => {
   it("groups added / retired / price-changed rows by window", async () => {
     await seedSample();
-    const app = createApp({
-      adminCatalog: { db: handle.db, adminEmails: [ADMIN] },
-    });
-    // Window = last 1 day. Seed put firstSeenAt 10d ago; retiredAt now.
+    const cookie = await opsSessionCookieHeader(ADMIN);
     const since = new Date(Date.now() - 86_400_000).toISOString();
-    const res = await app.fetch(
+    const res = await buildApp().fetch(
       new Request(
         `http://localhost/admin/catalog/diff?since=${encodeURIComponent(since)}`,
-        { headers: { "x-admin-email": ADMIN } },
+        { headers: cookie },
       ),
     );
     expect(res.status).toBe(200);
@@ -167,17 +172,14 @@ describe("GET /admin/catalog/diff", () => {
 
 describe("POST /admin/catalog/refresh", () => {
   it("invokes the injected refresh function and returns counts", async () => {
-    const app = createApp({
-      adminCatalog: {
-        db: handle.db,
-        adminEmails: [ADMIN],
-        refresh: async () => ({ added: 7, updated: 12, retired: 3 }),
-      },
+    const cookie = await opsSessionCookieHeader(ADMIN);
+    const app = buildApp({
+      refresh: async () => ({ added: 7, updated: 12, retired: 3 }),
     });
     const res = await app.fetch(
       new Request("http://localhost/admin/catalog/refresh", {
         method: "POST",
-        headers: { "x-admin-email": ADMIN },
+        headers: cookie,
       }),
     );
     expect(res.status).toBe(200);

@@ -1,9 +1,9 @@
 package co.rowm.osrsllm.overlay
 
 import co.rowm.osrsllm.chat.Chat
+import co.rowm.osrsllm.chat.ChatBackend
 import co.rowm.osrsllm.chat.ChatMessage
 import co.rowm.osrsllm.chat.ChatStore
-import co.rowm.osrsllm.chat.ClaudeRunner
 import co.rowm.osrsllm.chat.ToolCall
 import co.rowm.osrsllm.chat.ToolCallListener
 import net.runelite.api.ChatMessageType
@@ -30,7 +30,7 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Slash commands → claude → results streamed into the AssistantOverlay.
+ * Slash commands → chat backend → results streamed into the AssistantOverlay.
  *
  * Commands:
  *   - `!ai <q>` / `::ai <q>`         continue the active chat with a new question
@@ -43,11 +43,14 @@ import javax.inject.Singleton
  * Output: the overlay (AssistantOverlayState) renders the response with primitives;
  * a single one-line `[AI] working…` confirmation gets posted to the game chat so the
  * player knows the command landed even before the overlay opens.
+ *
+ * The backend is supplied via [backendSupplier] so the controller is decoupled from
+ * which concrete backend (cloud / BYO direct / none) is currently active.
  */
 @Singleton
 class OverlayChatController @Inject constructor(
     private val state: AssistantOverlayStateHolder,
-    private val runner: ClaudeRunner,
+    private val backendSupplier: ChatBackendSupplier,
     private val chatCommandManager: ChatCommandManager,
     private val chatStore: ChatStore,
     private val chatMessageManager: ChatMessageManager,
@@ -55,6 +58,16 @@ class OverlayChatController @Inject constructor(
     private val iconRegistry: ChatItemIconRegistry,
     private val client: Client,
 ) {
+
+    /**
+     * Injection-friendly indirection so the controller can be constructed at
+     * plugin startup before the concrete backend selector exists. The plugin
+     * provides a singleton of this interface that points at the current
+     * [ChatBackend] selector built per-startup.
+     */
+    interface ChatBackendSupplier {
+        fun get(): ChatBackend?
+    }
 
     private val log = LoggerFactory.getLogger(OverlayChatController::class.java)
     @Volatile private var registered: Boolean = false
@@ -243,11 +256,20 @@ class OverlayChatController @Inject constructor(
                 }
             }
 
-            val result = try { runner.send(withUser, listener) }
-                catch (t: Throwable) {
-                    log.warn("AI run failed", t)
-                    ClaudeRunner.RunResult(success = false, text = "Run failed: ${t.message}")
+            val result = try {
+                val backend = backendSupplier.get()
+                if (backend == null) {
+                    ChatBackend.Result(
+                        success = false,
+                        text = "No chat backend configured. Pick a chat mode in the OSRS LLM Helper config.",
+                    )
+                } else {
+                    backend.send(withUser, listener)
                 }
+            } catch (t: Throwable) {
+                log.warn("AI run failed", t)
+                ChatBackend.Result(success = false, text = "Run failed: ${t.message}")
+            }
 
             val body = if (result.text.isBlank()) "(no response)" else result.text
             state.set(

@@ -34,13 +34,14 @@ describe("RouteOpenRouter", () => {
       }),
       "GET /api/admin/openrouter/revenue": () => ({
         ok: true,
-        mrrUsdCents: 1900,
+        currency: "gbp",
+        mrrPence: 1900,
         activeSubscriptions: 1,
         tierCounts: { pro: 1 },
-        tierPriceUsdCents: { hobbyist: 700, pro: 1900, iron: 4900 },
-        approxToday: { revenueUsdCents: 63 },
-        approxWeek: { revenueUsdCents: 442 },
-        approxMonth: { revenueUsdCents: 1900 },
+        tierPricePence: { hobbyist: 700, pro: 1900, iron: 4900 },
+        approxToday: { revenuePence: 63 },
+        approxWeek: { revenuePence: 442 },
+        approxMonth: { revenuePence: 1900 },
       }),
     });
     await renderRoute("/openrouter", "/openrouter", RouteOpenRouter);

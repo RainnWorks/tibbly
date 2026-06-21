@@ -35,6 +35,27 @@ const EnvSchema = z.object({
    * Empty → admin routes always 403. See `src/api/admin/usage.ts`.
    */
   ADMIN_EMAILS: z.string().default(""),
+  /**
+   * HMAC-SHA256 secret for the ops_session JWT cookie. Required in
+   * production — boot refuses to start when unset and NODE_ENV is
+   * `"production"`. In dev / test the admin login router falls back to
+   * a per-process derived key (loud warning at boot).
+   *
+   * Length: at least 32 characters. Anything shorter is treated as
+   * unset.
+   */
+  OPS_JWT_SECRET: z.string().optional(),
+  /**
+   * Dev-only ergonomics escape hatch. When `"true"` AND `NODE_ENV` is
+   * NOT `"production"`, the v1 auth middleware accepts a plain
+   * `x-dev-user-id` header so local tests + scratch scripts can hit
+   * authenticated endpoints without spinning up a real device row.
+   *
+   * Production deploys MUST leave this unset (or explicitly false).
+   * `requireUser` ignores the header when either condition is unmet
+   * and the boot path logs a loud warning when it is on.
+   */
+  ALLOW_DEV_HEADERS: z.string().optional(),
 });
 
 export type Env = z.infer<typeof EnvSchema>;

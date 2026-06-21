@@ -20,6 +20,17 @@ export const log = pino({
       "OPENROUTER_API_KEY",
       "STRIPE_SECRET_KEY",
       "STRIPE_WEBHOOK_SECRET",
+      "OPS_JWT_SECRET",
+      // RAI-39 H5: per-user PII routinely landed in stripe webhook logs in
+      // cleartext (userId + stripeCustomerId paired). Pino's redact paths
+      // include both shallow and nested forms so wrappers that emit
+      // `{ event: { ...payload } }` still get scrubbed.
+      "customerId",
+      "stripeCustomerId",
+      "*.customerId",
+      "*.stripeCustomerId",
+      "*.email",
+      "email",
     ],
     censor: "[redacted]",
   },

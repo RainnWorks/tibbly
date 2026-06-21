@@ -4,9 +4,16 @@
  * Two routes, both gated by `adminGate`:
  *
  *   GET /admin/openrouter/spend    today/week/month spend in micro-USD,
- *                                  per-model breakdown.
- *   GET /admin/openrouter/revenue  today/week/month revenue, derived
- *                                  from subscription tiers + price book.
+ *                                  per-model breakdown. (USD because
+ *                                  OpenRouter is billed in USD.)
+ *   GET /admin/openrouter/revenue  today/week/month revenue in pence GBP,
+ *                                  derived from subscription tiers + price
+ *                                  book. (GBP per D-11.)
+ *
+ * Currency split: spend is USD because that is what OpenRouter charges us;
+ * revenue is GBP because that is what Stripe charges customers. Margin
+ * comparisons in the ops console UI convert one to the other at the
+ * displayed FX rate. See D-11 in `docs/agents/DECISION_LOG.md`.
  *
  * Spend math sources from `messages.promptTokens/completionTokens` joined
  * with `messages.model` and the price book in `llm/cost.ts`. We do NOT
@@ -25,8 +32,8 @@ import { messages, subscriptions } from "../../db/schema";
 import { computeCostMicroUsd } from "../../llm/cost";
 import { adminGate, type AdminGateOptions } from "./_gate";
 
-/** Default Stripe tier prices in USD cents (Hobbyist / Pro / Iron). */
-export const DEFAULT_TIER_PRICE_USD_CENTS: Record<string, number> = {
+/** Default Stripe tier prices in pence GBP (Hobbyist / Pro / Iron). */
+export const DEFAULT_TIER_PRICE_PENCE: Record<string, number> = {
   hobbyist: 700,
   pro: 1900,
   iron: 4900,
@@ -34,15 +41,15 @@ export const DEFAULT_TIER_PRICE_USD_CENTS: Record<string, number> = {
 
 export interface CreateAdminOpenRouterOptions extends AdminGateOptions {
   db: DbClient;
-  /** Override tier prices in USD cents for tests. */
-  tierPriceUsdCents?: Record<string, number>;
+  /** Override tier prices in pence GBP for tests. */
+  tierPricePence?: Record<string, number>;
 }
 
 export function createAdminOpenRouterRouter(
   options: CreateAdminOpenRouterOptions,
 ): Hono {
   const { db } = options;
-  const prices = options.tierPriceUsdCents ?? DEFAULT_TIER_PRICE_USD_CENTS;
+  const prices = options.tierPricePence ?? DEFAULT_TIER_PRICE_PENCE;
 
   const app = new Hono();
   app.use("/*", adminGate(options));
@@ -138,32 +145,33 @@ export function createAdminOpenRouterRouter(
       .from(subscriptions);
 
     const tierCounts: Record<string, number> = {};
-    let mrrUsdCents = 0;
+    let mrrPence = 0;
     for (const s of subs) {
       if (s.status !== "active" && s.status !== "trialing") continue;
       if (s.currentPeriodEnd.getTime() < now.getTime()) continue;
       tierCounts[s.tier] = (tierCounts[s.tier] ?? 0) + 1;
       const tierPrice = prices[s.tier];
-      if (tierPrice !== undefined) mrrUsdCents += tierPrice;
+      if (tierPrice !== undefined) mrrPence += tierPrice;
     }
 
     // Today/week/month revenue approximated from MRR daily share. The
     // honest revenue figure needs Stripe Charge events; we surface that
     // as a follow-up. For tonight: MRR / 30 daily share.
-    const dailyShareCents = Math.round(mrrUsdCents / 30);
+    const dailySharePence = Math.round(mrrPence / 30);
     return c.json({
       ok: true,
-      mrrUsdCents,
+      currency: "gbp",
+      mrrPence,
       activeSubscriptions: subs.filter(
         (s) =>
           (s.status === "active" || s.status === "trialing") &&
           s.currentPeriodEnd.getTime() >= now.getTime(),
       ).length,
       tierCounts,
-      tierPriceUsdCents: prices,
-      approxToday: { revenueUsdCents: dailyShareCents },
-      approxWeek: { revenueUsdCents: dailyShareCents * 7 },
-      approxMonth: { revenueUsdCents: mrrUsdCents },
+      tierPricePence: prices,
+      approxToday: { revenuePence: dailySharePence },
+      approxWeek: { revenuePence: dailySharePence * 7 },
+      approxMonth: { revenuePence: mrrPence },
       note:
         "Revenue is approximated from active-subscription MRR. Per-day actuals need Stripe charge events; see docs/architecture/OPS_DESIGN.md follow-ups.",
     });

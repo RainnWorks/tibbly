@@ -11,24 +11,27 @@
 ## How this audit is run
 
 All greps below are executed from `apps/plugin/` (the plugin's Gradle module
-root). The production source set is `src/main/kotlin/`. Three categories of
+root). The production source set is `src/main/kotlin/`. Two categories of
 files are deliberately excluded:
 
 1. `src/test/kotlin/**` — test stubs and fixtures.
 2. `src/main/kotlin/co/rowm/osrsllm/local/**` — the developer-only local
-   MCP-over-HTTP path. Guarded behind `developerMode=false` at runtime,
-   excluded from the Gradle gates (`checkNoHttpServer`,
-   `checkNoReflection`, `checkNoPlaintextUrls`), excluded from the
-   shipped Plugin Hub jar by package boundary, and documented in
-   `apps/plugin/SECURITY_DESIGN.md` section 4.
-3. `src/main/kotlin/**/*Test*.kt` patterns (none currently exist in main).
+   MCP-over-HTTP path. Behind a runtime gate (`developerMode` +
+   `localMcpEnabled`, both off by default), excluded from the Gradle grep
+   gates (`checkNoHttpServer`, `checkNoReflection`, `checkNoPlaintextUrls`),
+   excluded from the shipped Plugin Hub jar by explicit `shadowJar`
+   `exclude(...)` lines (verified every build by `:checkLocalNotInJar`),
+   and documented in `apps/plugin/SECURITY_DESIGN.md` section 4. RAI-40
+   (this audit revision) tightened the jar exclusion from "package
+   boundary" — which was aspirational and unverified — to "shadowJar
+   exclude + checked unzip listing".
 
 The runtime mirror of these greps lives at
 `apps/plugin/src/test/kotlin/co/rowm/osrsllm/cloud/SourceTreeAuditTest.kt`
 so a regression also breaks `./gradlew test`. The build-time mirror lives in
 `apps/plugin/build.gradle.kts` as the `checkNoHttpServer`,
-`checkNoReflection`, `checkNoPlaintextUrls`, and `secretsScan` tasks, all
-wired into `:check`.
+`checkNoReflection`, `checkNoPlaintextUrls`, `checkNoSubprocess`,
+`secretsScan`, and `checkLocalNotInJar` tasks, all wired into `:check`.
 
 ## Audit table
 
@@ -43,10 +46,11 @@ wired into `:check`.
 | 7 | No `ws://` literal in production source outside `local/` | `grep -rn 'ws://' src/main/kotlin/ \| grep -v '/local/'` | no matches | PASS |
 | 8 | No `Netty,` engine reference in production source outside `local/` | `grep -rn 'Netty,' src/main/kotlin/ \| grep -v '/local/'` | no matches | PASS |
 | 9 | No `Runtime.exec` in production source | `grep -rn 'Runtime.exec' src/main/kotlin/` | no matches | PASS |
-| 10 | No `ProcessBuilder` in production source | `grep -rn 'ProcessBuilder' src/main/kotlin/` | no matches | PASS |
+| 10 | No `ProcessBuilder` in production source | `grep -rn 'ProcessBuilder' src/main/kotlin/` | no matches | PASS — all uses removed in RAI-40. Enforced by `:checkNoSubprocess`. |
 | 11 | No `java.awt.Robot` (no input synthesis) in production source | `grep -rn 'java.awt.Robot\|new Robot(' src/main/kotlin/` | no matches | PASS |
 | 12 | No reflection escape via `setAccessible\|getDeclaredMethod` in production source | `grep -rEn 'setAccessible\|getDeclaredMethod' src/main/kotlin/ \| grep -v '/local/'` | no matches | PASS |
 | 13 | No secrets in production source (see `:secretsScan`) | `./gradlew :secretsScan` | BUILD SUCCESSFUL | PASS |
+| 14 | Shipped shadowJar contains no `co/rowm/osrsllm/local/` or `McpServerService*` entries | `./gradlew :checkLocalNotInJar` (runs `unzip -l` internally) | BUILD SUCCESSFUL | PASS — verified every build by `:checkLocalNotInJar`. Excluded by shadowJar `exclude("co/rowm/osrsllm/local/**")` + `exclude("**/McpServerService*")`. |
 
 ## Verbatim grep output (captured against branch `agent/rai-36/security-audit`)
 
@@ -153,7 +157,13 @@ $ grep -rn 'ProcessBuilder' src/main/kotlin/
 (no matches)
 ```
 
-Result: **PASS**.
+Result: **PASS** — all uses removed in RAI-40. The two prior call sites
+(`chat/ClaudeRunner.kt` and `OsrsLlmHelperPanel.kt`'s "Install in Claude CLI"
+button) were deleted outright rather than gated, on the principle that a
+maintainer reading the source needs to see clean production code, not
+commented-out booby traps. Enforced going forward by the
+`:checkNoSubprocess` Gradle task, which fails the build on either
+`ProcessBuilder(` or `Runtime.getRuntime().exec(`.
 
 ### Rule 11 — `java.awt.Robot` / `new Robot(`
 
@@ -183,6 +193,25 @@ BUILD SUCCESSFUL
 
 Result: **PASS** — see `apps/plugin/build.gradle.kts` for the patterns
 checked (OPENROUTER_API_KEY, `sk-…`, `AKIA…`, generic `password=`, `api_key=`).
+
+### Rule 14 — `co/rowm/osrsllm/local/` and `McpServerService*` not in shipped jar
+
+```
+$ ./gradlew :checkLocalNotInJar
+> Task :shadowJar
+> Task :checkLocalNotInJar
+checkLocalNotInJar: jar clean (no local/ or McpServerService entries in osrs-llm-helper-0.1.0.jar)
+BUILD SUCCESSFUL
+```
+
+Result: **PASS** — verified every build. The shadowJar task in
+`apps/plugin/build.gradle.kts` carries explicit
+`exclude("co/rowm/osrsllm/local/**")` and `exclude("**/McpServerService*")`
+lines. `:checkLocalNotInJar` opens the produced jar with `ZipFile` and fails
+the build if any entry under that prefix or with that name slips in. This
+closes the gap noted in `docs/reviews/plugin-hub-readiness-001.md` blocker
+3 — previously the runtime gate prevented the listener from binding but the
+class was still in the jar.
 
 ## Cross-references
 

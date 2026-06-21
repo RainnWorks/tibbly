@@ -1,6 +1,7 @@
 /**
- * Contract for POST /admin/users/:id/ban|unban.
+ * Contract for POST /admin/users/:id/ban|unban (RAI-39 auth migration).
  *
+ * - Auth: ops_session JWT cookie (audit C2 closed).
  * - Ban flips status to "banned" and ends any active sessions.
  * - Unban flips it back to "active".
  * - Both emit an `events` row so the audit trail is durable.
@@ -10,6 +11,7 @@ import { and, eq } from "drizzle-orm";
 
 import { createApp } from "../src/app";
 import { devices, events as eventsTable, sessions, users } from "../src/db/schema";
+import { OPS_SESSION_SECRET, opsSessionCookieHeader } from "./_auth-fixture";
 import { makeTestDb, type TestDbHandle } from "./_db-fixture";
 
 let handle: TestDbHandle;
@@ -24,8 +26,13 @@ afterEach(async () => {
 
 function app() {
   return createApp({
-    adminUsers: { db: handle.db, adminEmails: [ADMIN] },
+    adminUsers: { db: handle.db, adminEmails: [ADMIN], jwtSecret: OPS_SESSION_SECRET },
   });
+}
+
+async function adminHeaders(body?: boolean): Promise<Record<string, string>> {
+  const cookie = await opsSessionCookieHeader(ADMIN);
+  return body ? { ...cookie, "content-type": "application/json" } : cookie;
 }
 
 describe("POST /admin/users/:id/ban", () => {
@@ -34,7 +41,7 @@ describe("POST /admin/users/:id/ban", () => {
     const res = await app().fetch(
       new Request("http://localhost/admin/users/u1/ban", {
         method: "POST",
-        headers: { "x-admin-email": ADMIN, "content-type": "application/json" },
+        headers: await adminHeaders(true),
         body: JSON.stringify({}),
       }),
     );
@@ -53,7 +60,7 @@ describe("POST /admin/users/:id/ban", () => {
     const res = await app().fetch(
       new Request("http://localhost/admin/users/u1/ban", {
         method: "POST",
-        headers: { "x-admin-email": ADMIN, "content-type": "application/json" },
+        headers: await adminHeaders(true),
         body: JSON.stringify({ reason: "abuse" }),
       }),
     );
@@ -76,13 +83,16 @@ describe("POST /admin/users/:id/ban", () => {
       .where(eq(eventsTable.type, "user.banned"));
     expect(evs).toHaveLength(1);
     expect((evs[0]!.payload as { reason: string }).reason).toBe("abuse");
+    // The audit `by` field now comes from the verified cookie, not the
+    // forgeable header.
+    expect((evs[0]!.payload as { by: string }).by).toBe(ADMIN);
   });
 
   it("404s on unknown user", async () => {
     const res = await app().fetch(
       new Request("http://localhost/admin/users/nope/ban", {
         method: "POST",
-        headers: { "x-admin-email": ADMIN, "content-type": "application/json" },
+        headers: await adminHeaders(true),
         body: JSON.stringify({ reason: "abuse" }),
       }),
     );
@@ -98,7 +108,7 @@ describe("POST /admin/users/:id/unban", () => {
     const res = await app().fetch(
       new Request("http://localhost/admin/users/u1/unban", {
         method: "POST",
-        headers: { "x-admin-email": ADMIN, "content-type": "application/json" },
+        headers: await adminHeaders(true),
         body: "{}",
       }),
     );

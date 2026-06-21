@@ -1,10 +1,12 @@
 /**
- * Admin analytics router contract (RAI-37).
+ * Admin analytics router contract (RAI-37, RAI-39 auth migration).
  *
  * Confirms:
- *   - All endpoints reject requests without the admin email header.
- *   - With a valid header, they return the materialised data.
+ *   - All endpoints reject requests without the ops_session JWT cookie.
+ *   - The OLD x-admin-email header is NOT accepted (audit C2 closed).
+ *   - With a valid cookie, they return the materialised data.
  *   - Empty `ADMIN_EMAILS` env locks everything down (defensive default).
+ *   - Expired / wrong-secret cookies → 401.
  */
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 
@@ -15,6 +17,11 @@ import {
   metricsFunnelDaily,
   metricsToolUsageDaily,
 } from "../src/db/schema";
+import {
+  OPS_SESSION_SECRET,
+  opsSessionCookieHeader,
+  signOpsSession,
+} from "./_auth-fixture";
 import { makeTestDb, type TestDbHandle } from "./_db-fixture";
 
 let handle: TestDbHandle;
@@ -26,55 +33,83 @@ afterEach(async () => {
   await handle.close();
 });
 
+const ADMIN = "tom@rowm.co";
+
+function app() {
+  return createApp({
+    admin: { db: handle.db, adminEmails: [ADMIN], jwtSecret: OPS_SESSION_SECRET },
+  });
+}
+
 describe("/admin/* auth gate", () => {
   it("401s when no admin emails are configured (defensive default)", async () => {
-    const app = createApp({
-      admin: { db: handle.db, adminEmails: [] },
+    const noAdmin = createApp({
+      admin: { db: handle.db, adminEmails: [], jwtSecret: OPS_SESSION_SECRET },
     });
-    const res = await app.fetch(
+    const cookie = await opsSessionCookieHeader(ADMIN);
+    const res = await noAdmin.fetch(
+      new Request("http://localhost/admin/tool-usage", { headers: cookie }),
+    );
+    expect(res.status).toBe(401);
+  });
+
+  it("401s when no cookie is sent", async () => {
+    const res = await app().fetch(new Request("http://localhost/admin/tool-usage"));
+    expect(res.status).toBe(401);
+  });
+
+  it("401s when the OLD x-admin-email header is sent (audit C2 closed)", async () => {
+    const res = await app().fetch(
       new Request("http://localhost/admin/tool-usage", {
-        headers: { "x-admin-email": "tom@rowm.co" },
+        headers: { "x-admin-email": ADMIN },
       }),
     );
     expect(res.status).toBe(401);
   });
 
-  it("401s when the header is missing", async () => {
-    const app = createApp({
-      admin: { db: handle.db, adminEmails: ["tom@rowm.co"] },
-    });
-    const res = await app.fetch(new Request("http://localhost/admin/tool-usage"));
+  it("401s when the cookie email is not in the allow-list (revoked)", async () => {
+    const cookie = await opsSessionCookieHeader("other@example.com");
+    const res = await app().fetch(
+      new Request("http://localhost/admin/tool-usage", { headers: cookie }),
+    );
     expect(res.status).toBe(401);
   });
 
-  it("401s when the header email is not in the allow-list", async () => {
-    const app = createApp({
-      admin: { db: handle.db, adminEmails: ["tom@rowm.co"] },
-    });
-    const res = await app.fetch(
+  it("401s when the cookie is signed with a different secret", async () => {
+    const wrongSecret = new TextEncoder().encode("a-different-32+byte-secret-XXXXXXXXXX");
+    const jwt = await signOpsSession(ADMIN, wrongSecret);
+    const res = await app().fetch(
       new Request("http://localhost/admin/tool-usage", {
-        headers: { "x-admin-email": "other@example.com" },
+        headers: { cookie: `ops_session=${jwt}` },
       }),
     );
     expect(res.status).toBe(401);
   });
 
-  it("is case-insensitive on the email", async () => {
-    const app = createApp({
-      admin: { db: handle.db, adminEmails: ["Tom@Rowm.co"] },
-    });
-    const res = await app.fetch(
+  it("401s when the cookie has expired", async () => {
+    // Negative lifetime -> "exp" is in the past, jose rejects on verify.
+    const jwt = await signOpsSession(ADMIN, OPS_SESSION_SECRET, { lifetimeSeconds: -60 });
+    const res = await app().fetch(
       new Request("http://localhost/admin/tool-usage", {
-        headers: { "x-admin-email": "tom@rowm.co" },
+        headers: { cookie: `ops_session=${jwt}` },
       }),
+    );
+    expect(res.status).toBe(401);
+  });
+
+  it("is case-insensitive on the email claim", async () => {
+    const a = createApp({
+      admin: { db: handle.db, adminEmails: ["Tom@Rowm.co"], jwtSecret: OPS_SESSION_SECRET },
+    });
+    const cookie = await opsSessionCookieHeader(ADMIN);
+    const res = await a.fetch(
+      new Request("http://localhost/admin/tool-usage", { headers: cookie }),
     );
     expect(res.status).toBe(200);
   });
 });
 
 describe("/admin endpoints (200 path)", () => {
-  const ADMIN = "tom@rowm.co";
-
   it("/admin/tool-usage returns rows + summary", async () => {
     await handle.db.insert(metricsToolUsageDaily).values([
       {
@@ -97,11 +132,11 @@ describe("/admin endpoints (200 path)", () => {
       },
     ]);
 
-    const app = createApp({ admin: { db: handle.db, adminEmails: [ADMIN] } });
-    const res = await app.fetch(
+    const cookie = await opsSessionCookieHeader(ADMIN);
+    const res = await app().fetch(
       new Request(
         "http://localhost/admin/tool-usage?since=2026-06-01&until=2026-06-30",
-        { headers: { "x-admin-email": ADMIN } },
+        { headers: cookie },
       ),
     );
     expect(res.status).toBe(200);
@@ -120,11 +155,11 @@ describe("/admin endpoints (200 path)", () => {
       { date: "2026-06-21", step: "first_message", userCount: 14 },
       { date: "2026-06-21", step: "first_paid", userCount: 3 },
     ]);
-    const app = createApp({ admin: { db: handle.db, adminEmails: [ADMIN] } });
-    const res = await app.fetch(
+    const cookie = await opsSessionCookieHeader(ADMIN);
+    const res = await app().fetch(
       new Request(
         "http://localhost/admin/funnel?since=2026-06-01&until=2026-06-30",
-        { headers: { "x-admin-email": ADMIN } },
+        { headers: cookie },
       ),
     );
     const body = (await res.json()) as {
@@ -139,11 +174,11 @@ describe("/admin endpoints (200 path)", () => {
       { date: "2026-06-21", kind: "openrouter", count: 9 },
       { date: "2026-06-21", kind: "plugin_disconnect", count: 4 },
     ]);
-    const app = createApp({ admin: { db: handle.db, adminEmails: [ADMIN] } });
-    const res = await app.fetch(
+    const cookie = await opsSessionCookieHeader(ADMIN);
+    const res = await app().fetch(
       new Request(
         "http://localhost/admin/errors?since=2026-06-01&until=2026-06-30",
-        { headers: { "x-admin-email": ADMIN } },
+        { headers: cookie },
       ),
     );
     const body = (await res.json()) as { summary: { byKind: Record<string, number> } };
@@ -174,15 +209,13 @@ describe("/admin endpoints (200 path)", () => {
         type: "chat.message.sent",
         userId: "u2",
         payload: { foo: 2 },
-        createdAt: stale, // older than 60s -> excluded
+        createdAt: stale,
       },
     ]);
 
-    const app = createApp({ admin: { db: handle.db, adminEmails: [ADMIN] } });
-    const res = await app.fetch(
-      new Request("http://localhost/admin/realtime", {
-        headers: { "x-admin-email": ADMIN },
-      }),
+    const cookie = await opsSessionCookieHeader(ADMIN);
+    const res = await app().fetch(
+      new Request("http://localhost/admin/realtime", { headers: cookie }),
     );
     const body = (await res.json()) as {
       eventCount: number;

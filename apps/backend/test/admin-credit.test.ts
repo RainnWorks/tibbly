@@ -1,11 +1,12 @@
 /**
- * Contract for POST /admin/users/:id/credit.
+ * Contract for POST /admin/users/:id/credit (RAI-39 auth migration).
  */
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import { eq } from "drizzle-orm";
 
 import { createApp } from "../src/app";
 import { events as eventsTable, tokenBalances, users } from "../src/db/schema";
+import { OPS_SESSION_SECRET, opsSessionCookieHeader } from "./_auth-fixture";
 import { makeTestDb, type TestDbHandle } from "./_db-fixture";
 
 let handle: TestDbHandle;
@@ -20,8 +21,12 @@ afterEach(async () => {
 
 function app() {
   return createApp({
-    adminUsers: { db: handle.db, adminEmails: [ADMIN] },
+    adminUsers: { db: handle.db, adminEmails: [ADMIN], jwtSecret: OPS_SESSION_SECRET },
   });
+}
+
+async function adminHeaders(): Promise<Record<string, string>> {
+  return { ...(await opsSessionCookieHeader(ADMIN)), "content-type": "application/json" };
 }
 
 describe("POST /admin/users/:id/credit", () => {
@@ -30,7 +35,7 @@ describe("POST /admin/users/:id/credit", () => {
     const res = await app().fetch(
       new Request("http://localhost/admin/users/u1/credit", {
         method: "POST",
-        headers: { "x-admin-email": ADMIN, "content-type": "application/json" },
+        headers: await adminHeaders(),
         body: JSON.stringify({ tokens: 0, reason: "test" }),
       }),
     );
@@ -42,7 +47,7 @@ describe("POST /admin/users/:id/credit", () => {
     const res = await app().fetch(
       new Request("http://localhost/admin/users/u1/credit", {
         method: "POST",
-        headers: { "x-admin-email": ADMIN, "content-type": "application/json" },
+        headers: await adminHeaders(),
         body: JSON.stringify({ tokens: 1000 }),
       }),
     );
@@ -54,7 +59,7 @@ describe("POST /admin/users/:id/credit", () => {
     const res = await app().fetch(
       new Request("http://localhost/admin/users/u1/credit", {
         method: "POST",
-        headers: { "x-admin-email": ADMIN, "content-type": "application/json" },
+        headers: await adminHeaders(),
         body: JSON.stringify({ tokens: 1500, reason: "early-bird gift" }),
       }),
     );
@@ -84,7 +89,7 @@ describe("POST /admin/users/:id/credit", () => {
     const res = await app().fetch(
       new Request("http://localhost/admin/users/u1/credit", {
         method: "POST",
-        headers: { "x-admin-email": ADMIN, "content-type": "application/json" },
+        headers: await adminHeaders(),
         body: JSON.stringify({ tokens: 800, reason: "apology" }),
       }),
     );

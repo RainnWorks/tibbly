@@ -1,5 +1,5 @@
 /**
- * Admin login endpoint (ops console stopgap).
+ * Admin login endpoint (ops console stopgap, RAI-39 hardening).
  *
  *   POST /admin/login   body: { email }
  *
@@ -7,28 +7,26 @@
  * short-lived JWT (HMAC-SHA256, via `jose`) and sets it as a hardened
  * cookie: httpOnly, Secure, SameSite=Strict, 12h expiry. The cookie
  * value is the JWT; subsequent admin requests carry it back as
- * `ops_session` and the frontend reads the email claim to attach
- * `x-admin-email` to admin fetches (matching the existing pattern).
- *
- * This is a stopgap. Production wants Google Workspace OIDC; we do not
- * try to be a real auth system tonight. See OPS_DESIGN.md section 10.
+ * `ops_session` and the SHARED `adminGate` middleware (`_gate.ts`)
+ * verifies it server-side. No `x-admin-email` trust path exists anymore.
  *
  *   GET  /admin/session  -> { email } when cookie is valid, 401 otherwise.
  *   POST /admin/logout   -> clears cookie.
  *
- * JWT secret is read from `OPS_JWT_SECRET` if present; otherwise we
- * derive a stable per-process secret so dev does not crash. We log a
- * warning when falling back so it is impossible to silently miss this
- * before the prod cut.
+ * JWT secret resolution lives in `jwt-secret.ts`:
+ *   - production: `OPS_JWT_SECRET` is required, or boot refuses to start.
+ *   - dev / test: per-process derived fallback with a loud warning.
+ *
+ * This is a stopgap. Production wants Google Workspace OIDC; we do not
+ * try to be a real auth system tonight. See OPS_DESIGN.md section 10.
  */
 import { Hono } from "hono";
 import { jwtVerify, SignJWT } from "jose";
 
 import { env } from "../../env";
-import { log } from "../../lib/log";
-import { parseAdminEmails } from "./_gate";
+import { parseAdminEmails, OPS_COOKIE_NAME, readCookie } from "./_gate";
+import { resolveOpsJwtSecret } from "./jwt-secret";
 
-const COOKIE_NAME = "ops_session";
 const JWT_LIFETIME_SEC = 12 * 60 * 60;
 
 export interface CreateAdminLoginOptions {
@@ -36,37 +34,19 @@ export interface CreateAdminLoginOptions {
   adminEmails?: readonly string[];
   /**
    * Symmetric secret used to sign the cookie JWT. Production should set
-   * `OPS_JWT_SECRET`; in dev/test we fall back to a per-process key.
+   * `OPS_JWT_SECRET`; in dev/test we fall back to a per-process key
+   * (see `jwt-secret.ts`). Test callers always pass an explicit value.
    */
   jwtSecret?: Uint8Array;
   /** Override cookie attributes for non-https dev. */
   cookieSecure?: boolean;
 }
 
-function deriveDevSecret(): Uint8Array {
-  // Deterministic per-process. The warning is loud on boot so this can
-  // never silently become production.
-  const base = `dev-only-ops-jwt-${process.pid}-${env.DATABASE_URL}`;
-  return new TextEncoder().encode(base);
-}
-
-function readSecret(opt?: Uint8Array): Uint8Array {
-  if (opt) return opt;
-  const fromEnv = process.env["OPS_JWT_SECRET"];
-  if (fromEnv && fromEnv.length >= 32) return new TextEncoder().encode(fromEnv);
-  log.warn(
-    "OPS_JWT_SECRET unset or < 32 chars; using a dev-only fallback. Set OPS_JWT_SECRET for prod.",
-  );
-  return deriveDevSecret();
-}
-
 export function createAdminLoginRouter(options: CreateAdminLoginOptions = {}): Hono {
   const app = new Hono();
-  const secret = readSecret(options.jwtSecret);
+  const secret = options.jwtSecret ?? resolveOpsJwtSecret();
   const allow = new Set(
-    (options.adminEmails ?? parseAdminEmails(env.ADMIN_EMAILS)).map((e) =>
-      e.toLowerCase(),
-    ),
+    (options.adminEmails ?? parseAdminEmails(env.ADMIN_EMAILS)).map((e) => e.toLowerCase()),
   );
   const cookieSecure = options.cookieSecure ?? env.NODE_ENV === "production";
 
@@ -84,7 +64,7 @@ export function createAdminLoginRouter(options: CreateAdminLoginOptions = {}): H
       .sign(secret);
 
     const cookieAttrs = [
-      `${COOKIE_NAME}=${jwt}`,
+      `${OPS_COOKIE_NAME}=${jwt}`,
       "Path=/",
       "HttpOnly",
       "SameSite=Strict",
@@ -99,7 +79,7 @@ export function createAdminLoginRouter(options: CreateAdminLoginOptions = {}): H
   });
 
   app.get("/session", async (c) => {
-    const cookie = readCookie(c.req.header("cookie"), COOKIE_NAME);
+    const cookie = readCookie(c.req.header("cookie"), OPS_COOKIE_NAME);
     if (!cookie) return c.json({ ok: false, error: "no_session" }, 401);
     try {
       const { payload } = await jwtVerify(cookie, secret);
@@ -116,21 +96,10 @@ export function createAdminLoginRouter(options: CreateAdminLoginOptions = {}): H
   app.post("/logout", (c) => {
     c.header(
       "Set-Cookie",
-      `${COOKIE_NAME}=; Path=/; HttpOnly; SameSite=Strict; Max-Age=0${cookieSecure ? "; Secure" : ""}`,
+      `${OPS_COOKIE_NAME}=; Path=/; HttpOnly; SameSite=Strict; Max-Age=0${cookieSecure ? "; Secure" : ""}`,
     );
     return c.json({ ok: true });
   });
 
   return app;
-}
-
-function readCookie(headerValue: string | undefined, name: string): string | null {
-  if (!headerValue) return null;
-  const parts = headerValue.split(/;\s*/);
-  for (const p of parts) {
-    const eq = p.indexOf("=");
-    if (eq === -1) continue;
-    if (p.slice(0, eq) === name) return p.slice(eq + 1);
-  }
-  return null;
 }

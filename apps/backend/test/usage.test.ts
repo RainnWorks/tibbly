@@ -1,11 +1,11 @@
 /**
- * RAI-27 — /v1/usage/summary contract.
+ * RAI-27 — /v1/usage/summary contract (RAI-39 auth migration).
  *
  * Confirms:
- *   - 401 without a user header.
+ *   - 401 without an Authorization Bearer device key.
+ *   - 401 when the OLD `x-user-id` header is supplied (audit C1 closed).
  *   - 200 returns balance + lastRenewal + dailyTokens shape.
  *   - dailyTokens groups by day and sums prompt + completion tokens.
- *   - Unknown user returns balance: 0 and empty array (no 500).
  */
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 
@@ -14,8 +14,8 @@ import {
   subscriptions,
   tokenBalances,
   usageRecords,
-  users,
 } from "../src/db/schema";
+import { bearerHeaders, seedDevice, type SeededDevice } from "./_auth-fixture";
 import { makeTestDb, type TestDbHandle } from "./_db-fixture";
 
 let handle: TestDbHandle;
@@ -27,28 +27,37 @@ afterEach(async () => {
   await handle.close();
 });
 
-const USER_ID = "user_usage_test_aaaaa";
-
-async function seedUser(): Promise<void> {
-  await handle.db.insert(users).values({
-    id: USER_ID,
+async function seedUser(): Promise<SeededDevice> {
+  return seedDevice(handle, {
     email: "usage@example.com",
     stripeCustomerId: "cus_USAGE",
   });
 }
 
 describe("/v1/usage/summary", () => {
-  it("401s without x-user-id", async () => {
+  it("401s without auth", async () => {
     const app = createApp({ usage: { db: handle.db } });
     const res = await app.fetch(new Request("http://localhost/v1/usage/summary"));
     expect(res.status).toBe(401);
   });
 
-  it("returns zero balance + empty series for an unknown user", async () => {
+  it("401s when the OLD x-user-id header is sent (audit C1 closed)", async () => {
+    const user = await seedUser();
     const app = createApp({ usage: { db: handle.db } });
     const res = await app.fetch(
       new Request("http://localhost/v1/usage/summary", {
-        headers: { "x-user-id": "ghost-user-xxxxxx" },
+        headers: { "x-user-id": user.userId },
+      }),
+    );
+    expect(res.status).toBe(401);
+  });
+
+  it("returns zero balance + empty series for a freshly authed user with no records", async () => {
+    const user = await seedUser();
+    const app = createApp({ usage: { db: handle.db } });
+    const res = await app.fetch(
+      new Request("http://localhost/v1/usage/summary", {
+        headers: bearerHeaders(user.rawDeviceKey),
       }),
     );
     expect(res.status).toBe(200);
@@ -63,16 +72,16 @@ describe("/v1/usage/summary", () => {
   });
 
   it("returns balance, last renewal, and per-day totals", async () => {
-    await seedUser();
+    const user = await seedUser();
 
     await handle.db.insert(tokenBalances).values({
-      userId: USER_ID,
+      userId: user.userId,
       balanceTokens: 42_000,
     });
 
     const periodStart = new Date("2026-06-01T00:00:00Z");
     await handle.db.insert(subscriptions).values({
-      userId: USER_ID,
+      userId: user.userId,
       stripeSubscriptionId: "sub_USAGE",
       tier: "pro",
       status: "active",
@@ -85,21 +94,21 @@ describe("/v1/usage/summary", () => {
     const yesterday = new Date("2026-06-19T12:00:00Z");
     await handle.db.insert(usageRecords).values([
       {
-        userId: USER_ID,
+        userId: user.userId,
         model: "haiku-4.5",
         promptTokens: 100,
         completionTokens: 50,
         createdAt: today,
       },
       {
-        userId: USER_ID,
+        userId: user.userId,
         model: "haiku-4.5",
         promptTokens: 200,
         completionTokens: 75,
         createdAt: today,
       },
       {
-        userId: USER_ID,
+        userId: user.userId,
         model: "sonnet-4.6",
         promptTokens: 500,
         completionTokens: 250,
@@ -110,7 +119,7 @@ describe("/v1/usage/summary", () => {
     const app = createApp({ usage: { db: handle.db } });
     const res = await app.fetch(
       new Request("http://localhost/v1/usage/summary", {
-        headers: { "x-user-id": USER_ID },
+        headers: bearerHeaders(user.rawDeviceKey),
       }),
     );
     expect(res.status).toBe(200);
@@ -122,28 +131,24 @@ describe("/v1/usage/summary", () => {
 
     expect(body.balance).toBe(42_000);
     expect(body.lastRenewal).toBe(periodStart.toISOString());
-
-    // dailyTokens window is last 30 days vs now() — the seeded rows are
-    // older than that. We tolerate the empty case here and verify the
-    // grouping logic separately via direct loader call below.
     expect(Array.isArray(body.dailyTokens)).toBe(true);
   });
 
   it("groups same-day rows and sums prompt + completion tokens", async () => {
-    await seedUser();
+    const user = await seedUser();
     const now = new Date();
     const earlier = new Date(now.getTime() - 60_000);
 
     await handle.db.insert(usageRecords).values([
       {
-        userId: USER_ID,
+        userId: user.userId,
         model: "haiku-4.5",
         promptTokens: 100,
         completionTokens: 50,
         createdAt: now,
       },
       {
-        userId: USER_ID,
+        userId: user.userId,
         model: "haiku-4.5",
         promptTokens: 200,
         completionTokens: 75,
@@ -154,7 +159,7 @@ describe("/v1/usage/summary", () => {
     const app = createApp({ usage: { db: handle.db } });
     const res = await app.fetch(
       new Request("http://localhost/v1/usage/summary", {
-        headers: { "x-user-id": USER_ID },
+        headers: bearerHeaders(user.rawDeviceKey),
       }),
     );
     const body = (await res.json()) as {
