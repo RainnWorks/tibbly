@@ -21,7 +21,6 @@
 import { and, gte, lte } from "drizzle-orm";
 import { Hono } from "hono";
 
-import { env } from "../../env";
 import { getDb } from "../../db/client";
 import type { DbClient } from "../../db/client";
 import {
@@ -31,30 +30,18 @@ import {
   metricsFunnelDaily,
   metricsToolUsageDaily,
 } from "../../db/schema";
+import { adminGate, type AdminGateOptions } from "./_gate";
 
-export interface CreateAdminUsageOptions {
+export interface CreateAdminUsageOptions extends AdminGateOptions {
   /** Override DB for tests. */
   db?: DbClient;
-  /** Override admin email list for tests. Defaults to env.ADMIN_EMAILS. */
-  adminEmails?: readonly string[];
 }
 
 export function createAdminUsageRouter(options: CreateAdminUsageOptions = {}): Hono {
   const db = options.db ?? getDb().db;
-  const allow = new Set(
-    (options.adminEmails ?? parseAdminEmails(env.ADMIN_EMAILS)).map((e) => e.toLowerCase()),
-  );
 
   const app = new Hono();
-
-  app.use("/*", async (c, next) => {
-    const headerEmail = c.req.header("x-admin-email")?.trim().toLowerCase();
-    if (!headerEmail || allow.size === 0 || !allow.has(headerEmail)) {
-      return c.json({ ok: false, error: "unauthorized" }, 401);
-    }
-    await next();
-    return;
-  });
+  app.use("/*", adminGate(options));
 
   app.get("/tool-usage", async (c) => {
     const range = parseDateRange(c.req.query("since"), c.req.query("until"));
@@ -159,12 +146,7 @@ export function createAdminUsageRouter(options: CreateAdminUsageOptions = {}): H
 /*  Helpers                                                                   */
 /* -------------------------------------------------------------------------- */
 
-export function parseAdminEmails(raw: string): string[] {
-  return raw
-    .split(",")
-    .map((s) => s.trim())
-    .filter((s) => s.length > 0);
-}
+export { parseAdminEmails } from "./_gate";
 
 interface DateRange {
   since: string;
