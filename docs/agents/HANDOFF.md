@@ -1,10 +1,54 @@
-# Tom's wake-up briefing — 2026-06-21 morning
+# Tom's wake-up briefing — 2026-06-21 afternoon
 
-*Refresh: loop M+10. Strategic-thread swarm in flight; PRs landing every ~20 min. First file to read on next pickup. 90 seconds, then jump in.*
+*Refresh: loop M+15. Adversarial review wave 1 + wave 2 landed; fix wave landed; second-round fix from wave 2 findings in flight. 26+ PRs merged today.*
 
-## Where we are right now (loop M+10)
+## Where we are right now (loop M+15)
 
 **Cron `8e5a4446`** firing every 20 min, healthy.
+
+### Today's launch-blocker count: was 4 critical security + 7 hub blockers + 1 currency hazard. NOW: 0 critical security on `main`, 0 hub blockers on `main`, 0 currency hazard. Plugin is structurally hub-PR-ready. Backend is safe to deploy behind a real DNS.
+
+**Fix wave outcomes:**
+
+- **PR #69** auth fix — `requireUser` now argon2id-verifies `Authorization: Bearer <rawDeviceKey>` against `devices.device_key_hash` with LRU cache. `adminGate` verifies the `ops_session` HS256 JWT cookie. Legacy `x-user-id` + `x-admin-email` + raw-userId-as-token paths deleted. 14 dedicated negative tests confirm the audit attacks return 401. 215/215 backend tests green.
+- **PR #67** hub blockers fix — `ClaudeRunner.kt` + `LocalClaudeBackend` + "Install in Claude CLI" button deleted. shadowJar excludes `co/rowm/osrsllm/local/**`. ktor-server + MCP SDK moved to `compileOnly`. New `:checkLocalNotInJar` Gradle gate opens both jars with `ZipFile`. Plugin manifest fixes. Audit docs no longer lie. All 7 hub blockers closed.
+- **PR #68** strategic consistency fix — D-11 locks GBP end-to-end (`monthlyPriceCents` → `monthlyPricePence`). NORTH_STAR rebuilt post-pivot. STATUS rebuilt. Q-13/15/19/20/21 marked RESOLVED. EMBODIED_COMPANION repo paths reconciled.
+- **PR #70** E2E harness — Bun-runnable fake-plugin emulator that speaks the WSS protocol verbatim using `packages/shared-types` Zod schemas. 12 game-state fixtures. 5 scenarios. Orchestrator boots backend on ephemeral ports with in-memory PGLite seeded from production migrations. Stripe stubbed at the right seam. Plus 2 Claude-in-Chrome runbooks for marketing-checkout + ops-login-and-debug. **Caught a real WS dispatch race bug during construction.**
+
+**Review wave 2 (PRs #71/#72/#73) outcomes:**
+
+The review pattern keeps catching real things:
+
+- **Hat 1 Kotlin idiomatic (#71)** — duplicate device-key generator in `OsrsLlmHelperPlugin.kt:514-521` (UUID concat) vs `DeviceKey.kt` (`SecureRandom`). Two generators of different strength undermines the auth trust root.
+- **Hat 2 TypeScript strictness (#72)** — Stripe webhook double-cast at `apps/backend/src/api/webhooks/stripe.ts:180-189` bypasses Stripe's discriminated `Stripe.Event` union. Next dated API ships, the cast compiles, `new Date(null * 1000)` returns 1970, and `tier.quotaTokens` credits against a meaningless period. Financial bug.
+- **Hat 5 Test quality (#73)** — **the E2E suite I just merged is silently broken.** `bun test e2e/scenarios/` can't resolve `drizzle-orm` from repo root, so the assertions never execute. The admin-ban-refund scenario also uses the pre-fix `x-admin-email` header. Phantom green.
+
+**In flight:**
+
+- Wave-2 fix agent — closes all three findings above in one PR (Linear-first).
+
+**Killed by Tom this loop:** SQL migration safety fix (RAI-58). Findings still documented; can respawn if needed.
+
+**Still-deferred items** (each tracked as a follow-up in the PR that deferred them):
+
+- 6 important concerns from PR #67 (EDT-blocking `runBlocking`, raw daemon threads, `Desktop.browse` confirmation, two-sources-of-truth for chat mode, account panel pre-consent, Bearer-token-equals-x-device-key)
+- 5 high/medium from PR #69 (`JLabel` HTML auto-rendering, pairing claim rate-limit, catalog refresh debounce, M1-M6)
+- 8 important from PR #66 SQL safety (`events.id` `$defaultFn`, `usage_records.model` → catalog FK, etc)
+- Wave-2 deferred items as the fix lands
+
+**Linear status:** RAI-39 (auth), RAI-40 (hub), RAI-41 (currency), RAI-48 (E2E harness), RAI-58 (SQL review), RAI-60 (TS strictness), RAI-61 (Kotlin idiomatic), RAI-62 (test quality). Backfill from earlier today is RAI-42 through RAI-57.
+
+**Open questions Tom hasn't touched**:
+
+- Q-22/23/24 (hub strategy follow-ups), Q-25/26/27 (repo split), Q-28/29/30/31 (embodied companion), Q-32/33/34/35 (social companion)
+
+**What I'm NOT doing automatically**:
+
+- Submitting the hub PR upstream — the plugin is structurally ready, but the actual `runelite/plugin-hub` PR is sensitive enough that I'm holding for Tom.
+- Splitting the monorepo into `tibbly-plugin` / `tibbly-platform` per D-10 — same reason.
+- Building the mobile / companion entity / social fabric implementations — specs exist; greenlight pending.
+
+
 
 **Currently in flight (7 strategic deep-dive agents):**
 
