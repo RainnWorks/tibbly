@@ -64,6 +64,7 @@ then jump as needed.
 
 ## Marketing
 
+- [`marketing/IA.md`](marketing/IA.md) — **canonical marketing IA**, synthesised from PRs #46/#47/#48/#49 *(loop-mplus9 / synthesis)*
 - [`marketing/POSITIONING.md`](marketing/POSITIONING.md) — copy, pillar messages
 - [`marketing/ASSET_CATALOG.md`](marketing/ASSET_CATALOG.md) — OSRS Wiki sprites + URLs
 - [`marketing/BRAND_VOICE.md`](marketing/BRAND_VOICE.md) — picked voice ("clever friend who read the wiki") + 5 sample exchanges *(r7 / RAI-11)*
