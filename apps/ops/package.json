@@ -1,8 +1,8 @@
 {
-  "name": "@osrs-llm-helper/dashboard",
+  "name": "@osrs-llm-helper/ops",
   "version": "0.0.0",
   "private": true,
-  "description": "React + Vite + Tailwind portal for paying users: pairing, usage chart, account binding, Stripe portal.",
+  "description": "Tibbly internal ops console (React + Vite + Tailwind): user search, ban toggle, refund/credit-grant, paying-customer debug, RAI-37 analytics. Whole-site auth-gated; not for end users. See docs/agents/DECISION_LOG.md D-8.",
   "type": "module",
   "scripts": {
     "dev": "vite",
