@@ -83,6 +83,38 @@ panel renders a static explainer and makes no network calls.
 | D-bis-5 | `DELETE /v1/me` | SHA-256 device-key hash (header) | 204 No Content (cascade-deletes the user record) | GDPR Art. 17 right-to-erasure | Don't click "Delete my account". |
 | D-bis-6 | `DELETE /v1/accounts/:id` | SHA-256 device-key hash (header), an account id the panel already received in D-bis-1 | 200 OK / 404 | Unpair a single OSRS character | Don't click "Forget". |
 
+## D-tris. BYO mode — direct third-party LLM calls (Tier 2)
+
+When `chatMode` is set to one of `byo-anthropic` / `byo-openai` /
+`byo-openrouter` (see
+`apps/plugin/src/main/kotlin/co/rowm/osrsllm/OsrsLlmHelperConfig.kt`),
+the plugin's chat path talks DIRECTLY to the chosen provider's HTTPS
+endpoint using the player's own API key. The request **never** transits
+the Tibbly backend.
+
+The actual HTTP client (`DirectChatRunner.kt`) lands in a follow-up PR;
+this table fixes the contract so the disclosure is correct the moment
+that runner is wired in. Until the runner ships, the plugin only logs
+"BYO chat mode active" and makes no outbound BYO request.
+
+| # | Destination | Sent | Why | User control |
+|---|---|---|---|---|
+| D-tris-1 | `https://api.anthropic.com/v1/messages` (BYO Anthropic only) | The text the player typed in the chat panel; player-selected model id; `Authorization: Bearer <byoApiKey>`; chat history within the session. NO Tibbly device key, NO Tibbly backend involvement. | Player gets a chat response from Anthropic directly | Set `chatMode` to anything other than `byo-anthropic`. Clear `byoApiKey`. |
+| D-tris-2 | `https://api.openai.com/v1/chat/completions` (BYO OpenAI only) | Same shape as D-tris-1, signed with the OpenAI key | Player gets a chat response from OpenAI directly | Set `chatMode` to anything other than `byo-openai`. Clear `byoApiKey`. |
+| D-tris-3 | `https://openrouter.ai/api/v1/chat/completions` (BYO OpenRouter only) | Same shape as D-tris-1, signed with the OpenRouter key. Player-selected model id may name any model OpenRouter routes. | Player gets a chat response from OpenRouter directly | Set `chatMode` to anything other than `byo-openrouter`. Clear `byoApiKey`. |
+| D-tris-4 | `https://api.tibbly.io/v1/feedback/rate` (BYO telemetry — opt-in only) | Provider name, mode label, round-trip latency in ms, plugin version. NO player name, NO API key, NO message content, NO game state. | Publish an uptime dashboard for BYO users so the hub reviewer can see the feature works | Off by default. Toggle `byoTelemetryOptIn` off in the config UI. |
+
+**Key handling.** The API key is stored in the RuneLite config with
+`secret = true` (rendered password-masked in the config UI). The plugin
+build is gated by the `:checkNoKeyLeak` Gradle task — any literal API
+key prefix in production Kotlin sources fails the build. The key value
+is **never** logged, **never** echoed in chat replies, and **never**
+included in error messages or telemetry pings.
+
+**Allow-list.** When `DirectChatRunner.kt` lands (next PR) it will only
+call the three host names listed above (exact match — no wildcards).
+The `EgressGate` will reject any other host.
+
 ## E. NEVER sent
 
 | Field | Why never |
