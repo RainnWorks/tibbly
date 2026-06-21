@@ -29,7 +29,8 @@ then jump as needed.
 - [`product/VISION.md`](product/VISION.md) — the productized SaaS vision
 - [`product/PERSONAS.md`](product/PERSONAS.md) — who pays and why
 - [`product/PRICING.md`](product/PRICING.md) — tiers + sample math
-- [`product/EMBODIED_COMPANION.md`](product/EMBODIED_COMPANION.md) — strategic spec for the client-side companion entity
+- [`product/EMBODIED_COMPANION.md`](product/EMBODIED_COMPANION.md) — strategic spec for the client-side companion entity *(loop M+9)*
+- [`product/SOCIAL_COMPANION.md`](product/SOCIAL_COMPANION.md) — social-fabric layer stacked on the solo embodied companion *(loop M+9)*
 
 ## Architecture
 
