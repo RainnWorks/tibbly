@@ -75,6 +75,10 @@ then jump as needed.
   - [`research/community/trends.md`](research/community/trends.md) — Leagues 6, Sailing, Varlamore, calendar opportunities
 - [`research/memory-systems/`](research/memory-systems/) — how to do durable agent memory
 - [`research/llm-providers/`](research/llm-providers/) — OpenRouter model + pricing
+  - [`research/llm-providers/_SUMMARY.md`](research/llm-providers/_SUMMARY.md) — TL;DR + hand-off map
+  - [`research/llm-providers/openrouter-catalog.md`](research/llm-providers/openrouter-catalog.md) — 12-model pricing/context table
+  - [`research/llm-providers/routing-strategy.md`](research/llm-providers/routing-strategy.md) — 3-tier routing contract
+  - [`research/llm-providers/cost-model.md`](research/llm-providers/cost-model.md) — per-tier per-chat math + margin
 - [`research/competitor/`](research/competitor/) — other AI/OSRS tools
   - [`research/competitor/_SUMMARY.md`](research/competitor/_SUMMARY.md) — one-page summary of the AI-for-OSRS landscape (R6 / RAI-10)
   - [`research/competitor/landscape.md`](research/competitor/landscape.md) — 7 competitors documented with sourced quotes + URLs
