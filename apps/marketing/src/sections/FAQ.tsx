@@ -16,6 +16,21 @@ const FAQS: readonly FaqItem[] = [
       "No. Tibbly never synthesises mouse or keyboard input, never moves your character, never clicks for you. The plugin reads game state and shows you advice, exactly the same shape as Quest Helper or WikiSync, which 555K and 302K players run respectively. Jagex's third-party-client posture has tolerated this category for ~10 years. The Terms carry an explicit \"helps you play, never plays for you\" line.",
   },
   {
+    question: "is tibbly the companion or the chat?",
+    answer:
+      "Both. The companion is the surface: a small character that walks with you, watches what you watch, and speaks when there is something to say. The chat is one of the things you can do with it. Power users live in the sidebar chat panel; everyone else lives next to the companion.",
+  },
+  {
+    question: "will tibbly say things i didn't tell it to?",
+    answer:
+      "Sometimes. Not often. Only when it has something useful or honest to say. You can turn proactive lines off if you'd rather it stay quiet. The default is on but rate-limited, so the companion never becomes Clippy.",
+  },
+  {
+    question: "does it remember me across sessions?",
+    answer:
+      "Yes, for as long as your subscription is active. Delete your data any time from inside RuneLite or via the data-export endpoint. The companion forgets you cleanly if you ask: /tibbly forget clears remembered facts, /tibbly start over resets the whole companion profile with a confirmation step.",
+  },
+  {
     question: "how does it know my game state?",
     answer:
       "It runs as a normal RuneLite plugin. The plugin reads the state the client already gives every other plugin (inventory, equipment, quest log, slayer task, location) and ships only what your current question needs over a single outbound TLS WebSocket to our backend. Nothing is screen-scraped. Nothing is keystroke-logged. Full data disclosure lives in the submission package.",

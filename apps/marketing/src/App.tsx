@@ -3,6 +3,7 @@ import { LiveCounter } from "./sections/LiveCounter";
 import { TrustStrip } from "./sections/TrustStrip";
 import { ProblemSolution } from "./sections/ProblemSolution";
 import { Demo } from "./sections/Demo";
+import { Companion } from "./sections/Companion";
 import { FreeTierStrip } from "./sections/FreeTierStrip";
 import { FeatureGrid } from "./sections/FeatureGrid";
 import { PricingTiers } from "./sections/PricingTiers";
@@ -18,6 +19,12 @@ export default function App() {
       <TrustStrip />
       <ProblemSolution />
       <Demo />
+      {/*
+        Companion section sits after the demo (voice proof) and before
+        the Free tier strip (conversion accelerator). The magical-moment
+        beat earns the right to ask for the install. Brief: RAI-66.
+      */}
+      <Companion />
       <FreeTierStrip />
       <FeatureGrid />
       <PricingTiers />
