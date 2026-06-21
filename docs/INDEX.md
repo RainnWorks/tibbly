@@ -65,6 +65,7 @@ then jump as needed.
 - [`marketing/ASSET_CATALOG.md`](marketing/ASSET_CATALOG.md) — OSRS Wiki sprites + URLs
 - [`marketing/BRAND_VOICE.md`](marketing/BRAND_VOICE.md) — picked voice ("clever friend who read the wiki") + 5 sample exchanges *(r7 / RAI-11)*
 - [`marketing/NAME_CANDIDATES.md`](marketing/NAME_CANDIDATES.md) — Tibbly (pick) + Scribbins + Wikit with TM/domain checks *(r7 / RAI-11)*
+- [`marketing/PROPOSAL_VOICE.md`](marketing/PROPOSAL_VOICE.md) — IA proposal, voice-first angle (dials 7/4/5, Neue Montreal, lit-torch dusk palette) *(loop-mplus9)*
 
 ## Research (continuously growing, owned by research agents)
 
