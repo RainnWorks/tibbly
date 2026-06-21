@@ -124,7 +124,7 @@ describe("GET /admin/openrouter/revenue", () => {
       adminOpenRouter: {
         db: handle.db,
         adminEmails: [ADMIN],
-        tierPriceUsdCents: { hobbyist: 700, pro: 1900, iron: 4900 },
+        tierPricePence: { hobbyist: 700, pro: 1900, iron: 4900 },
       },
     });
     const res = await app.fetch(
@@ -133,13 +133,16 @@ describe("GET /admin/openrouter/revenue", () => {
       }),
     );
     const body = (await res.json()) as {
-      mrrUsdCents: number;
+      currency: string;
+      mrrPence: number;
       activeSubscriptions: number;
       tierCounts: Record<string, number>;
     };
+    expect(body.currency).toBe("gbp");
     expect(body.activeSubscriptions).toBe(2);
     expect(body.tierCounts.hobbyist).toBe(1);
     expect(body.tierCounts.pro).toBe(1);
-    expect(body.mrrUsdCents).toBe(2600);
+    // Hobbyist 700p + Pro 1900p = 2600p
+    expect(body.mrrPence).toBe(2600);
   });
 });

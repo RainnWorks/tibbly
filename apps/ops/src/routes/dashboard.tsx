@@ -19,7 +19,7 @@ import { apiFetch } from "@/lib/api";
 import {
   compactInteger,
   formatMicroUsd,
-  formatUsdCents,
+  formatPence,
 } from "@/lib/format";
 
 interface RealtimeResponse {
@@ -50,12 +50,13 @@ interface SpendResponse {
 
 interface RevenueResponse {
   ok: true;
-  mrrUsdCents: number;
+  currency: "gbp";
+  mrrPence: number;
   activeSubscriptions: number;
   tierCounts: Record<string, number>;
-  tierPriceUsdCents: Record<string, number>;
-  approxToday: { revenueUsdCents: number };
-  approxWeek: { revenueUsdCents: number };
+  tierPricePence: Record<string, number>;
+  approxToday: { revenuePence: number };
+  approxWeek: { revenuePence: number };
 }
 
 interface ChatDailyResponse {
@@ -150,7 +151,7 @@ export function RouteDashboard(): ReactNode {
           <StatTile
             label="mrr"
             value={
-              revenue.data ? formatUsdCents(revenue.data.mrrUsdCents) : "..."
+              revenue.data ? formatPence(revenue.data.mrrPence) : "..."
             }
             hint={
               revenue.data
@@ -176,7 +177,7 @@ export function RouteDashboard(): ReactNode {
             label="revenue today (approx)"
             value={
               revenue.data
-                ? formatUsdCents(revenue.data.approxToday.revenueUsdCents)
+                ? formatPence(revenue.data.approxToday.revenuePence)
                 : "..."
             }
             hint="mrr / 30 approximation"

@@ -19,10 +19,10 @@ describe("tiers", () => {
     expect(TIER_BY_NAME.iron.quotaTokens).toBe(2_000_000);
   });
 
-  it("hardcoded prices match the public pricing page", () => {
-    expect(TIER_BY_NAME.hobbyist.monthlyPriceCents).toBe(700);
-    expect(TIER_BY_NAME.pro.monthlyPriceCents).toBe(1900);
-    expect(TIER_BY_NAME.iron.monthlyPriceCents).toBe(4900);
+  it("hardcoded prices match the public pricing page (GBP pence per D-11)", () => {
+    expect(TIER_BY_NAME.hobbyist.monthlyPricePence).toBe(700);
+    expect(TIER_BY_NAME.pro.monthlyPricePence).toBe(1900);
+    expect(TIER_BY_NAME.iron.monthlyPricePence).toBe(4900);
   });
 
   it("orders cheapest-first so price resolution is stable", () => {
