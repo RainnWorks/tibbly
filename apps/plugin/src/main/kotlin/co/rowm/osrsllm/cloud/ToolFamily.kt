@@ -64,11 +64,39 @@ enum class ToolFamily {
     /** Fishing-spot lookup; placeholder for future fishing-specific tools. */
     FISHING,
 
-    /** Group-mate state: party composition, group iron man membership, etc. */
+    /** Group-mate state: party composition, group iron man membership, etc.
+     *  TODO(RAI-5 follow-up): rename to SOCIAL when we land the clan/friends
+     *  expansion (catalog.md §4.5). Breaking change — wire-form clients must
+     *  flip in lockstep. */
     PARTY,
 
     /** Slayer task lookup, slayer master data, slayer-only tools. */
     SLAYER,
+
+    // ─────────────────────────────────────────────────────────────────────
+    // RAI-5 catalog additions (loop M+1). All purely additive — no tool is
+    // re-assigned by this commit. ToolRegistry.kt + ContextRouter.kt update
+    // as Tier 0/1 catalog entries actually ship. See docs/research/runelite-api/
+    // catalog.md §6 for the rationale and ordering.
+    // ─────────────────────────────────────────────────────────────────────
+
+    /** Raid layout, instance chunks, ToB/CoX/ToA phase + invocation state. */
+    RAIDS,
+
+    /** Seasonal-only: Leagues relics, tasks, league-specific varbits. */
+    LEAGUES,
+
+    /** Farming patches, herblore/farming timers, hunter traps, construction state. */
+    FARMING,
+
+    /** Player rendering: equipped sprites, fashion-scape, current spotanim. */
+    APPEARANCE,
+
+    /** Ambient: music tracks, sound effects, audio cues currently playing. */
+    AMBIENT,
+
+    /** Pets: followed pet id, pet insurance state, pet milestones. */
+    PETS,
     ;
 
     /** Wire-form (`SLAYER` → `"slayer"`). Used on the backend payload. */
