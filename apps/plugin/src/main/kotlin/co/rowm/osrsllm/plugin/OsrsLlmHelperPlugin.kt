@@ -6,12 +6,11 @@ import co.rowm.osrsllm.LoggingSetup
 import co.rowm.osrsllm.OsrsLlmHelperConfig
 import co.rowm.osrsllm.OsrsLlmHelperPanel
 import co.rowm.osrsllm.banktags.BankTagService
+import co.rowm.osrsllm.chat.ChatBackend
 import co.rowm.osrsllm.chat.ChatBackendSelector
 import co.rowm.osrsllm.chat.ChatPanel
 import co.rowm.osrsllm.chat.ChatStore
-import co.rowm.osrsllm.chat.ClaudeRunner
 import co.rowm.osrsllm.chat.HarnessContext
-import co.rowm.osrsllm.chat.LocalClaudeBackend
 import co.rowm.osrsllm.cloud.AccountPanel
 import co.rowm.osrsllm.cloud.AccountSummaryClient
 import co.rowm.osrsllm.cloud.BackendUrl
@@ -29,7 +28,6 @@ import co.rowm.osrsllm.cloud.PairingFlow
 import co.rowm.osrsllm.cloud.StubToolDispatcher
 import co.rowm.osrsllm.cloud.byo.ChatResponse
 import co.rowm.osrsllm.events.EventLogService
-import co.rowm.osrsllm.local.McpServerService
 import co.rowm.osrsllm.overlay.AiChannelService
 import co.rowm.osrsllm.overlay.AssistantOverlay
 import co.rowm.osrsllm.overlay.OverlayChatController
@@ -60,9 +58,9 @@ import java.awt.image.BufferedImage
 import javax.inject.Inject
 
 @PluginDescriptor(
-    name = "00_OSRS LLM Helper",
-    description = "MCP server exposing live game state to an LLM agent",
-    tags = ["llm", "ai", "mcp", "assistant"],
+    name = "OSRS LLM Helper",
+    description = "Outbound LLM chat assistant for OSRS — pair to your Tibbly account or bring your own provider key.",
+    tags = ["chat", "assistant", "external"],
 )
 @PluginDependency(BankTagsPlugin::class)
 @PluginDependency(net.runelite.client.plugins.xptracker.XpTrackerPlugin::class)
@@ -79,7 +77,6 @@ class OsrsLlmHelperPlugin : Plugin() {
     @Inject private lateinit var xpRateService: XpRateService
     @Inject private lateinit var lootService: LootService
     @Inject private lateinit var hitsplatHistoryService: HitsplatHistoryService
-    @Inject private lateinit var mcpServerService: McpServerService
     @Inject private lateinit var backendWsClient: BackendWsClient
     @Inject private lateinit var pairingFlow: PairingFlow
     @Inject private lateinit var egressGate: EgressGate
@@ -137,34 +134,19 @@ class OsrsLlmHelperPlugin : Plugin() {
      */
     private var byoChatRunner: DirectChatRunner? = null
     private var byoChatBackend: DirectChatBackend? = null
-    private val claudeRunner = ClaudeRunner(
-        mcpUrlSupplier = {
-            runCatching {
-                if (::mcpServerService.isInitialized) mcpServerService.boundUrl() else null
-            }.getOrNull()
-        },
-        allowedToolsSupplier = {
-            runCatching {
-                if (::mcpServerService.isInitialized) mcpServerService.allowedToolNames() else emptyList()
-            }.getOrDefault(emptyList())
-        },
-        contextSupplier = {
-            runCatching {
-                if (::gameStateStore.isInitialized && ::eventLogService.isInitialized) {
-                    HarnessContext.build(
-                        store = gameStateStore,
-                        eventLog = eventLogService,
-                        widgets = if (::widgetTracker.isInitialized) widgetTracker else null,
-                        bankTags = if (::bankTagService.isInitialized) bankTagService else null,
-                        slayer = if (::slayerIntegration.isInitialized) slayerIntegration else null,
-                        xpTracker = if (::xpTrackerIntegration.isInitialized) xpTrackerIntegration else null,
-                        clueScroll = if (::clueScrollIntegration.isInitialized) clueScrollIntegration else null,
-                        party = if (::partyIntegration.isInitialized) partyIntegration else null,
-                    )
-                } else null
-            }.getOrNull()
-        },
-    )
+
+    /**
+     * Backend selector exposed to the OverlayChatController via a stable
+     * supplier. The selector itself is built per-startUp so that consent
+     * freezing, ws connection, and BYO key plumbing all reflect the current
+     * config snapshot.
+     */
+    @Volatile private var activeBackendSelector: ChatBackendSelector? = null
+
+    private val overlayBackendSupplier =
+        object : OverlayChatController.ChatBackendSupplier {
+            override fun get(): ChatBackend? = activeBackendSelector
+        }
 
     override fun startUp() {
         LoggingSetup.configure()
@@ -196,7 +178,7 @@ class OsrsLlmHelperPlugin : Plugin() {
         eventBus.register(hitsplatHistoryService)
         eventBus.register(widgetTracker)
 
-        val sidebar = OsrsLlmHelperPanel(gameStateStore, mcpServerService, pairingFlow)
+        val sidebar = OsrsLlmHelperPanel(gameStateStore, pairingFlow)
         panel = sidebar
         val button = NavigationButton.builder()
             .tooltip("OSRS LLM Helper")
@@ -207,14 +189,16 @@ class OsrsLlmHelperPlugin : Plugin() {
         navButton = button
         clientToolbar.addNavigation(button)
 
-        // Build the chat-panel backend. The local subprocess path stays the DEFAULT;
-        // cloud is only consulted when `cloudChatEnabled` is on AND the WSS link is up.
-        // The BYO backend takes precedence when the player has picked a BYO chat
-        // mode (and pasted a key — the runner validates that per-send so the panel
-        // surfaces a clear "no key configured" message instead of failing silently).
+        // Build the chat-panel backend. The legacy local `claude -p` subprocess path
+        // was removed ahead of the RuneLite Plugin Hub submission (audit blocker 1 —
+        // subprocess invocation is forbidden in production source). The shipped
+        // plugin routes turns through one of:
+        //   - DirectChatBackend     when chatMode is a BYO variant + key configured
+        //   - CloudChatBackend      when cloudChatEnabled + WSS link is live
+        //   - null                  tools-only / not configured — panel renders an
+        //                           "no backend configured" message
         val backendSelector = ChatBackendSelector(
-            localBackend = LocalClaudeBackend(claudeRunner),
-            cloudBackendSupplier = {
+            backendSupplier = {
                 if (config.chatMode().isByo) {
                     byoChatBackend
                 } else if (config.cloudChatEnabled() && backendWsClient.isConnected()) {
@@ -224,6 +208,7 @@ class OsrsLlmHelperPlugin : Plugin() {
                 }
             },
         )
+        activeBackendSelector = backendSelector
         val chat = ChatPanel(chatStore, backendSelector)
         chatPanel = chat
         val chatBtn = NavigationButton.builder()
@@ -235,14 +220,10 @@ class OsrsLlmHelperPlugin : Plugin() {
         chatNavButton = chatBtn
         clientToolbar.addNavigation(chatBtn)
 
-        // Local MCP server is DEVELOPER-ONLY. The release build that ships to
-        // the RuneLite Plugin Hub does NOT bind any listening socket — the
-        // player's data only ever leaves through EgressGate (see SECURITY_DESIGN.md).
-        if (config.developerMode() && config.localMcpEnabled()) {
-            log.info("Developer mode active — starting local MCP server on {}:{}",
-                config.localMcpHost(), config.localMcpPort())
-            mcpServerService.start(config.localMcpHost(), config.localMcpPort())
-        }
+        // No local listening socket exists in this build. The `local/McpServerService`
+        // class is excluded from the shipped artifact by the shadowJar configuration
+        // and verified by `:checkLocalNotInJar`. Player data only ever leaves
+        // through EgressGate (see SECURITY_DESIGN.md).
 
         // Production path: open the WSS connection to the backend and start the chat
         // runner if the player has accepted consent AND cloud chat is enabled AND
@@ -469,13 +450,13 @@ class OsrsLlmHelperPlugin : Plugin() {
             tileMarkerService.clearAll()
             if (aiOwnsArrow) clientThread.invoke(Runnable { client.clearHintArrow() })
         }
-        mcpServerService.stop()
         runCatching { cloudChatRunner?.stop() }
         cloudChatRunner = null
         cloudChatBackend = null
         runCatching { byoChatRunner?.stop() }
         byoChatRunner = null
         byoChatBackend = null
+        activeBackendSelector = null
         runCatching { backendWsClient.close() }
         ConsentState.reset()
         eventBus.unregister(gameStateStore)
@@ -513,17 +494,11 @@ class OsrsLlmHelperPlugin : Plugin() {
     fun onConfigChanged(event: ConfigChanged) {
         if (event.group != "osrsllm") return
         log.info("Config changed: {} = {}", event.key, event.newValue)
-        when (event.key) {
-            "localMcpEnabled", "localMcpHost", "localMcpPort" -> {
-                if (config.developerMode()) {
-                    mcpServerService.restartWith(
-                        enabled = config.localMcpEnabled(),
-                        host = config.localMcpHost(),
-                        port = config.localMcpPort(),
-                    )
-                }
-            }
-        }
+        // No config key currently demands a runtime re-wire — the chat backend
+        // selector reads its sources on every send so flips are picked up
+        // without a plugin restart. Keep the @Subscribe so callers wishing to
+        // react to a specific key (without spawning yet another listener) can
+        // add a branch here.
     }
 
     @Provides
@@ -548,8 +523,15 @@ class OsrsLlmHelperPlugin : Plugin() {
     @Provides @Singleton
     fun provideChatStore(): ChatStore = chatStore
 
+    /**
+     * Bind the [OverlayChatController.ChatBackendSupplier] interface so the
+     * overlay controller can resolve the active backend selector on each
+     * dispatched query without holding a hard reference to it. The supplier
+     * itself is a stable closure over [activeBackendSelector].
+     */
     @Provides @Singleton
-    fun provideClaudeRunner(): ClaudeRunner = claudeRunner
+    fun provideOverlayBackendSupplier(): OverlayChatController.ChatBackendSupplier =
+        overlayBackendSupplier
 
     // RAI-23: device-key storage + backend-URL supplier for the pairing flow.
     @Provides @Singleton
