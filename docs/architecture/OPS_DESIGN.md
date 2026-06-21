@@ -1,4 +1,4 @@
-# Tibbly ops console — design contract
+# Tibbly ops console: design contract
 
 This is the binding design contract for `apps/ops`. Every UI component in
 the ops console measures itself against this doc. If a file violates one

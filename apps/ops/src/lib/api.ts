@@ -1,23 +1,17 @@
 /**
- * Thin fetch wrapper.
+ * Thin fetch wrapper for the ops console.
  *
- * Reads VITE_BACKEND_URL at build time. RAI-27 wired the real endpoints
- * — this is the single chokepoint every route uses so we never sprinkle
- * `fetch()` calls or hard-coded URLs across components.
+ * Every request:
+ *   - Sends `credentials: 'include'` so the ops_session cookie rides
+ *     along (set by /admin/login).
+ *   - Attaches `x-admin-email` from the cached operator email so the
+ *     legacy admin gate (apps/backend/src/api/admin/_gate.ts) accepts it.
  *
- * Auth model: we attach the saved session token as `Authorization:
- * Bearer …` AND send `credentials: 'include'` so a forthcoming
- * cookie-based session works without route-level changes. The backend
- * accepts either an `x-user-id` header or `Authorization: Bearer
- * <userId>` (see `apps/backend/src/api/_auth.ts`).
+ * The 401 path is the auth boundary: callers handle 401 by routing the
+ * user to /login. The QueryClient does NOT retry 401s.
  */
 
-import { getSessionToken } from "./auth";
-
-export type ApiOptions = RequestInit & {
-  /** When true, send the saved session token as Authorization: Bearer. */
-  readonly authenticated?: boolean;
-};
+import { getOperatorEmail } from "./auth";
 
 export class ApiError extends Error {
   public readonly status: number;
@@ -31,47 +25,44 @@ export class ApiError extends Error {
   }
 }
 
-/**
- * Resolve the backend base URL. Falls back to "/api" so the dev server
- * can proxy to a locally running backend without any config.
- */
+export type ApiOptions = RequestInit;
+
 export function getBackendUrl(): string {
-  const fromEnv = import.meta.env.VITE_BACKEND_URL;
+  const fromEnv = (import.meta as { env?: { VITE_BACKEND_URL?: string } }).env
+    ?.VITE_BACKEND_URL;
   if (typeof fromEnv === "string" && fromEnv.length > 0) {
     return fromEnv.replace(/\/+$/, "");
   }
   return "/api";
 }
 
-/**
- * Issue a request against the backend, returning parsed JSON.
- *
- * @throws {ApiError} when the response is non-2xx.
- */
 export async function apiFetch<T = unknown>(
   path: string,
   options: ApiOptions = {},
 ): Promise<T> {
-  const { authenticated, headers, ...rest } = options;
+  const { headers, ...rest } = options;
 
+  const base = getBackendUrl();
+  // jsdom's fetch refuses relative URLs; resolve against the document
+  // origin when we have one, otherwise leave the relative path alone.
+  const resolvedBase =
+    base.startsWith("http") || typeof window === "undefined"
+      ? base
+      : `${window.location.origin}${base.startsWith("/") ? base : `/${base}`}`;
   const url = path.startsWith("http")
     ? path
-    : `${getBackendUrl()}${path.startsWith("/") ? path : `/${path}`}`;
+    : `${resolvedBase}${path.startsWith("/") ? path : `/${path}`}`;
+
+  const email = getOperatorEmail();
 
   const composedHeaders: Record<string, string> = {
     Accept: "application/json",
     ...(rest.body && !(rest.body instanceof FormData)
       ? { "Content-Type": "application/json" }
       : {}),
+    ...(email ? { "x-admin-email": email } : {}),
     ...(headers as Record<string, string> | undefined),
   };
-
-  if (authenticated) {
-    const token = getSessionToken();
-    if (token) {
-      composedHeaders["Authorization"] = `Bearer ${token}`;
-    }
-  }
 
   const response = await fetch(url, {
     credentials: "include",
