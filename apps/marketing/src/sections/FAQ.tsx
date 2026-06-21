@@ -17,7 +17,7 @@ const FAQS: readonly FaqItem[] = [
   {
     question: "How much does it cost?",
     answer:
-      "Free for 30 messages/day. Hobbyist £7/month for 100K tokens. Pro £19/month for 500K tokens and Sonnet 4.6. Iron £49/month for 2M tokens with Opus 4.7 escalation (10 turns/day). Quotas are hard caps — auto top-up is off by default, so you never get a surprise bill.",
+      "Free for 30 messages/day with a watermark. Hobbyist £7/month for casual daily play. Pro £19/month for heavy daily play, with Sonnet 4.6 on harder questions. Iron £49/month for all-in players, with Opus 4.7 escalation on the hardest steps. Each tier has a hard cap sized to how you play, and the in-plugin panel tells you when you've used what's in today's bucket. Auto top-up off by default, so you never get a surprise bill.",
   },
   {
     question: "What about my privacy?",

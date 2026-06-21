@@ -123,8 +123,8 @@ export function Hero() {
           Stop alt-tabbing. Start playing.
         </h1>
         <p className="mx-auto mb-4 max-w-3xl text-lg text-osrs-text/90 md:text-xl">
-          The only OSRS co-pilot that sees your game live and bills by the token
-          — no API keys, no copy-paste, no botting.
+          The only OSRS co-pilot that sees your game live, billed monthly with
+          a hard cap. No API keys, no copy-paste, no botting.
         </p>
         <p className="mx-auto mb-10 max-w-2xl text-base text-osrs-muted md:text-lg">
           You don't have to describe your inventory. Tibbly already sees it.

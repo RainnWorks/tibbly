@@ -21,8 +21,8 @@ export function Footer() {
             </h3>
           </div>
           <p className="text-osrs-text/80">
-            The only OSRS co-pilot that sees your game live and bills by the
-            token — no API keys, no copy-paste, no botting.
+            The only OSRS co-pilot that sees your game live, billed monthly
+            with a hard cap. No API keys, no copy-paste, no botting.
           </p>
           <p className="mt-3 font-mono text-[10px] uppercase tracking-widest text-osrs-muted">
             Helps you play. Never plays for you.

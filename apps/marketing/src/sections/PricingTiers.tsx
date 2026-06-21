@@ -37,7 +37,7 @@ const TIERS: readonly Tier[] = [
     icon: attackIcon,
     tagline: "Your main account, sorted.",
     features: [
-      "100K tokens / month",
+      "Casual daily play, no maths",
       "Haiku 4.5 · fast turns",
       "Full tool surface · tile marks, NPC highlights",
       "Quest, clue, slayer, bank, gear",
@@ -51,8 +51,8 @@ const TIERS: readonly Tier[] = [
     icon: slayerIcon,
     tagline: "Iron mains, GIM groups, creators.",
     features: [
-      "500K tokens / month",
-      "Sonnet 4.6 · deep reasoning",
+      "Heavy daily play",
+      "Sonnet 4.6 · deeper reasoning on hard questions",
       "Group iron state sharing",
       "Stream overlay mode · priority routing",
     ],
@@ -64,8 +64,8 @@ const TIERS: readonly Tier[] = [
     icon: constructionIcon,
     tagline: "Hardcore. Quest cape pilots.",
     features: [
-      "2,000K tokens / month",
-      "Opus 4.7 escalation · 10 turns / day",
+      "All-in play, no scary counter",
+      "Opus 4.7 on the hardest steps",
       "Custom prompt slot · long-horizon plans",
       "Direct support · early access to new tools",
     ],
@@ -86,11 +86,12 @@ export function PricingTiers() {
             Pricing
           </p>
           <h2 className="text-3xl md:text-4xl">
-            Pay by the month. Capped by the token. Never surprised.
+            Pay monthly. Each tier sized for how you play. Never surprised.
           </h2>
           <p className="mx-auto mt-3 max-w-2xl text-osrs-text/80">
-            Stripe-billed. Hard cap at quota. Auto top-up off by default. Hobbyist
-            ships 97% margin at quota — so you know we can keep the lights on.
+            Stripe-billed. Hard cap at the right ceiling for the tier. Auto
+            top-up off by default. The in-plugin panel tells you when you've
+            used what's in the day's bucket.
           </p>
         </div>
 
@@ -159,7 +160,6 @@ export function PricingTiers() {
         </ul>
 
         <p className="mx-auto mt-10 max-w-3xl text-center text-xs text-osrs-muted">
-          Token quotas measured at OpenRouter list price + 25% cache assumption.
           One paying customer covers any number of OSRS accounts. Cancel inside
           14 days for a full refund (UK CCR Reg. 37).
         </p>
