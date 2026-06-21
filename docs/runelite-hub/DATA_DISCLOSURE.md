@@ -63,6 +63,24 @@ in how often it can call any tool family per chat turn.
 | D20 | `targetProjectiles()` (RAI-5) | Projectile graphic id, remaining game ticks, target name, source name — only for projectiles aimed at the local player or their current target. Capped at 8 entries. | LLM calls when combat advice needs flick timing | "what prayer should I flick" | Per-tool allow-list. Cloud chat off → never sent. Projectile graphic IDs are public game data. |
 | D21 | `activePrayers()` (RAI-5) | Active standard prayers + active Ruinous Powers prayers (as human-readable names), current/max prayer points, whether quick-prayer is toggled on | LLM calls when prayer-state questions are asked | "am I praying right", "switch to Augury" | Per-tool allow-list. Cloud chat off → never sent. Prayer state is broadcast in-game via the overhead icon. |
 
+## D-bis. Account panel fetches (RuneLite in-plugin Tibbly panel — D-8)
+
+The in-plugin "Tibbly account" sidebar (see
+`apps/plugin/src/main/kotlin/co/rowm/osrsllm/cloud/AccountPanel.kt`) issues
+short read-only HTTPS calls through [EgressGate.egressHttp] when the player
+opens the panel and at most every 30 seconds while it is mounted. All calls
+are gated on `cloudChatEnabled && consentAccepted` — if either is off, the
+panel renders a static explainer and makes no network calls.
+
+| # | Endpoint | Sent | Received | Why | User control |
+|---|---|---|---|---|---|
+| D-bis-1 | `GET /v1/account/summary` | SHA-256 device-key hash (header), optional in-game player name (header — same value already disclosed as B1) | Tier badge string, subscription status string, renewal date, list of paired OSRS character names already known to the backend, list of paired device display names | Render the panel header + paired-account list | Disable cloud chat → no fetch. |
+| D-bis-2 | `GET /v1/account/usage-proxy` | SHA-256 device-key hash (header) | Tier-aware proxy *only*: either `messages used today / messages per day` (free / Hobbyist), or `subscription active + renewal date` (Pro), or `unlimited` (Iron). NEVER raw token counts. | Render the "Today" card | Disable cloud chat → no fetch. |
+| D-bis-3 | `POST /v1/billing/portal` | SHA-256 device-key hash (header), empty JSON body | A Stripe-hosted portal URL the plugin opens in the system browser | Player manages payment without leaving RuneLite | Don't click "Manage subscription". |
+| D-bis-4 | `GET /v1/me/export` | SHA-256 device-key hash (header) | A JSON dump of every row the backend has attributed to this user (Art. 15 / Art. 20). Saved via a JFileChooser dialog. | GDPR data export | Don't click "Download my data". |
+| D-bis-5 | `DELETE /v1/me` | SHA-256 device-key hash (header) | 204 No Content (cascade-deletes the user record) | GDPR Art. 17 right-to-erasure | Don't click "Delete my account". |
+| D-bis-6 | `DELETE /v1/accounts/:id` | SHA-256 device-key hash (header), an account id the panel already received in D-bis-1 | 200 OK / 404 | Unpair a single OSRS character | Don't click "Forget". |
+
 ## E. NEVER sent
 
 | Field | Why never |

@@ -57,6 +57,7 @@ class PairingFlowTest {
             backendUrl: BackendUrl,
             path: String,
             bodyJson: String?,
+            headers: List<Pair<String, String>>,
         ): HttpEgressResponse {
             recorded.add(Recorded(method, path, bodyJson, backendUrl.value))
             return responder()
@@ -181,6 +182,7 @@ class PairingFlowTest {
         val egress = object : EgressGate(BackendWsClient(), AuditLog()) {
             override fun egressHttp(
                 method: String, backendUrl: BackendUrl, path: String, bodyJson: String?,
+                headers: List<Pair<String, String>>,
             ): HttpEgressResponse = throw java.io.IOException("simulated network failure")
         }
         val flow = PairingFlow(egress, DeviceKey(FakeStore()), urlSupplier)

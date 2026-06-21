@@ -103,12 +103,24 @@ open class EgressGate @Inject constructor(
         backendUrl: BackendUrl,
         path: String,
         bodyJson: String? = null,
+        headers: List<Pair<String, String>> = emptyList(),
     ): HttpEgressResponse {
-        require(method == "GET" || method == "POST") {
-            "EgressGate.egressHttp: unsupported method=$method (only GET/POST allowed)"
+        require(method == "GET" || method == "POST" || method == "DELETE") {
+            "EgressGate.egressHttp: unsupported method=$method (only GET/POST/DELETE allowed)"
         }
         require(path.startsWith("/")) {
             "EgressGate.egressHttp: path must start with '/' (got '$path')"
+        }
+        // Defensive: reject CR/LF in extra headers so a future caller can't
+        // smuggle in a CRLF-injection that splits the request. Names also
+        // forbid space and colon; values allow space (Bearer tokens).
+        for ((name, value) in headers) {
+            require(name.isNotBlank() && name.all { it.code in 33..126 && it != ':' }) {
+                "EgressGate.egressHttp: header name contains illegal characters"
+            }
+            require(value.none { it == '\r' || it == '\n' }) {
+                "EgressGate.egressHttp: header value contains illegal characters"
+            }
         }
         val httpsUrl = toHttpsUrl(backendUrl) + path
         val url = URL(httpsUrl)
@@ -122,6 +134,9 @@ open class EgressGate @Inject constructor(
             conn.readTimeout = READ_TIMEOUT_MS
             conn.instanceFollowRedirects = false
             conn.setRequestProperty("Accept", "application/json")
+            for ((name, value) in headers) {
+                conn.setRequestProperty(name, value)
+            }
             if (bodyJson != null) {
                 conn.doOutput = true
                 conn.setRequestProperty("Content-Type", "application/json; charset=utf-8")

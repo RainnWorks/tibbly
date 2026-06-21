@@ -13,6 +13,8 @@
 import { Hono } from "hono";
 import { secureHeaders } from "hono/secure-headers";
 
+import { createAccountRouter } from "./api/account";
+import type { CreateAccountRouterOptions } from "./api/account";
 import { createAccountsRouter } from "./api/accounts";
 import type { CreateAccountsRouterOptions } from "./api/accounts";
 import { createAdminUsageRouter } from "./api/admin/usage";
@@ -73,6 +75,12 @@ export interface CreateAppOptions {
    * `/v1/accounts/*`. Omit in tests that don't exercise it.
    */
   accounts?: CreateAccountsRouterOptions;
+  /**
+   * Account-panel feed for the in-RuneLite Tibbly panel (D-8 pivot).
+   * Pass `{ db }` to mount `/v1/account/summary` + `/v1/account/usage-proxy`.
+   * Omit in tests that don't exercise it.
+   */
+  account?: CreateAccountRouterOptions;
   /**
    * Stripe customer portal router (RAI-27). Pass `{ db, stripe }` to
    * mount `/v1/billing/*`. Omit in tests that don't exercise billing.
@@ -141,6 +149,10 @@ export function createApp(options: CreateAppOptions = {}): Hono {
 
   if (options.accounts) {
     app.route("/v1/accounts", createAccountsRouter(options.accounts));
+  }
+
+  if (options.account) {
+    app.route("/v1/account", createAccountRouter(options.account));
   }
 
   if (options.billing) {
