@@ -112,6 +112,7 @@ class OsrsLlmHelperPlugin : Plugin() {
     @Inject private lateinit var xpTrackerIntegration: co.rowm.osrsllm.integrations.XpTrackerIntegration
     @Inject private lateinit var clueScrollIntegration: co.rowm.osrsllm.integrations.ClueScrollIntegration
     @Inject private lateinit var partyIntegration: co.rowm.osrsllm.integrations.PartyIntegration
+    @Inject private lateinit var deviceKey: DeviceKey
 
     private var navButton: NavigationButton? = null
     private var panel: OsrsLlmHelperPanel? = null
@@ -242,7 +243,7 @@ class OsrsLlmHelperPlugin : Plugin() {
                 toolDispatcher = StubToolDispatcher(),
                 authSupplier = {
                     CloudChatRunner.AuthFrame(
-                        deviceKey = deviceKeyForAuth(),
+                        deviceKey = deviceKey.getOrCreate(),
                         playerName = runCatching { client.localPlayer?.name }.getOrNull(),
                         pluginVersion = "0.1.0",
                     )
@@ -506,19 +507,18 @@ class OsrsLlmHelperPlugin : Plugin() {
         configManager.getConfig(OsrsLlmHelperConfig::class.java)
 
     /**
-     * Resolve (or lazily generate) the long-lived per-install device key used to
-     * authenticate against the backend. Stored under RuneLite config so the plugin
-     * keeps the same identity across restarts. NEVER logged.
+     * The long-lived per-install device key is now sourced from the
+     * canonical [DeviceKey] helper (SecureRandom-backed, 40-char nanoid,
+     * alphabet-validated). The previous in-Plugin generator concatenated
+     * two `UUID.randomUUID()` strings, which produced a hex value of
+     * different shape from the [DeviceKey] alphabet/length used by the
+     * audit, hash format, and backend tests. See `DeviceKey.kt`.
+     *
+     * `configManager` is still injected because other code paths need it
+     * for RuneLite config reads/writes; the device-key persistence lives
+     * inside [ConfigManagerDeviceKeyStore].
      */
     @Inject private lateinit var configManager: ConfigManager
-    private fun deviceKeyForAuth(): String {
-        val existing = runCatching { configManager.getConfiguration("osrsllm", "deviceKey") }.getOrNull()
-        if (!existing.isNullOrBlank()) return existing
-        val generated = java.util.UUID.randomUUID().toString().replace("-", "") +
-            java.util.UUID.randomUUID().toString().replace("-", "").take(8)
-        runCatching { configManager.setConfiguration("osrsllm", "deviceKey", generated) }
-        return generated
-    }
 
     @Provides @Singleton
     fun provideChatStore(): ChatStore = chatStore

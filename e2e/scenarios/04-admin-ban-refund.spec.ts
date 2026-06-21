@@ -1,16 +1,22 @@
 /**
  * Scenario 04 — admin ban + refund.
  *
- * Drives the ops-console endpoints with the admin email header:
+ * Drives the ops-console endpoints with the production cookie-based admin
+ * auth (audit C2 closed, PR #69: the legacy `x-admin-email` header path
+ * no longer exists):
  *
  *   1. Pair a user, run one chat turn so a session exists.
- *   2. POST /admin/users/:id/ban with a reason. Status flips to banned,
+ *   2. Admin logs in via POST /admin/login, captures the `ops_session`
+ *      cookie, and uses it on every subsequent admin call.
+ *   3. POST /admin/users/:id/ban with a reason. Status flips to banned,
  *      `events` row written, any open session ended.
- *   3. The banned user's device fails the next WS auth (lookup returns
+ *   4. The banned user's device fails the next WS auth (lookup returns
  *      null because status != active).
- *   4. Admin POSTs a refund — the dev stub returns `status: "dev_stub"`
+ *   5. Admin POSTs a refund. The dev stub returns `status: "dev_stub"`
  *      so we know the fake Stripe ran but no real money moved.
- *   5. Admin unbans the user; auth succeeds again.
+ *   6. Admin unbans the user; auth succeeds again.
+ *   7. A separate `it` pins the audit-C2 invariant at the e2e layer too:
+ *      a request with the legacy `x-admin-email` header is rejected 401.
  */
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import { eq } from "drizzle-orm";
@@ -18,7 +24,7 @@ import { eq } from "drizzle-orm";
 import { events as eventsTable, users } from "../../apps/backend/src/db/schema";
 import { connectFakePlugin, makeDeviceKey } from "../harness/fake-plugin";
 import { bootOrchestrator, type OrchestratorContext } from "../orchestrator/boot";
-import { pairUser } from "../orchestrator/seed";
+import { assertHarnessHealthy, loginAsAdmin, pairUser } from "../orchestrator/seed";
 
 let ctx: OrchestratorContext;
 
@@ -29,15 +35,10 @@ afterEach(async () => {
   await ctx.cleanup();
 });
 
-function adminHeaders(ctx: OrchestratorContext): Record<string, string> {
-  return {
-    "x-admin-email": ctx.env.ADMIN_EMAIL,
-    "content-type": "application/json",
-  };
-}
-
 describe("04 admin ban and refund", () => {
   it("bans a user, blocks their WS auth, processes a dev-stub refund, then unbans", async () => {
+    await assertHarnessHealthy(ctx);
+
     const deviceKey = makeDeviceKey();
     const paired = await pairUser(ctx, {
       deviceKey,
@@ -57,10 +58,17 @@ describe("04 admin ban and refund", () => {
     await plugin.sendUserMessage("What is my slayer task?");
     await plugin.close();
 
+    // Mint the admin session cookie via the real /admin/login flow.
+    const { cookie } = await loginAsAdmin(ctx);
+    const adminHeaders = {
+      cookie,
+      "content-type": "application/json",
+    };
+
     // Ban
     const banRes = await fetch(`${ctx.backendUrl}/admin/users/${paired.userId}/ban`, {
       method: "POST",
-      headers: adminHeaders(ctx),
+      headers: adminHeaders,
       body: JSON.stringify({ reason: "abuse" }),
     });
     expect(banRes.status).toBe(200);
@@ -86,7 +94,7 @@ describe("04 admin ban and refund", () => {
     // Refund — dev stub returns status "dev_stub".
     const refundRes = await fetch(`${ctx.backendUrl}/admin/users/${paired.userId}/refund`, {
       method: "POST",
-      headers: adminHeaders(ctx),
+      headers: adminHeaders,
       body: JSON.stringify({
         chargeId: "ch_stub_zero_one",
         amountCents: 700,
@@ -107,7 +115,7 @@ describe("04 admin ban and refund", () => {
     // Unban
     const unbanRes = await fetch(`${ctx.backendUrl}/admin/users/${paired.userId}/unban`, {
       method: "POST",
-      headers: adminHeaders(ctx),
+      headers: adminHeaders,
       body: "{}",
     });
     expect(unbanRes.status).toBe(200);
@@ -117,12 +125,31 @@ describe("04 admin ban and refund", () => {
     await recovered.close();
   });
 
-  it("refuses ops endpoints without the admin header", async () => {
+  it("refuses ops endpoints without an admin session cookie", async () => {
+    await assertHarnessHealthy(ctx);
+
     const naked = await fetch(`${ctx.backendUrl}/admin/users/nope/ban`, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ reason: "test" }),
     });
     expect(naked.status).toBe(401);
+  });
+
+  it("rejects the legacy x-admin-email header (audit C2 invariant)", async () => {
+    await assertHarnessHealthy(ctx);
+
+    // Even with a known-good admin email, the legacy header path must 401.
+    // PR #69 made the device key + cookie session the trust root; any code
+    // that re-enables `x-admin-email` would silently re-open audit C2.
+    const res = await fetch(`${ctx.backendUrl}/admin/users/nope/ban`, {
+      method: "POST",
+      headers: {
+        "x-admin-email": ctx.env.ADMIN_EMAIL,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({ reason: "audit-c2-canary" }),
+    });
+    expect(res.status).toBe(401);
   });
 });

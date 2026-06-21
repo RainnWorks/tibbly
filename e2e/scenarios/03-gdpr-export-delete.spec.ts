@@ -4,7 +4,7 @@
  * Walks the M3.5 / RAI-34 right-to-erasure flow:
  *
  *   1. Pair a user and run one chat turn so there is real data to export.
- *   2. GET /v1/me/export with the user's id as the Bearer token. Asserts
+ *   2. GET /v1/me/export with the raw device key as the Bearer token. Asserts
  *      the shape lines up with `createMeRouter`'s payload contract.
  *   3. DELETE /v1/me and assert subsequent calls 401 because the user is
  *      soft-deleted.
@@ -17,7 +17,7 @@ import { eq } from "drizzle-orm";
 import { subscriptions, users } from "../../apps/backend/src/db/schema";
 import { connectFakePlugin, makeDeviceKey } from "../harness/fake-plugin";
 import { bootOrchestrator, type OrchestratorContext } from "../orchestrator/boot";
-import { pairUser } from "../orchestrator/seed";
+import { assertHarnessHealthy, pairUser } from "../orchestrator/seed";
 
 let ctx: OrchestratorContext;
 
@@ -41,6 +41,7 @@ async function attachStripeCustomer(
 
 describe("03 gdpr export and delete", () => {
   it("exports user data and then hard-deletes on DELETE /v1/me", async () => {
+    await assertHarnessHealthy(ctx);
     const deviceKey = makeDeviceKey();
     const paired = await pairUser(ctx, {
       deviceKey,
@@ -57,7 +58,7 @@ describe("03 gdpr export and delete", () => {
 
     // Export
     const exportRes = await fetch(`${ctx.backendUrl}/v1/me/export`, {
-      headers: { authorization: `Bearer ${paired.userId}` },
+      headers: { authorization: `Bearer ${deviceKey}` },
     });
     expect(exportRes.status).toBe(200);
     const body = (await exportRes.json()) as Record<string, unknown>;
@@ -72,7 +73,7 @@ describe("03 gdpr export and delete", () => {
     // Delete
     const delRes = await fetch(`${ctx.backendUrl}/v1/me`, {
       method: "DELETE",
-      headers: { authorization: `Bearer ${paired.userId}` },
+      headers: { authorization: `Bearer ${deviceKey}` },
     });
     expect(delRes.status).toBe(204);
 
@@ -98,12 +99,13 @@ describe("03 gdpr export and delete", () => {
     // A second DELETE is idempotent.
     const delRes2 = await fetch(`${ctx.backendUrl}/v1/me`, {
       method: "DELETE",
-      headers: { authorization: `Bearer ${paired.userId}` },
+      headers: { authorization: `Bearer ${deviceKey}` },
     });
     expect(delRes2.status).toBe(204);
   });
 
   it("requires the bearer header on both endpoints", async () => {
+    await assertHarnessHealthy(ctx);
     const noExport = await fetch(`${ctx.backendUrl}/v1/me/export`);
     expect(noExport.status).toBe(401);
     const noDelete = await fetch(`${ctx.backendUrl}/v1/me`, { method: "DELETE" });
