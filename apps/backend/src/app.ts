@@ -21,6 +21,8 @@ import { createBillingPortalRouter } from "./api/billing-portal";
 import type { CreateBillingPortalRouterOptions } from "./api/billing-portal";
 import { createPairingRouter } from "./api/pairing";
 import type { CreatePairingRouterOptions } from "./api/pairing";
+import { createPresenceRouter } from "./api/presence";
+import type { CreatePresenceRouterOptions } from "./api/presence";
 import { createStripeWebhookRouter } from "./api/webhooks/stripe";
 import type { StripeWebhookDeps } from "./api/webhooks/stripe";
 import { createUsageRouter } from "./api/usage";
@@ -48,6 +50,11 @@ export interface CreateAppOptions {
    * so the bare app stays DB-free.
    */
   pairing?: CreatePairingRouterOptions;
+  /**
+   * Presence router config (RAI-21). Pass `{ tracker }` to mount the
+   * public `/v1/presence` endpoint. Omit when the bare app is fine.
+   */
+  presence?: CreatePresenceRouterOptions;
   /**
    * Stripe webhook router (RAI-19). Pass the meter + db to mount
    * `POST /api/webhooks/stripe`. Omitted in dev/test by default so a
@@ -110,6 +117,10 @@ export function createApp(options: CreateAppOptions = {}): Hono {
 
   if (options.pairing) {
     app.route("/v1/pairing", createPairingRouter(options.pairing));
+  }
+
+  if (options.presence) {
+    app.route("/v1/presence", createPresenceRouter(options.presence));
   }
 
   if (options.stripeWebhook) {

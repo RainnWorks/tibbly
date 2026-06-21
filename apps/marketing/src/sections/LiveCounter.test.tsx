@@ -60,4 +60,25 @@ describe("<LiveCounter />", () => {
     expect(regions).toHaveTextContent("US");
     expect(regions).toHaveTextContent("OCE");
   });
+
+  it("accepts the new `byRegion` map shape from the backend (RAI-21)", async () => {
+    (globalThis.fetch as unknown as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        count: 42,
+        byRegion: { GB: 20, US: 18, AU: 4 },
+      }),
+    });
+
+    renderWithClient(<LiveCounter />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("live-counter-count")).toHaveTextContent("42");
+    });
+    const regions = screen.getByTestId("live-counter-regions");
+    expect(regions).toHaveTextContent("GB");
+    expect(regions).toHaveTextContent("US");
+    expect(regions).toHaveTextContent("AU");
+  });
 });

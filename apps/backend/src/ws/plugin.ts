@@ -156,6 +156,16 @@ export function bridgeEventLoggerToBus(bus: EventBus = getDefaultBus()): EventLo
  */
 export type LlmRunner = (args: RunStreamArgs) => RunStreamResult;
 
+/**
+ * Presence hook — the plugin WS notifies whoever's tracking aggregate
+ * connection counts when a session opens / closes. RAI-21's tracker
+ * implements this, but the port keeps tests free of that dependency.
+ */
+export interface PresenceHook {
+  connect(sessionId: string, ip: string | null | undefined): void;
+  disconnect(sessionId: string): void;
+}
+
 export interface PluginWsDeps {
   deviceLookup: DeviceLookup;
   balanceMeter: BalanceMeter;
@@ -170,6 +180,12 @@ export interface PluginWsDeps {
   now?: () => number;
   /** Optional id generator for deterministic tests. */
   generateId?: () => string;
+  /**
+   * Optional presence sink — connect/disconnect callbacks are fired in
+   * `open` and `close` so the public presence feed (RAI-21) can count
+   * live plugin sessions without coupling to this module.
+   */
+  presence?: PresenceHook;
 }
 
 /**
@@ -466,8 +482,18 @@ export function pluginWsHandler(deps: PluginWsDeps): {
   }
 
   const websocket: WebSocketHandler<SocketData> = {
-    open(_ws): void {
-      // No-op until auth. We don't even read identity yet.
+    open(ws): void {
+      // RAI-21 — count this session in the public presence feed. We use
+      // the per-connection id (already opaque to clients) and the raw
+      // remote address; the tracker hashes the IP down to a country code
+      // before anything else touches it.
+      if (deps.presence) {
+        try {
+          deps.presence.connect(ws.data.connId, ws.remoteAddress ?? null);
+        } catch (err) {
+          log.warn({ err }, "ws: presence.connect threw");
+        }
+      }
     },
 
     async message(ws, raw): Promise<void> {
@@ -511,6 +537,13 @@ export function pluginWsHandler(deps: PluginWsDeps): {
 
     close(ws): void {
       ws.data.sm.markClosed();
+      if (deps.presence) {
+        try {
+          deps.presence.disconnect(ws.data.connId);
+        } catch (err) {
+          log.warn({ err }, "ws: presence.disconnect threw");
+        }
+      }
     },
 
     drain(_ws): void {

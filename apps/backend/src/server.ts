@@ -7,6 +7,8 @@
  *
  * Run: `bun --hot src/server.ts`
  */
+import type { WebSocketHandler } from "bun";
+
 import { createApp } from "./app";
 import { createTokenMeter } from "./billing/meter";
 import { meterToBalancePort } from "./billing/ws-adapter";
@@ -18,11 +20,15 @@ import { startRetentionCron } from "./jobs/retention-sweeper";
 import { log } from "./lib/log";
 import type { BalanceMeter } from "./ws/plugin";
 import { bridgeEventLoggerToBus, pluginWsHandler } from "./ws/plugin";
+import { presenceWsHandler } from "./ws/presence";
+import { getDefaultPresenceTracker } from "./ws/presence-tracker";
 import {
   assertNotDevStub,
   devStubBalanceMeter,
   devStubDeviceLookup,
 } from "./ws/stubs";
+
+const presenceTracker = getDefaultPresenceTracker();
 
 // RAI-37: spin up the analytics pipeline. The bus + persister + crons are
 // in-process; an external bus swap-in stays a future concern.
@@ -39,8 +45,10 @@ const useRealMeter = !!env.STRIPE_WEBHOOK_SECRET;
 const balanceMeter: BalanceMeter = useRealMeter ? meterToBalancePort(meter) : devStubBalanceMeter;
 
 // RAI-19: mount the Stripe webhook router when keys are configured.
+// RAI-21: mount the public presence router for /v1/presence.
 const app = createApp({
   admin: "auto",
+  presence: { tracker: presenceTracker },
   ...(useRealMeter ? { stripeWebhook: { db, meter, bus: getDefaultBus() } } : {}),
 });
 
@@ -51,19 +59,82 @@ const pluginWs = pluginWsHandler({
   deviceLookup: devStubDeviceLookup,
   balanceMeter,
   eventLogger: bridgeEventLoggerToBus(getDefaultBus()),
+  presence: presenceTracker,
 });
 
-const server = Bun.serve({
+// RAI-21: public presence WS feed. Same Bun.serve, distinct path.
+const presenceWs = presenceWsHandler({ tracker: presenceTracker });
+
+// Bun.serve takes a single websocket handler per server. We tag each
+// upgrade with a discriminator and dispatch to the right per-route handler
+// inside each callback. To keep the per-handler typing intact, we swap
+// `ws.data` to the handler's expected payload on entry and restore the
+// envelope on exit.
+type SocketKind = "plugin" | "presence";
+interface DispatchData {
+  kind: SocketKind;
+  plugin?: ReturnType<typeof pluginWs.makeSocketData>;
+  presence?: ReturnType<typeof presenceWs.makeSocketData>;
+}
+
+async function dispatch<R>(
+  ws: { data: unknown },
+  fn: () => R | Promise<R>,
+  inner: unknown,
+): Promise<R> {
+  const envelope = ws.data;
+  ws.data = inner;
+  try {
+    return await fn();
+  } finally {
+    ws.data = envelope;
+  }
+}
+
+const websocket: WebSocketHandler<DispatchData> = {
+  open(ws) {
+    const data = ws.data;
+    const target = data.kind === "plugin" ? pluginWs.websocket : presenceWs.websocket;
+    const inner = data.kind === "plugin" ? data.plugin : data.presence;
+    void dispatch(ws as unknown as { data: unknown }, () => target.open?.(ws as never), inner);
+  },
+  async message(ws, raw) {
+    const data = ws.data;
+    const target = data.kind === "plugin" ? pluginWs.websocket : presenceWs.websocket;
+    const inner = data.kind === "plugin" ? data.plugin : data.presence;
+    await dispatch(ws as unknown as { data: unknown }, () => target.message?.(ws as never, raw), inner);
+  },
+  close(ws, code, reason) {
+    const data = ws.data;
+    const target = data.kind === "plugin" ? pluginWs.websocket : presenceWs.websocket;
+    const inner = data.kind === "plugin" ? data.plugin : data.presence;
+    void dispatch(ws as unknown as { data: unknown }, () => target.close?.(ws as never, code, reason), inner);
+  },
+  drain(ws) {
+    const data = ws.data;
+    const target = data.kind === "plugin" ? pluginWs.websocket : presenceWs.websocket;
+    const inner = data.kind === "plugin" ? data.plugin : data.presence;
+    void dispatch(ws as unknown as { data: unknown }, () => target.drain?.(ws as never), inner);
+  },
+};
+
+const server = Bun.serve<DispatchData, never>({
   port: env.PORT,
   fetch(req, srv) {
     const url = new URL(req.url);
     if (url.pathname === "/ws/plugin") {
-      const ok = srv.upgrade(req, { data: pluginWs.makeSocketData() });
+      const data: DispatchData = { kind: "plugin", plugin: pluginWs.makeSocketData() };
+      const ok = srv.upgrade(req, { data });
+      return ok ? undefined : new Response("upgrade failed", { status: 400 });
+    }
+    if (url.pathname === "/ws/presence") {
+      const data: DispatchData = { kind: "presence", presence: presenceWs.makeSocketData() };
+      const ok = srv.upgrade(req, { data });
       return ok ? undefined : new Response("upgrade failed", { status: 400 });
     }
     return app.fetch(req);
   },
-  websocket: pluginWs.websocket,
+  websocket,
 });
 
 log.info({ port: server.port, version: env.VERSION, env: env.NODE_ENV }, "backend: listening");
@@ -76,6 +147,7 @@ const shutdown = (signal: string): void => {
   log.info({ signal }, "backend: shutting down");
   aggregationCron.stop();
   retentionCron.stop();
+  presenceWs.stop();
   server.stop();
   process.exit(0);
 };

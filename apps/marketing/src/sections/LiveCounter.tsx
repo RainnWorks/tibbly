@@ -1,6 +1,12 @@
 import { useQuery } from "@tanstack/react-query";
 import overallIcon from "@osrs-llm-helper/osrs-assets/skill_icons/overall.png";
 
+/**
+ * Presence payload shared with the backend (RAI-21).
+ *
+ * Backend serves `{ count, byRegion: Record<string, number> }`. We normalize
+ * to a sorted array for rendering so the UI is deterministic.
+ */
 export type PresenceResponse = {
   readonly count: number;
   readonly regions: ReadonlyArray<{
@@ -28,10 +34,23 @@ export async function fetchPresence(
   ) {
     throw new Error("invalid presence payload");
   }
-  const payload = data as PresenceResponse;
+  const payload = data as {
+    count: number;
+    // Both shapes supported during the rollout: the new `byRegion` map and
+    // the legacy `regions` array. New backends only emit `byRegion`.
+    byRegion?: Record<string, number>;
+    regions?: ReadonlyArray<{ name: string; count: number }>;
+  };
+  const regions = payload.byRegion
+    ? Object.entries(payload.byRegion)
+        .map(([name, count]) => ({ name, count }))
+        .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name))
+    : Array.isArray(payload.regions)
+      ? payload.regions
+      : [];
   return {
     count: payload.count,
-    regions: Array.isArray(payload.regions) ? payload.regions : [],
+    regions,
   };
 }
 
