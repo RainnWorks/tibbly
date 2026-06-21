@@ -22,6 +22,13 @@
       "when": 1782010000000,
       "tag": "0002_processed_stripe_events",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1782035442444,
+      "tag": "0003_model_catalog",
+      "breakpoints": true
     }
   ]
 }

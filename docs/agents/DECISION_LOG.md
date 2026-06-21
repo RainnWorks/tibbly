@@ -215,3 +215,38 @@ a friend — or should it? personality aspect to this".
 - Branding: "RuneCanine"? "Cleverbird"? Provisional name TBD by marketing
   agent; for now the product is `osrs-llm-helper` in docs.
 **Reversible?:** yes.
+
+## D-9 — No hardcoded model ids; live catalog drives every routing decision — 2026-06-21 (loop M+9)
+
+**Context:** Tom, verbatim:
+
+> "the model choice MUST be driven by RECENT research — the landscape
+> changes all the time. and i want us focusing on the ability to swap it
+> out, segment user base, test."
+
+> "no model id is ever hardcoded in the plugin, backend, or marketing copy.
+> Every call goes through a routing layer, every routing decision is a DB
+> row, and every user can be re-segmented at runtime."
+
+**Chosen:** Build a 5-layer model platform:
+
+1. Live catalog ingested nightly from OpenRouter (this PR).
+2. Routing policies — `(segment, intent) -> catalog.id` rows.
+3. Segments — runtime-rebindable per user.
+4. Experiments — bandit / holdout assignments.
+5. Sandbox — replay any recorded chat against any model.
+
+Step 1 ships the catalog table (`model_catalog`), the ingester, a
+boot+nightly scheduler, three admin routes (`/admin/catalog/*`), and a
+`/catalog` view in Tibbly Ops. The legacy `MODEL_HAIKU` / `MODEL_SONNET`
+/ `MODEL_OPUS` constants in `apps/backend/src/llm/router.ts` stay in
+place — step 2 (routing policies) owns their removal once there's a
+consumer of the new policy table.
+
+See `docs/architecture/MODEL_PLATFORM.md` for the full architecture and
+the step-2 handoff.
+
+**Reversible?:** the catalog table is additive. If the routing layer is
+ever yanked, the table becomes a curiosity rather than a hazard. The
+hard rule about no hardcoded ids is the only thing that needs honouring
+on revert.

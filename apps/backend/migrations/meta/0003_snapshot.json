@@ -1,6 +1,6 @@
 {
-  "id": "e52e7c23-67c0-4740-b876-c333dfcb13f1",
-  "prevId": "2322d17e-2054-4237-a5e7-1e89f984c3cd",
+  "id": "60437cc6-b9ba-463b-8d0a-6aa3dff98813",
+  "prevId": "e52e7c23-67c0-4740-b876-c333dfcb13f1",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -803,6 +803,120 @@
           "columns": [
             {
               "expression": "date",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.model_catalog": {
+      "name": "model_catalog",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "provider": {
+          "name": "provider",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "display_name": {
+          "name": "display_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "context_length": {
+          "name": "context_length",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "input_price_micro_usd_per_million": {
+          "name": "input_price_micro_usd_per_million",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "output_price_micro_usd_per_million": {
+          "name": "output_price_micro_usd_per_million",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "input_modalities": {
+          "name": "input_modalities",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'[]'::jsonb"
+        },
+        "capabilities": {
+          "name": "capabilities",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'{}'::jsonb"
+        },
+        "first_seen_at": {
+          "name": "first_seen_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "last_seen_at": {
+          "name": "last_seen_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "retired_at": {
+          "name": "retired_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "model_catalog_provider_idx": {
+          "name": "model_catalog_provider_idx",
+          "columns": [
+            {
+              "expression": "provider",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "model_catalog_retired_idx": {
+          "name": "model_catalog_retired_idx",
+          "columns": [
+            {
+              "expression": "retired_at",
               "isExpression": false,
               "asc": true,
               "nulls": "last"

@@ -17,6 +17,7 @@ import { createAccountRouter } from "./api/account";
 import type { CreateAccountRouterOptions } from "./api/account";
 import { createAccountsRouter } from "./api/accounts";
 import type { CreateAccountsRouterOptions } from "./api/accounts";
+import { createAdminCatalogRouter, type CreateAdminCatalogOptions } from "./api/admin/catalog";
 import { createAdminLoginRouter, type CreateAdminLoginOptions } from "./api/admin/login";
 import { createAdminOpenRouterRouter, type CreateAdminOpenRouterOptions } from "./api/admin/openrouter";
 import { createAdminUsageRouter } from "./api/admin/usage";
@@ -63,6 +64,11 @@ export interface CreateAppOptions {
    * `/admin/openrouter/*`.
    */
   adminOpenRouter?: CreateAdminOpenRouterOptions;
+  /**
+   * Admin model-catalog router (model platform step 1). Sits under
+   * `/admin/catalog/*`. Pass `{ db, adminEmails }` to enable.
+   */
+  adminCatalog?: CreateAdminCatalogOptions;
   /**
    * Admin login + session router. Sits under `/admin/login`,
    * `/admin/session`, `/admin/logout`.
@@ -164,6 +170,10 @@ export function createApp(options: CreateAppOptions = {}): Hono {
 
   if (options.adminOpenRouter) {
     app.route("/admin/openrouter", createAdminOpenRouterRouter(options.adminOpenRouter));
+  }
+
+  if (options.adminCatalog) {
+    app.route("/admin/catalog", createAdminCatalogRouter(options.adminCatalog));
   }
 
   if (options.adminLogin) {

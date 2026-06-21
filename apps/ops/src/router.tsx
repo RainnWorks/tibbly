@@ -5,6 +5,7 @@ import {
 } from "@tanstack/react-router";
 import { AppShell } from "@/components/AppShell";
 import { RouteAnalytics } from "@/routes/analytics";
+import { RouteCatalog } from "@/routes/catalog";
 import { RouteDashboard } from "@/routes/dashboard";
 import { RouteLogin } from "@/routes/login";
 import { RouteOpenRouter } from "@/routes/openrouter";
@@ -51,6 +52,12 @@ const openrouterRoute = createRoute({
   component: RouteOpenRouter,
 });
 
+const catalogRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/catalog",
+  component: RouteCatalog,
+});
+
 const routeTree = rootRoute.addChildren([
   loginRoute,
   dashboardRoute,
@@ -58,6 +65,7 @@ const routeTree = rootRoute.addChildren([
   userDetailRoute,
   analyticsRoute,
   openrouterRoute,
+  catalogRoute,
 ]);
 
 export const router = createRouter({

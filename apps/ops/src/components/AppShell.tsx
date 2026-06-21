@@ -9,6 +9,7 @@ import {
   Activity,
   BarChart3,
   Gauge,
+  Layers,
   LogOut,
   Search,
   Users,
@@ -26,6 +27,7 @@ const NAV: ReadonlyArray<{
   { to: "/users", label: "Users", icon: Users, shortcut: "g u" },
   { to: "/analytics", label: "Analytics", icon: BarChart3, shortcut: "g a" },
   { to: "/openrouter", label: "OpenRouter", icon: Activity, shortcut: "g o" },
+  { to: "/catalog", label: "Catalog", icon: Layers, shortcut: "g c" },
 ];
 
 export function AppShell(): ReactNode {
@@ -100,6 +102,7 @@ export function AppShell(): ReactNode {
         if (event.key === "u") navigate({ to: "/users" });
         if (event.key === "a") navigate({ to: "/analytics" });
         if (event.key === "o") navigate({ to: "/openrouter" });
+        if (event.key === "c") navigate({ to: "/catalog" });
       }
     };
     window.addEventListener("keydown", onKey);
