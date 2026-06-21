@@ -1,6 +1,8 @@
-import { useState, type ReactNode } from "react";
+import { useEffect, type ReactNode } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useMutation } from "@tanstack/react-query";
+import { useNavigate, useSearch } from "@tanstack/react-router";
 import { z } from "zod";
 import {
   Card,
@@ -11,53 +13,94 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { useToast } from "@/components/ui/toast";
+import { apiFetch, ApiError } from "@/lib/api";
 
 const pairSchema = z.object({
   pairingCode: z
     .string()
     .trim()
-    .regex(/^[A-Z0-9]{6}$/i, "6 characters, letters or numbers"),
+    .regex(/^[2-9ABCDEFGHJKLMNPQRSTUVWXYZ]{6}$/i, "6 characters, letters or numbers"),
 });
 type PairValues = z.infer<typeof pairSchema>;
 
+interface ClaimResponse {
+  readonly userId: string;
+  readonly deviceId: string;
+  readonly userCreated: boolean;
+}
+
+/**
+ * POST /v1/pairing/claim. Exported so tests can spy on it / swap it.
+ */
+export async function claimPairingCode(code: string): Promise<ClaimResponse> {
+  return apiFetch<ClaimResponse>("/v1/pairing/claim", {
+    method: "POST",
+    body: JSON.stringify({ code: code.toUpperCase() }),
+  });
+}
+
+interface PairSearch {
+  code?: string;
+}
+
 export function RoutePair(): ReactNode {
   const { push } = useToast();
-  const [confirmOpen, setConfirmOpen] = useState(false);
-  const [pendingCode, setPendingCode] = useState<string | null>(null);
+  const navigate = useNavigate();
+  // Stripe checkout success redirects back here with ?code=ABC123 so the
+  // user doesn't have to re-type the code.
+  const search = useSearch({ strict: false }) as PairSearch;
 
   const {
     register,
     handleSubmit,
     formState: { errors, isSubmitting },
     reset,
+    setValue,
   } = useForm<PairValues>({
     resolver: zodResolver(pairSchema),
     defaultValues: { pairingCode: "" },
   });
 
+  useEffect(() => {
+    if (search.code && /^[A-Za-z0-9]{6}$/.test(search.code)) {
+      setValue("pairingCode", search.code.toUpperCase());
+    }
+  }, [search.code, setValue]);
+
+  const mutation = useMutation({
+    mutationFn: claimPairingCode,
+    onSuccess: () => {
+      push({
+        title: "Plugin paired",
+        description: "Device bound to your account.",
+        variant: "success",
+      });
+      reset();
+      void navigate({ to: "/usage" });
+    },
+    onError: (err: unknown) => {
+      const message =
+        err instanceof ApiError && err.status === 410
+          ? "Code already used or expired — generate a new one in RuneLite."
+          : err instanceof ApiError && err.status === 404
+            ? "Unknown code — check the in-game banner for the latest one."
+            : err instanceof Error
+              ? err.message
+              : "Failed to pair plugin.";
+      push({
+        title: "Pairing failed",
+        description: message,
+        variant: "danger",
+      });
+    },
+  });
+
   function onSubmit(values: PairValues): void {
-    setPendingCode(values.pairingCode.toUpperCase());
-    setConfirmOpen(true);
+    mutation.mutate(values.pairingCode.toUpperCase());
   }
 
-  function confirmPair(): void {
-    push({
-      title: "Pairing confirmed",
-      description: `Code ${pendingCode ?? ""} accepted (skeleton — backend wires in RAI-27)`,
-      variant: "success",
-    });
-    setConfirmOpen(false);
-    setPendingCode(null);
-    reset();
-  }
+  const busy = isSubmitting || mutation.isPending;
 
   return (
     <div className="flex flex-col gap-6">
@@ -104,33 +147,12 @@ export function RoutePair(): ReactNode {
                 {errors.pairingCode.message}
               </span>
             ) : null}
-            <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? "Verifying…" : "Pair plugin"}
+            <Button type="submit" disabled={busy}>
+              {busy ? "Verifying…" : "Pair plugin"}
             </Button>
           </form>
         </CardContent>
       </Card>
-
-      <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Confirm pairing</DialogTitle>
-            <DialogDescription>
-              We'll bind this RuneLite device to your account using code{" "}
-              <span className="font-osrs text-[color:var(--color-osrs-gold)]">
-                {pendingCode}
-              </span>
-              .
-            </DialogDescription>
-          </DialogHeader>
-          <div className="flex justify-end gap-2 mt-4">
-            <Button variant="secondary" onClick={() => setConfirmOpen(false)}>
-              Cancel
-            </Button>
-            <Button onClick={confirmPair}>Confirm</Button>
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
