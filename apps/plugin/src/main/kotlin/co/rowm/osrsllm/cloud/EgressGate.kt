@@ -158,12 +158,142 @@ open class EgressGate @Inject constructor(
         }
     }
 
+    /**
+     * Tier-2 BYO HTTP egress — talks DIRECTLY to a third-party LLM provider
+     * (Anthropic, OpenAI, OpenRouter) using the player's own API key. No
+     * Tibbly backend involved.
+     *
+     * Posture (mirrors the WSS [egress] guarantees):
+     *
+     *  - `host` is checked against [BYO_ALLOWED_HOSTS] EXACTLY. A typo or
+     *    a future "add provider X" refactor that forgets to widen the
+     *    allow-list throws [EgressBlockedException] before any socket
+     *    opens. Any non-https URL is impossible because we construct
+     *    `https://<host><path>` literally — see the build.gradle
+     *    `:checkNoPlaintextUrls` gate that keeps the prefix tied to that
+     *    constant.
+     *  - `path` must start with `/`. We never let the caller supply a full
+     *    URL because that would defeat the host check.
+     *  - Headers are sanitized exactly like the pairing path: names are
+     *    ASCII printable + `:`-free; values forbid CR/LF. This blocks
+     *    response-splitting / header-injection if a future caller
+     *    accidentally interpolates user input.
+     *  - The audit row records ONLY the method, host, path, and body size
+     *    in bytes. We never log header values (which would include the
+     *    API key) and never log the body contents.
+     *  - Consent / cloudChatEnabled gates DO NOT apply here. Cloud-chat
+     *    is by definition "do not connect to Tibbly", and the BYO path
+     *    has its own consent flow (the player explicitly picked a BYO
+     *    mode AND pasted a key). The plugin still gates the call site
+     *    on `consentAccepted()` before reaching this method — see
+     *    `OsrsLlmHelperPlugin.startUp()`.
+     *
+     * @param host exact-match host (one of [BYO_ALLOWED_HOSTS]).
+     * @param path the request path, starting with `/`.
+     * @param method one of `GET` or `POST`.
+     * @param headers additional headers (Auth + provider-specific).
+     * @param body the JSON request body (sent with Content-Type set to JSON).
+     */
+    public open fun egressHttp(
+        host: String,
+        path: String,
+        method: String = "POST",
+        headers: List<Pair<String, String>> = emptyList(),
+        body: String? = null,
+    ): HttpEgressResponse {
+        if (host !in BYO_ALLOWED_HOSTS) {
+            throw EgressBlockedException(
+                "EgressGate.egressHttp refused host='$host' — not in BYO_ALLOWED_HOSTS.",
+            )
+        }
+        require(method == "GET" || method == "POST") {
+            "EgressGate.egressHttp: unsupported method=$method (only GET/POST allowed)"
+        }
+        require(path.startsWith("/")) {
+            "EgressGate.egressHttp: path must start with '/' (got '$path')"
+        }
+        // Header sanitization — matches the pairing-flow overload's contract so
+        // a refactor that consolidates the two can keep the same posture. We do
+        // NOT inspect header VALUES other than for CR/LF: an API key is a value,
+        // and we never want to look at it.
+        for ((name, value) in headers) {
+            require(name.isNotBlank() && name.all { it.code in 33..126 && it != ':' }) {
+                "EgressGate.egressHttp: header name contains illegal characters"
+            }
+            require(value.none { it == '\r' || it == '\n' }) {
+                "EgressGate.egressHttp: header value contains illegal characters"
+            }
+        }
+        val httpsUrl = "https://" + host + path
+        val url = URL(httpsUrl)
+        check(url.protocol == "https") {
+            // Unreachable by construction (literal prefix above) but kept as a
+            // belt-and-braces sentinel for future refactors.
+            "EgressGate.egressHttp: derived URL is not https (got protocol=${url.protocol})"
+        }
+        val conn = url.openConnection() as HttpURLConnection
+        try {
+            conn.requestMethod = method
+            conn.connectTimeout = CONNECT_TIMEOUT_MS
+            conn.readTimeout = READ_TIMEOUT_MS
+            conn.instanceFollowRedirects = false
+            conn.setRequestProperty("Accept", "application/json")
+            for ((name, value) in headers) {
+                conn.setRequestProperty(name, value)
+            }
+            if (body != null) {
+                conn.doOutput = true
+                conn.setRequestProperty("Content-Type", "application/json; charset=utf-8")
+                conn.outputStream.use { it.write(body.toByteArray(Charsets.UTF_8)) }
+            }
+            val status = conn.responseCode
+            val stream = if (status in 200..299) conn.inputStream else conn.errorStream
+            val responseBody = stream?.bufferedReader(Charsets.UTF_8)?.use { it.readText() } ?: ""
+            val sizeOut = body?.length ?: 0
+            auditLog.record(payloadKind = "Http:$method $host$path", sizeBytes = sizeOut)
+            log.debug(
+                "HTTP egress {} {}{} -> {} ({} bytes out, {} bytes in)",
+                method, host, path, status, sizeOut, responseBody.length,
+            )
+            return HttpEgressResponse(status = status, body = responseBody)
+        } catch (e: IOException) {
+            // We never include header values in the log line — the key lives in
+            // headers, and exception messages from HttpURLConnection are limited
+            // to the URL + cause, never the headers we set.
+            log.warn("HTTP egress {} {}{} failed: {}", method, host, path, e.message)
+            throw e
+        } finally {
+            runCatching { conn.disconnect() }
+        }
+    }
+
     /** Result of an [egressHttp] call. */
     data class HttpEgressResponse(val status: Int, val body: String)
+
+    /**
+     * Thrown by [egressHttp] when the requested host is not in the
+     * [BYO_ALLOWED_HOSTS] allow-list. Distinct from [IllegalArgumentException]
+     * so the runner can render a specific "we don't talk to that provider"
+     * message rather than the generic "validation failed" path.
+     */
+    public class EgressBlockedException internal constructor(message: String) : SecurityException(message)
 
     companion object {
         private const val CONNECT_TIMEOUT_MS = 10_000
         private const val READ_TIMEOUT_MS = 15_000
+
+        /**
+         * Exact-match host allow-list for Tier-2 BYO direct egress. Adding a
+         * provider means adding its host here AND a row in
+         * `DATA_DISCLOSURE.md` §D-quater AND a sealed subtype in
+         * `cloud/byo/ByoProvider.kt`. Mirroring the four-step contract
+         * keeps the security story auditable.
+         */
+        public val BYO_ALLOWED_HOSTS: Set<String> = setOf(
+            "api.anthropic.com",
+            "api.openai.com",
+            "openrouter.ai",
+        )
 
         /**
          * Derive the `https://host[:port]` origin from a [BackendUrl] (which is

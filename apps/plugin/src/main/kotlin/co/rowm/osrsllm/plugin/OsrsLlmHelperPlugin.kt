@@ -22,9 +22,12 @@ import co.rowm.osrsllm.cloud.ConfigManagerDeviceKeyStore
 import co.rowm.osrsllm.cloud.ConsentState
 import co.rowm.osrsllm.cloud.ContextRouter
 import co.rowm.osrsllm.cloud.DeviceKey
+import co.rowm.osrsllm.cloud.DirectChatBackend
+import co.rowm.osrsllm.cloud.DirectChatRunner
 import co.rowm.osrsllm.cloud.EgressGate
 import co.rowm.osrsllm.cloud.PairingFlow
 import co.rowm.osrsllm.cloud.StubToolDispatcher
+import co.rowm.osrsllm.cloud.byo.ChatResponse
 import co.rowm.osrsllm.events.EventLogService
 import co.rowm.osrsllm.local.McpServerService
 import co.rowm.osrsllm.overlay.AiChannelService
@@ -127,14 +130,13 @@ class OsrsLlmHelperPlugin : Plugin() {
     private var cloudChatBackend: CloudChatBackend? = null
 
     /**
-     * Tier-2 BYO chat runner. NULL in this PR — the actual `DirectChatRunner`
-     * implementation lands in a follow-up. The field is declared now so the
-     * gating logic in [startUp] can be wired correctly without a second
-     * refactor when the runner arrives. See
-     * `docs/architecture/HUB_RELEASE_STRATEGY.md` §"Tier 2 — Free tier".
+     * Tier-2 BYO chat runner. Constructed at startup when consent is on
+     * AND `chatMode.isByo == true`. Stays null in cloud-mode and tools-only
+     * mode. The runner has no persistent connection — every [DirectChatRunner.send]
+     * opens a fresh HTTPS request to the configured provider.
      */
-    @Suppress("unused") // placeholder for the BYOK runner — see KDoc above.
-    private var byoChatRunner: Any? = null
+    private var byoChatRunner: DirectChatRunner? = null
+    private var byoChatBackend: DirectChatBackend? = null
     private val claudeRunner = ClaudeRunner(
         mcpUrlSupplier = {
             runCatching {
@@ -207,10 +209,19 @@ class OsrsLlmHelperPlugin : Plugin() {
 
         // Build the chat-panel backend. The local subprocess path stays the DEFAULT;
         // cloud is only consulted when `cloudChatEnabled` is on AND the WSS link is up.
+        // The BYO backend takes precedence when the player has picked a BYO chat
+        // mode (and pasted a key — the runner validates that per-send so the panel
+        // surfaces a clear "no key configured" message instead of failing silently).
         val backendSelector = ChatBackendSelector(
             localBackend = LocalClaudeBackend(claudeRunner),
             cloudBackendSupplier = {
-                if (config.cloudChatEnabled() && backendWsClient.isConnected()) cloudChatBackend else null
+                if (config.chatMode().isByo) {
+                    byoChatBackend
+                } else if (config.cloudChatEnabled() && backendWsClient.isConnected()) {
+                    cloudChatBackend
+                } else {
+                    null
+                }
             },
         )
         val chat = ChatPanel(chatStore, backendSelector)
@@ -299,20 +310,68 @@ class OsrsLlmHelperPlugin : Plugin() {
                 .onFailure { log.warn("Backend connect failed: {}", it.message) }
         }
 
-        // BYO chat path (Tier 2 — hub-release strategy). The actual runner lands
-        // in the next PR; today this branch only validates the player has pasted
-        // a key and logs a clear "configure your key" hint otherwise. The chat
-        // surface itself still constructs (so the player sees the panel) but no
-        // outbound request is made until the runner lands.
+        // BYO chat path (Tier 2 — hub-release strategy). Constructs the
+        // DirectChatRunner that talks DIRECTLY to the player's choice of
+        // Anthropic / OpenAI / OpenRouter. No request ever touches the Tibbly
+        // backend in this branch. The runner reads the API key + model +
+        // telemetry preference lazily on each [DirectChatRunner.send] via
+        // suppliers so a mid-session config edit is picked up without a
+        // plugin restart (consent itself still requires restart per
+        // ConsentState's contract).
         if (config.consentAccepted() && chatMode.isByo) {
             val keyProvided = config.byoApiKey().isNotBlank()
             log.info(
-                "BYO chat mode active ({}). API key configured: {}. " +
-                    "DirectChatRunner not yet implemented in this build — see " +
-                    "docs/architecture/HUB_RELEASE_STRATEGY.md §Tier 2 for handoff.",
+                "BYO chat mode active ({}). API key configured: {}.",
                 chatMode::class.simpleName, keyProvided,
             )
-            // byoChatRunner stays null in this PR — placeholder field documents intent.
+            val directRunner = DirectChatRunner(
+                egressGate = egressGate,
+                keySupplier = { config.byoApiKey() },
+                modeSupplier = { config.chatMode() },
+                modelSupplier = { config.byoModel() },
+                consentSupplier = {
+                    ConsentState.snapshot()
+                        ?: ConsentState.freeze(accepted = config.consentAccepted())
+                },
+                telemetryOptInSupplier = { config.byoTelemetryOptIn() },
+                callbacks = object : DirectChatRunner.Callbacks {
+                    override fun onError(code: String, message: String) {
+                        log.warn("BYO chat error: code={} msg={}", code, message)
+                    }
+                    override fun onAssistantMessage(response: ChatResponse) {
+                        log.debug(
+                            "BYO chat reply: chars={} stop={} in={} out={}",
+                            response.text.length, response.stopReason,
+                            response.inputTokens, response.outputTokens,
+                        )
+                    }
+                    override fun onTurnStarted(provider: String, model: String) {
+                        log.info("BYO chat turn started: provider={} model={}", provider, model)
+                    }
+                },
+            )
+            byoChatRunner = directRunner
+            byoChatBackend = DirectChatBackend(
+                runner = directRunner,
+                systemPromptSupplier = {
+                    runCatching {
+                        if (::gameStateStore.isInitialized && ::eventLogService.isInitialized) {
+                            HarnessContext.build(
+                                store = gameStateStore,
+                                eventLog = eventLogService,
+                                widgets = if (::widgetTracker.isInitialized) widgetTracker else null,
+                                bankTags = if (::bankTagService.isInitialized) bankTagService else null,
+                                slayer = if (::slayerIntegration.isInitialized) slayerIntegration else null,
+                                xpTracker = if (::xpTrackerIntegration.isInitialized) xpTrackerIntegration else null,
+                                clueScroll = if (::clueScrollIntegration.isInitialized) clueScrollIntegration else null,
+                                party = if (::partyIntegration.isInitialized) partyIntegration else null,
+                            )
+                        } else null
+                    }.getOrNull()
+                },
+            )
+            runCatching { directRunner.start() }
+                .onFailure { log.warn("DirectChatRunner start failed: {}", it.message) }
         }
 
         if (chatMode == ChatMode.ToolsOnly) {
@@ -414,6 +473,9 @@ class OsrsLlmHelperPlugin : Plugin() {
         runCatching { cloudChatRunner?.stop() }
         cloudChatRunner = null
         cloudChatBackend = null
+        runCatching { byoChatRunner?.stop() }
+        byoChatRunner = null
+        byoChatBackend = null
         runCatching { backendWsClient.close() }
         ConsentState.reset()
         eventBus.unregister(gameStateStore)

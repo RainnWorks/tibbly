@@ -48,6 +48,35 @@ The Gradle tasks `:checkNoHttpServer`, `:checkNoReflection`, and
 wired into `:check`. `co/rowm/osrsllm/local/**` is the only excluded path,
 because it is the developer-only code path documented in section 4.
 
+## 3a. Tier-2 BYO direct egress (`DirectChatRunner`)
+
+When the player picks a `Direct: …` chat mode and pastes their own LLM
+API key, the plugin talks directly to the provider — Tibbly's backend
+is not involved. This path is locked down with the same shape of
+guarantees as the cloud path:
+
+- All BYO HTTP requests go through **exactly one function**:
+  `EgressGate.egressHttp(host, path, …)`. The host is checked against
+  the exact-match allow-list `BYO_ALLOWED_HOSTS = { api.anthropic.com,
+  api.openai.com, openrouter.ai }`. Any other host throws
+  `EgressBlockedException` before a socket opens.
+- The API key is read into a local val per send, attached to the
+  provider's auth header (`x-api-key` for Anthropic; `Authorization:
+  Bearer …` for OpenAI / OpenRouter), and then dropped. It never
+  persists on the runner instance, never lands in `AuditLog`, and is
+  redacted out of any error string surfaced to the chat panel.
+- The Gradle gate `:checkNoKeyLeak` fails the build if a literal
+  matching a BYO-style API key or env-var-shaped key name appears
+  anywhere in production Kotlin source.
+- Header sanitization on every BYO call rejects CR/LF in header names
+  or values to defeat response-splitting / header-injection.
+- Audit rows in BYO mode contain only `Http:POST <host><path>
+  size=<bytes>` — never the body, never the headers, never the key.
+
+See `apps/plugin/DATA_DISCLOSURE.md` §D-quater for the per-provider
+wire shapes and `apps/plugin/docs/CONFIG.md` for the player-facing
+description of the dropdown and the safer-key-handling guidance.
+
 ## 4. The developer-only path
 
 `co/rowm/osrsllm/local/McpServerService.kt` keeps the original
