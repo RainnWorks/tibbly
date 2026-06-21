@@ -45,7 +45,7 @@ import {
 } from "../src/db/schema";
 import * as schema from "../src/db/schema";
 
-const MIGRATION_PATH = join(import.meta.dir, "..", "migrations", "0000_init.sql");
+const MIGRATION_PATH = join(import.meta.dir, "..", "migrations", "0000_merged_schema.sql");
 
 type Db = ReturnType<typeof drizzle<typeof schema>>;
 
@@ -372,11 +372,13 @@ describe("schema: migration + retention contract", () => {
     const res = await pg.query<{ count: number }>(
       "SELECT count(*)::int AS count FROM information_schema.tables WHERE table_schema = 'public'",
     );
-    // 11 application tables (users, devices, osrs_accounts, pairing_codes,
+    // 11 RAI-15 tables (users, devices, osrs_accounts, pairing_codes,
     // sessions, chats, messages, tool_calls, usage_records, subscriptions,
-    // token_balances). No drizzle migrations table because we apply the SQL
-    // by hand in this test fixture.
-    expect(res.rows[0]?.count).toBe(11);
+    // token_balances) + 5 RAI-37 analytics tables (events,
+    // metrics_tool_usage_daily, metrics_chat_daily, metrics_funnel_daily,
+    // metrics_errors_daily). No drizzle migrations table because we apply
+    // the SQL by hand in this test fixture.
+    expect(res.rows[0]?.count).toBe(16);
     await pg.close();
   });
 

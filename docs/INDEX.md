@@ -75,6 +75,10 @@ then jump as needed.
   - [`research/community/trends.md`](research/community/trends.md) — Leagues 6, Sailing, Varlamore, calendar opportunities
 - [`research/memory-systems/`](research/memory-systems/) — how to do durable agent memory
 - [`research/llm-providers/`](research/llm-providers/) — OpenRouter model + pricing
+  - [`research/llm-providers/_SUMMARY.md`](research/llm-providers/_SUMMARY.md) — TL;DR + hand-off map
+  - [`research/llm-providers/openrouter-catalog.md`](research/llm-providers/openrouter-catalog.md) — 12-model pricing/context table
+  - [`research/llm-providers/routing-strategy.md`](research/llm-providers/routing-strategy.md) — 3-tier routing contract
+  - [`research/llm-providers/cost-model.md`](research/llm-providers/cost-model.md) — per-tier per-chat math + margin
 - [`research/competitor/`](research/competitor/) — other AI/OSRS tools
   - [`research/competitor/_SUMMARY.md`](research/competitor/_SUMMARY.md) — one-page summary of the AI-for-OSRS landscape (R6 / RAI-10)
   - [`research/competitor/landscape.md`](research/competitor/landscape.md) — 7 competitors documented with sourced quotes + URLs
@@ -97,6 +101,11 @@ then jump as needed.
   - [`research/libraries/logging.md`](research/libraries/logging.md) — pino + pino-pretty
   - [`research/libraries/ids.md`](research/libraries/ids.md) — nanoid + uuid v7
   - [`research/libraries/time.md`](research/libraries/time.md) — date-fns
+- [`research/analytics/`](research/analytics/) — token-usage analytics at scale (RAI-37)
+  - [`research/analytics/_SUMMARY.md`](research/analytics/_SUMMARY.md) — what we mimic from Langfuse / Helicone / Vercel AI SDK
+  - [`research/analytics/langfuse.md`](research/analytics/langfuse.md) — trace/observation data model + async ingestion
+  - [`research/analytics/helicone.md`](research/analytics/helicone.md) — real-time first dashboards + cost as integer
+  - [`research/analytics/vercel-ai-sdk.md`](research/analytics/vercel-ai-sdk.md) — OTel GenAI semantic conventions
 
 ## How to use this index
 
