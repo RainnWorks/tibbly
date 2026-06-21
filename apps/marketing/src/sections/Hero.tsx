@@ -89,12 +89,19 @@ const HERO_SAMPLE_TOOLS: ReadonlyArray<{ name: string; icon: string }> = [
 // These are the lines that have to make a cold visitor say "I want that."
 // Same five lines used verbatim in the dedicated Companion section, so
 // the hero sets the hook and the section pays it off.
+//
+// Re-authored 2026-06-21 under the cold-OSRS-player ear test (RAI-72 /
+// RAI-73). Each line names a real mechanic, uses real OSRS vocabulary
+// (spec the spawn, call waves, prayer order, spec mage), keeps the
+// companion pronoun-less, and lands a remembered-history beat the wiki
+// could not know. Cross-referenced in Companion.tsx vignettes and the
+// og-card. Brand voice anchor: docs/marketing/BRAND_VOICE.md §do 1.
 export const COMPANION_MAGICAL_LINES: readonly string[] = [
-  "Protect magic. She nukes 50s the second the orb spawns.",
-  "Still want that fire cape? Forty-seven minutes in. Want me to watch the wave timer?",
-  "How'd that Sins of the Father attempt go?",
-  "You don't need an antifire this time. Your fire cape's plenty.",
-  "You hit 99 Slayer ten minutes ago. I noticed.",
+  "Spec the spawn. He caught you with that fireball last week.",
+  "Forty-seven minutes in. Want me to call waves?",
+  "Vanstrom phase 4. Want the prayer order this time?",
+  "You're cleaner than last week. Skip the spec mage.",
+  "99 Slayer. Took your time.",
 ];
 
 export function Hero() {

@@ -1,5 +1,19 @@
 Companion sprite atlas drop location.
 
+NOTE (2026-06-21, RAI-71 pivot + RAI-73 framing fix): the canonical
+atlas layout is now the Probe variant tree under
+companion/robot-default/<variant>/<size>px/<pose>_<index>.png owned by
+CompanionSpriteAtlas.kt. The four legacy `Starter` enum values
+(veteran, fox, wisp, golem) survive only as the persisted-config keys
+backing the four player-facing personalities (wiki-veteran / soft-
+confused-friend / sardonic-veteran / earnest-helper). The visual is
+always the same Probe. See:
+  - apps/plugin/docs/CONFIG.md (player-facing copy)
+  - docs/product/COMPANION_VISUAL_BIBLE.md §2 (source of truth)
+
+Legacy spec (kept for reference until the pre-pivot atlas files are
+removed by the engineering follow-up):
+
 The plugin looks for PNGs under:
 
   companion/<starter>/<state>_<direction>_<index>.png

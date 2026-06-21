@@ -43,15 +43,29 @@ they say "where do I get that", we are inside the directive. If they
 say "neat" we are outside it. We commission against the first answer
 or we slip the date.
 
-## 2. The four starter forms (Probe variants)
+## 2. One visual, four personalities (Probe + voices)
 
-The player picks one of four Probe variants on first install, then
-picks one of four personality archetypes (per
-[EMBODIED_COMPANION.md section 5](./EMBODIED_COMPANION.md#5-personality-and-memory-system)).
-Form and archetype are two independent dials. The default pairing for
-each variant is set below because most players will accept the default
-pairing, but the runtime config separates them so a player can put any
-archetype on any variant.
+The player gets **one visual** (the floating Probe) and picks **one
+of four personalities** on first install. The personality choice is
+backed by a chassis-tint variant of the same Probe mesh so two
+players' companions are visually distinguishable at a glance, but the
+silhouette and animations are identical.
+
+Personality picks one of four archetypes per
+[EMBODIED_COMPANION.md section 5](./EMBODIED_COMPANION.md#5-personality-and-memory-system).
+A separate voice-override dial lets the player put any archetype on
+any personality tint, but the default pairing is set below because
+most players will accept the default.
+
+**Audit follow-up (RAI-72 / RAI-73, 2026-06-21).** The earlier framing
+called these "four starters", which a cold OSRS player reads as "four
+different companions to choose from". The reality is one visual with
+four voices. This section is the source of truth: any plugin or
+marketing copy that calls them "starters" is wrong. Use "personality"
+or "voice". The legacy `Starter` enum in
+[CompanionConfig.kt](../../apps/plugin/src/main/kotlin/co/rowm/osrsllm/companion/CompanionConfig.kt)
+is the persisted-config key only; the player-facing label is
+"Companion personality".
 
 All four variants share the same Quaternius CC0 base mesh (a small
 floating bot with a single front-facing lens and a stub antenna,
@@ -346,9 +360,10 @@ typography (matches the existing og-card.svg system). The corner
 radius is 6 pixels. There is a soft inner glow on the border so the
 bubble does not feel cut from cardstock.
 
-The bubble is not skinned per starter. The bubble is Tibbly's voice
-surface, and the voice does not change with form. The form is the
-delivery system; the typography is the voice.
+The bubble is not skinned per personality. The bubble is Tibbly's
+voice surface; the chassis tint differentiates the Probe at
+silhouette distance but the speech container is shared. The
+typography carries the voice.
 
 ### 4.2 Type system inside the bubble
 
@@ -571,7 +586,7 @@ spec drift between the doc, the bake, and the runtime.
 
 ### 6.4 The four variants from one source
 
-The four variant labels in [section 2](#2-the-four-starter-forms-probe-variants)
+The four variant labels in [section 2](#2-one-visual-four-personalities-probe--voices)
 (default, comm visor, heavy armor, research array) are baked from the
 same `probe.glb` by passing `--variant` to the script. The
 differences (LED hue, chassis tint, optional radar fin / armor
@@ -677,10 +692,10 @@ bubble is the exception because the player has no prior context for
 the companion existing. The bubble auto-dismisses after 8 seconds
 or on first player input, whichever comes first.
 
-The first-install CTA also fires the form picker (the four-starter
-chooser from section 2). The chooser renders inside the chat
-panel, not as a modal overlay, so the chooser feels like Tibbly
-showing the player options, not like a setup wizard.
+The first-install CTA also fires the personality picker (the
+four-personality chooser from section 2). The chooser renders inside
+the chat panel, not as a modal overlay, so it feels like Tibbly
+showing the player the four voices, not like a setup wizard.
 
 ## 8. Hub and Jagex risk
 
@@ -753,16 +768,16 @@ Asset commissions are one-shot in the sense that we pay for a
 finished atlas and live with it. Personality archetype assignments
 are runtime config (per
 [EMBODIED_COMPANION.md section 5](./EMBODIED_COMPANION.md#5-personality-and-memory-system)).
-If a starter does not resonate post-launch, we swap the archetype
-assigned to it without re-commissioning art. The Wiki Veteran can
-ship paired with dry-wiki-nerd at launch and re-paired with
-sardonic-veteran a month later based on dogfood signal.
+If a personality does not resonate post-launch, we swap the archetype
+assigned to it without re-commissioning art. The wiki-veteran
+personality can ship paired with dry-wiki-nerd at launch and
+re-paired with sardonic-veteran a month later based on dogfood
+signal.
 
-If the visual style does not work for one starter, we re-commission
-that one starter without throwing the others away. The atlas is
-per-starter and the runtime loads each atlas independently. The
-budget envelope assumes the worst case of one re-commission across
-the four launch starters. We do not bake in a global art swap.
+If a chassis-tint variant does not land in dogfood, we adjust the
+parameter overrides in the bake script and re-bake. The source mesh
+stays unchanged so we never re-commission art for a single Probe
+variant.
 
 If the whole bible turns out to be wrong (the visual is fine but
 the player attachment does not form, or the hub blocks the

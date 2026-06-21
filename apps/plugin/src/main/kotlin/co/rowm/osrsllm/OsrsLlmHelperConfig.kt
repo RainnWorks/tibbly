@@ -141,10 +141,17 @@ interface OsrsLlmHelperConfig : Config {
     )
     fun companionEnabled(): Boolean = true
 
+    // RAI-73: keyName stays `companionStarter` to preserve persisted player
+    // configs. Player-facing copy is reframed from "Companion form" (which
+    // implied four different creatures) to "Companion personality". The
+    // visual is always the same Probe; the four values pick the voice.
+    // See CompanionConfig.kt KDoc and apps/plugin/docs/CONFIG.md for the
+    // post-pivot framing.
     @ConfigItem(
         keyName = "companionStarter",
-        name = "Companion form",
-        description = "Pick which Tibbly form walks beside you. Veteran is the default hooded humanoid.",
+        name = "Companion personality",
+        description = "Same Probe, four voices. Pick the one you'd rather have next to you. " +
+            "Wiki veteran is the default.",
         position = 41,
         section = COMPANION_SECTION,
     )
@@ -161,8 +168,8 @@ interface OsrsLlmHelperConfig : Config {
 
     @ConfigItem(
         keyName = "companionArchetype",
-        name = "Personality archetype",
-        description = "Voice style. Each starter has a sensible default but you can pick any.",
+        name = "Voice override",
+        description = "Voice style. Each personality has a sensible default; this dial lets you pick any voice on top.",
         position = 43,
         section = COMPANION_SECTION,
     )

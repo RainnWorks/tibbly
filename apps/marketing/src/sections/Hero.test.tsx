@@ -56,12 +56,39 @@ describe("<Hero />", () => {
   });
 
   it("exports the five magical-moment lines verbatim", () => {
+    // Lines re-authored 2026-06-21 under the cold-OSRS-player ear test
+    // (RAI-72 audit → RAI-73 fix). Each one names a real OSRS mechanic:
+    //   0. Vorkath zombified-spawn fireball + male pronoun + memory beat
+    //   1. Fight Caves "call waves" (real slang, not "wave timer")
+    //   2. Sins of the Father → Vanstrom phase 4 prayer order
+    //   3. Vorkath revisit, "spec mage" = special-attack-magic-pot
+    //   4. 99 Slayer dry rib in brand voice
     expect(COMPANION_MAGICAL_LINES).toHaveLength(5);
     expect(COMPANION_MAGICAL_LINES[0]).toBe(
-      "Protect magic. She nukes 50s the second the orb spawns.",
+      "Spec the spawn. He caught you with that fireball last week.",
+    );
+    expect(COMPANION_MAGICAL_LINES[1]).toBe(
+      "Forty-seven minutes in. Want me to call waves?",
+    );
+    expect(COMPANION_MAGICAL_LINES[2]).toBe(
+      "Vanstrom phase 4. Want the prayer order this time?",
+    );
+    expect(COMPANION_MAGICAL_LINES[3]).toBe(
+      "You're cleaner than last week. Skip the spec mage.",
     );
     expect(COMPANION_MAGICAL_LINES[4]).toBe(
-      "You hit 99 Slayer ten minutes ago. I noticed.",
+      "99 Slayer. Took your time.",
     );
+  });
+
+  it("never uses 'she' for Vorkath or 'wave timer' for Fight Caves (audit RAI-72)", () => {
+    // Regression guards from the cold-OSRS-player review. If either
+    // string returns, the lines drifted back to the original
+    // engineer-paraphrased copy.
+    for (const line of COMPANION_MAGICAL_LINES) {
+      expect(line.toLowerCase()).not.toContain("she ");
+      expect(line.toLowerCase()).not.toContain("wave timer");
+      expect(line.toLowerCase()).not.toContain("nukes 50");
+    }
   });
 });

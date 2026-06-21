@@ -100,20 +100,30 @@ Default: on. When on, the sprite renders at a configurable follow
 distance behind your character. When off, the companion disappears
 immediately and all subscriptions tear down. No data is recorded.
 
-### Companion form
+### Companion personality
 
-Pick which Tibbly form walks beside you. Four choices at launch:
+Your companion is the Probe: a small floating utility bot with a single
+front-facing lens. There is one visual; the dial below picks **how it
+talks to you**. Four personalities at launch:
 
-| Choice | Feel |
-|---|---|
-| **Veteran** *(default)* | A small hooded humanoid in a deliberately non-OSRS art style. Reads as "this is mine" rather than "this is a Jagex asset". |
-| **Fox** | A small fox-like creature in OSRS-pet silhouette, for players who want the companion to vibe with their pet collection. |
-| **Wisp** | A floating moth-wisp with a face. Soft, glowing, expressive. |
-| **Golem** | A small wooden golem. Tank-shaped, sturdy, deliberate. |
+| Personality | Feel | Probe chassis tint |
+|---|---|---|
+| **Wiki veteran** *(default)* | Sparse, accurate, occasionally biting. Reads the wiki at you. | warm amber lens |
+| **Soft, confused friend** | Sweet, a little lost, cheers you on when you do well. | pale cyan lens |
+| **Sardonic veteran** | Been there, killed that. Says less than they know. | red lens, heavier plating |
+| **Earnest helper** | Genuinely wants to help. Always polite. Mostly upbeat. | mint lens, research array |
 
-Each starter has its own commissioned animation atlas. Until commission
-lands the plugin uses a flat-coloured 32 by 32 placeholder so you can
-still see where the companion is and the state machine still works.
+Each personality changes the companion's voice over time. The visual
+stays the same Probe. The chassis tint is a small differentiator so
+your screenshot reads as your companion, not the default. Until the
+baked sprite atlases land the plugin uses a flat-coloured 32 by 32
+placeholder so you can still see where the companion is and the state
+machine still works.
+
+The `companionStarter` key in `runelite.properties` persists this
+choice; we kept the legacy `Starter` enum name for backwards
+compatibility with existing player configs and renamed only the
+player-facing label.
 
 ### Companion name
 
@@ -121,17 +131,19 @@ Optional. Used by the backend personality engine as your companion's
 nickname. Leave blank to be prompted on first launch. Renaming later is
 fine and is handled by the dashboard / Tibbly account panel.
 
-### Personality archetype
+### Voice override
 
-Voice style. Each starter has a sensible default but any archetype can
-go with any visual.
+The four personalities above ship with a sensible default voice. This
+dial lets you put any voice on any personality (e.g. wiki-veteran
+visual with the earnest-helper voice). Most players leave it on
+default.
 
 | Archetype | Feel |
 |---|---|
-| **Dry wiki veteran** *(Veteran default)* | Sparse, accurate, occasionally biting. Reads the wiki at you. |
-| **Soft, confused friend** *(Wisp default)* | Sweet, a little lost, cheers you on when you do well. |
-| **Sardonic veteran** *(Fox default)* | Been there, killed that. Says less than they know. |
-| **Earnest helper** *(Golem default)* | Genuinely wants to help. Always polite. Mostly upbeat. |
+| **Dry wiki veteran** *(Wiki-veteran default)* | Sparse, accurate, occasionally biting. Reads the wiki at you. |
+| **Soft, confused friend** *(Soft-confused-friend default)* | Sweet, a little lost, cheers you on when you do well. |
+| **Sardonic veteran** *(Sardonic-veteran default)* | Been there, killed that. Says less than they know. |
+| **Earnest helper** *(Earnest-helper default)* | Genuinely wants to help. Always polite. Mostly upbeat. |
 
 ### Speech verbosity
 
@@ -143,7 +155,7 @@ a decaying probability the longer you play. Dead air is sacred.
 ### Proactive lines
 
 On by default. When off, Tibbly never speaks unless you click on the
-sprite or address her in chat. Useful for streamers, content creators,
+sprite or address it in chat. Useful for streamers, content creators,
 and anyone who wants the companion as visual presence only.
 
 ## Developer mode (advanced)
