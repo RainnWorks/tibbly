@@ -2,24 +2,37 @@ import { forwardRef, type ButtonHTMLAttributes } from "react";
 import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/cn";
 
+/**
+ * Ops button. Compact, square-edged on inputs, accent on primary.
+ * The accent is mint-green so the primary action reads as "system
+ * alive" rather than warm marketing yellow.
+ */
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md border text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-[color:var(--color-osrs-bg)] focus-visible:ring-[color:var(--color-osrs-gold)] disabled:opacity-50 disabled:pointer-events-none",
+  [
+    "inline-flex items-center justify-center gap-2 whitespace-nowrap",
+    "border text-sm font-medium",
+    "transition-colors duration-100",
+    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-ops-accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-ops-bg)]",
+    "disabled:opacity-50 disabled:pointer-events-none",
+  ].join(" "),
   {
     variants: {
       variant: {
         primary:
-          "bg-[color:var(--color-osrs-gold)] text-[color:var(--color-osrs-bg)] border-[color:var(--color-osrs-gold)] hover:brightness-110",
+          "bg-[var(--color-ops-accent)] text-[var(--color-ops-accent-ink)] border-[var(--color-ops-accent)] hover:brightness-95",
         secondary:
-          "bg-[color:var(--color-osrs-panel)] text-[color:var(--color-osrs-gold-soft)] border-[color:var(--color-osrs-panel-border)] hover:border-[color:var(--color-osrs-gold-soft)]",
+          "bg-[var(--color-ops-surface-2)] text-[var(--color-ops-text)] border-[var(--color-ops-border)] hover:border-[var(--color-ops-border-strong)]",
         ghost:
-          "bg-transparent text-[color:var(--color-osrs-gold-soft)] border-transparent hover:bg-[color:var(--color-osrs-panel)]",
+          "bg-transparent text-[var(--color-ops-text-muted)] border-transparent hover:text-[var(--color-ops-text)] hover:bg-[var(--color-ops-surface)]",
         danger:
-          "bg-[color:var(--color-osrs-danger)] text-white border-[color:var(--color-osrs-danger)] hover:brightness-110",
+          "bg-[var(--color-ops-danger)] text-[var(--color-ops-bg)] border-[var(--color-ops-danger)] hover:brightness-95",
+        warn:
+          "bg-[var(--color-ops-warn)] text-[var(--color-ops-accent-ink)] border-[var(--color-ops-warn)] hover:brightness-95",
       },
       size: {
-        sm: "h-8 px-3",
-        md: "h-10 px-4",
-        lg: "h-12 px-6 text-base",
+        sm: "h-7 px-2.5 rounded-[4px] text-xs",
+        md: "h-9 px-3.5 rounded-[4px]",
+        lg: "h-11 px-5 rounded-[4px] text-base",
       },
     },
     defaultVariants: {

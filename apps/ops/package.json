@@ -13,6 +13,8 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@fontsource-variable/geist": "^5.2.9",
+    "@fontsource-variable/jetbrains-mono": "^5.2.8",
     "@hookform/resolvers": "^3.10.0",
     "@osrs-llm-helper/osrs-assets": "workspace:*",
     "@osrs-llm-helper/shared-types": "workspace:*",

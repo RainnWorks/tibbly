@@ -12,12 +12,9 @@ import {
 import { cn } from "@/lib/cn";
 
 /**
- * Minimal accessible dialog primitive. We deliberately avoid pulling in
- * @radix-ui/react-dialog for the skeleton — the surface here is enough
- * for confirm/cancel modals on /pair and /accounts. We'll swap in a
- * full Radix dialog once real flows need focus traps + portaling.
+ * Lightweight controlled dialog. Inline border highlight rather than a
+ * drop shadow, per OPS_DESIGN.md §6.
  */
-
 type DialogContextValue = {
   readonly open: boolean;
   readonly setOpen: (next: boolean) => void;
@@ -100,9 +97,9 @@ export function DialogContent({
         role="dialog"
         aria-modal="true"
         className={cn(
-          "max-w-md w-full mx-4 rounded-lg border p-6",
-          "bg-[color:var(--color-osrs-panel)] border-[color:var(--color-osrs-panel-border)]",
-          "shadow-2xl shadow-black/60",
+          "max-w-md w-full mx-4 rounded-lg border p-5",
+          "bg-[var(--color-ops-surface-2)] border-[var(--color-ops-border-strong)]",
+          "ring-1 ring-inset ring-white/[0.04]",
           className,
         )}
         onClick={(event) => event.stopPropagation()}
@@ -115,7 +112,7 @@ export function DialogContent({
 }
 
 export function DialogHeader({ className, ...rest }: HTMLAttributes<HTMLDivElement>): ReactNode {
-  return <div className={cn("mb-4 flex flex-col gap-1", className)} {...rest} />;
+  return <div className={cn("mb-3 flex flex-col gap-1", className)} {...rest} />;
 }
 
 export function DialogTitle({
@@ -125,7 +122,7 @@ export function DialogTitle({
   return (
     <h2
       className={cn(
-        "font-osrs text-lg text-[color:var(--color-osrs-gold)]",
+        "text-sm font-semibold text-[var(--color-ops-text)] tracking-tight",
         className,
       )}
       {...rest}
@@ -139,10 +136,7 @@ export function DialogDescription({
 }: HTMLAttributes<HTMLParagraphElement>): ReactNode {
   return (
     <p
-      className={cn(
-        "text-sm text-[color:var(--color-osrs-gold-soft)]/80",
-        className,
-      )}
+      className={cn("text-xs text-[var(--color-ops-text-muted)]", className)}
       {...rest}
     />
   );

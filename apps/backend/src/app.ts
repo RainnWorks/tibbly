@@ -17,8 +17,11 @@ import { createAccountRouter } from "./api/account";
 import type { CreateAccountRouterOptions } from "./api/account";
 import { createAccountsRouter } from "./api/accounts";
 import type { CreateAccountsRouterOptions } from "./api/accounts";
+import { createAdminLoginRouter, type CreateAdminLoginOptions } from "./api/admin/login";
+import { createAdminOpenRouterRouter, type CreateAdminOpenRouterOptions } from "./api/admin/openrouter";
 import { createAdminUsageRouter } from "./api/admin/usage";
 import type { CreateAdminUsageOptions } from "./api/admin/usage";
+import { createAdminUsersRouter, type CreateAdminUsersOptions } from "./api/admin/users";
 import { createBillingPortalRouter } from "./api/billing-portal";
 import type { CreateBillingPortalRouterOptions } from "./api/billing-portal";
 import { createMeRouter } from "./api/me";
@@ -48,6 +51,21 @@ export interface CreateAppOptions {
    * don't care about admin can keep using the bare app.
    */
   admin?: CreateAdminUsageOptions | "auto";
+  /**
+   * Admin user-management router (ops console). Pass `{ db, stripe?,
+   * adminEmails }`. Sits under `/admin/users/*`.
+   */
+  adminUsers?: CreateAdminUsersOptions;
+  /**
+   * Admin OpenRouter spend + revenue router. Sits under
+   * `/admin/openrouter/*`.
+   */
+  adminOpenRouter?: CreateAdminOpenRouterOptions;
+  /**
+   * Admin login + session router. Sits under `/admin/login`,
+   * `/admin/session`, `/admin/logout`.
+   */
+  adminLogin?: CreateAdminLoginOptions | "auto";
   /**
    * Pairing-code router config (RAI-18). Pass `{ db }` to mount the
    * `/v1/pairing/*` endpoints. Omit in tests that don't exercise pairing
@@ -129,6 +147,19 @@ export function createApp(options: CreateAppOptions = {}): Hono {
   if (options.admin) {
     const adminOpts = options.admin === "auto" ? {} : options.admin;
     app.route("/admin", createAdminUsageRouter(adminOpts));
+  }
+
+  if (options.adminUsers) {
+    app.route("/admin/users", createAdminUsersRouter(options.adminUsers));
+  }
+
+  if (options.adminOpenRouter) {
+    app.route("/admin/openrouter", createAdminOpenRouterRouter(options.adminOpenRouter));
+  }
+
+  if (options.adminLogin) {
+    const loginOpts = options.adminLogin === "auto" ? {} : options.adminLogin;
+    app.route("/admin", createAdminLoginRouter(loginOpts));
   }
 
   if (options.pairing) {

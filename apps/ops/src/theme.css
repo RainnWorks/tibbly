@@ -1,36 +1,48 @@
 @import "tailwindcss";
 
-/**
- * OSRS-vibe placeholder theme — dark slate background, gold accent.
- * The "real" RuneStar typeface will be wired in once packages/osrs-assets
- * ships its font catalog. Until then we degrade gracefully to the
- * system mono stack so headings still feel chunky / pixelated.
- */
-@theme {
-  --color-osrs-bg: #0b0a08;
-  --color-osrs-panel: #1a1410;
-  --color-osrs-panel-border: #3a2f1f;
-  --color-osrs-gold: #f5c542;
-  --color-osrs-gold-soft: #c8b675;
-  --color-osrs-rune: #67e8f9;
-  --color-osrs-danger: #ef4444;
-  --color-osrs-success: #84cc16;
+@import "@fontsource-variable/geist/index.css";
+@import "@fontsource-variable/jetbrains-mono/index.css";
 
-  --font-osrs-display: "RuneScape", "Press Start 2P", "ui-monospace", "SFMono-Regular", monospace;
-  --font-osrs-body: "Inter", "ui-sans-serif", "system-ui", sans-serif;
+/**
+ * Ops cockpit theme. See docs/architecture/OPS_DESIGN.md for the binding
+ * contract. Single accent on a calm dark base; off-black, never pure black.
+ * Geist Variable for chrome, JetBrains Mono Variable for data.
+ */
+
+@theme {
+  --color-ops-bg: #0c0e12;
+  --color-ops-surface: #13161c;
+  --color-ops-surface-2: #1a1e26;
+  --color-ops-border: #262b35;
+  --color-ops-border-strong: #3a4150;
+  --color-ops-text: #e6e8ec;
+  --color-ops-text-muted: #9aa0ac;
+  --color-ops-text-faint: #5d6470;
+  --color-ops-accent: #7cffb5;
+  --color-ops-accent-ink: #0c2418;
+  --color-ops-warn: #f5b54a;
+  --color-ops-danger: #ff6b6b;
+
+  --font-ops-sans: "Geist Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-ops-mono:
+    "JetBrains Mono Variable", ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
 :root {
   color-scheme: dark;
+  --radius-input: 4px;
+  --radius-card: 8px;
 }
 
 html,
 body {
   min-height: 100%;
-  background: var(--color-osrs-bg);
-  color: #f8eccb;
-  font-family: var(--font-osrs-body);
+  background: var(--color-ops-bg);
+  color: var(--color-ops-text);
+  font-family: var(--font-ops-sans);
+  font-feature-settings: "cv11", "ss01";
   -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
 #root {
@@ -39,19 +51,37 @@ body {
   flex-direction: column;
 }
 
-/* Reusable display heading utility — used by route titles */
-.font-osrs {
-  font-family: var(--font-osrs-display);
-  letter-spacing: 0.02em;
+/* Reusable mono utility for ids, timestamps, token counts. */
+.font-mono {
+  font-family: var(--font-ops-mono);
+  font-feature-settings: "tnum", "zero", "ss01";
+  font-variant-numeric: tabular-nums;
 }
 
-/* Subtle parchment-rune divider, OSRS interface inspired */
-.osrs-divider {
-  height: 1px;
-  background: linear-gradient(
-    to right,
-    transparent,
-    var(--color-osrs-panel-border),
-    transparent
-  );
+/* Tabular numbers everywhere, important for tables of money + tokens. */
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Row hover and focus on tables. */
+.ops-row {
+  transition: background-color 100ms ease-out;
+}
+.ops-row:hover,
+.ops-row[data-focused="true"] {
+  background-color: var(--color-ops-surface-2);
+}
+.ops-row[data-focused="true"] {
+  outline: 1px solid var(--color-ops-border-strong);
+  outline-offset: -1px;
+}
+
+/* Reduced motion respects operator preference. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0ms !important;
+    animation-duration: 0ms !important;
+  }
 }

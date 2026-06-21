@@ -4,52 +4,60 @@ import {
   createRouter,
 } from "@tanstack/react-router";
 import { AppShell } from "@/components/AppShell";
-import { RouteRoot } from "@/routes/root";
-import { RoutePair } from "@/routes/pair";
-import { RouteUsage } from "@/routes/usage";
-import { RouteAccounts } from "@/routes/accounts";
-import { RouteBilling } from "@/routes/billing";
+import { RouteAnalytics } from "@/routes/analytics";
+import { RouteDashboard } from "@/routes/dashboard";
+import { RouteLogin } from "@/routes/login";
+import { RouteOpenRouter } from "@/routes/openrouter";
+import { RouteUsers } from "@/routes/users";
+import { RouteUserDetail } from "@/routes/user-detail";
 
 const rootRoute = createRootRoute({
   component: AppShell,
 });
 
-const indexRoute = createRoute({
+const loginRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/login",
+  component: RouteLogin,
+});
+
+const dashboardRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/",
-  component: RouteRoot,
+  component: RouteDashboard,
 });
 
-const pairRoute = createRoute({
+const usersRoute = createRoute({
   getParentRoute: () => rootRoute,
-  path: "/pair",
-  component: RoutePair,
+  path: "/users",
+  component: RouteUsers,
 });
 
-const usageRoute = createRoute({
+const userDetailRoute = createRoute({
   getParentRoute: () => rootRoute,
-  path: "/usage",
-  component: RouteUsage,
+  path: "/users/$id",
+  component: RouteUserDetail,
 });
 
-const accountsRoute = createRoute({
+const analyticsRoute = createRoute({
   getParentRoute: () => rootRoute,
-  path: "/accounts",
-  component: RouteAccounts,
+  path: "/analytics",
+  component: RouteAnalytics,
 });
 
-const billingRoute = createRoute({
+const openrouterRoute = createRoute({
   getParentRoute: () => rootRoute,
-  path: "/billing",
-  component: RouteBilling,
+  path: "/openrouter",
+  component: RouteOpenRouter,
 });
 
 const routeTree = rootRoute.addChildren([
-  indexRoute,
-  pairRoute,
-  usageRoute,
-  accountsRoute,
-  billingRoute,
+  loginRoute,
+  dashboardRoute,
+  usersRoute,
+  userDetailRoute,
+  analyticsRoute,
+  openrouterRoute,
 ]);
 
 export const router = createRouter({
