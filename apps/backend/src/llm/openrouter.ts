@@ -97,6 +97,14 @@ export interface RunStreamArgs {
   tools?: Record<string, Tool>;
   /** Hard cap on the LLM-tool loop. Default = 5 steps. */
   maxSteps?: number;
+  /**
+   * Number of automatic retries on transient OpenRouter failures (429, 5xx,
+   * connection blips) BEFORE the first stream chunk arrives. Once streaming
+   * starts, mid-stream failures bubble. Default = 3, matching the Vercel AI
+   * SDK's recommended production setting; bump to 5 for the Iron tier where
+   * Opus tail-latency is more variable.
+   */
+  maxRetries?: number;
   abortSignal?: AbortSignal;
 }
 
@@ -120,6 +128,7 @@ export function runStream(args: RunStreamArgs): RunStreamResult {
     model: args.model,
     prompt: args.prompt,
     stopWhen: stepCountIs(args.maxSteps ?? 5),
+    maxRetries: args.maxRetries ?? 3,
   };
   if (args.system !== undefined) streamArgs.system = args.system;
   if (args.tools !== undefined) streamArgs.tools = args.tools;
