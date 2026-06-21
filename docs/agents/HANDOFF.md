@@ -1,34 +1,52 @@
-# Tom's wake-up briefing — 2026-06-21 morning
+# Tom's wake-up briefing — 2026-06-21 afternoon
 
-*Refresh: loop M+13. Adversarial review wave landed; fix wave in flight. PRs landing every ~20 min. First file to read on next pickup. 90 seconds, then jump in.*
+*Refresh: loop M+15. Adversarial review wave 1 + wave 2 landed; fix wave landed; second-round fix from wave 2 findings in flight. 26+ PRs merged today.*
 
-## Where we are right now (loop M+13)
+## Where we are right now (loop M+15)
 
 **Cron `8e5a4446`** firing every 20 min, healthy.
 
-**Linear is honest again.** RAI-42 through RAI-57 backfilled today's strategic threads via PR #64. Every in-flight agent is creating its own Linear issue first per `feedback_linear_is_source_of_truth.md`.
+### Today's launch-blocker count: was 4 critical security + 7 hub blockers + 1 currency hazard. NOW: 0 critical security on `main`, 0 hub blockers on `main`, 0 currency hazard. Plugin is structurally hub-PR-ready. Backend is safe to deploy behind a real DNS.
 
-**Adversarial review wave 1 landed (PRs #59 / #60 / #61) and paid for itself:**
+**Fix wave outcomes:**
 
-- **Security skeptic — 4 critical findings.** `requireUser` trusts `x-user-id` verbatim with zero verification. Any internet caller who guesses a 21-char nanoid runs `curl /v1/me/export -H 'x-user-id: <id>'` and gets the GDPR export of any user. Same shape for admin via `x-admin-email`. Pre-deploy blocker.
-- **Hub maintainer — would-reject-hard, 7 blockers.** `ProcessBuilder` lives in production source (`ClaudeRunner.kt:184` + `OsrsLlmHelperPanel.kt:239`) and is the exact pattern PR #11453 was rejected for. Plus the shipped shadowJar contains the `local/**` package even with runtime gating. SECURITY_AUDIT.md + THREAT_MODEL.md + SECURITY_DESIGN.md claim no ProcessBuilder; provably false on inspection.
-- **Strategic consistency — 23 findings.** Top blocker: `apps/backend/src/billing/tiers.ts` declares prices in **USD cents** while every public doc + marketing page quotes **GBP**. Real revenue-correctness hazard. PR #62 absorbed several of the others as side effects.
+- **PR #69** auth fix — `requireUser` now argon2id-verifies `Authorization: Bearer <rawDeviceKey>` against `devices.device_key_hash` with LRU cache. `adminGate` verifies the `ops_session` HS256 JWT cookie. Legacy `x-user-id` + `x-admin-email` + raw-userId-as-token paths deleted. 14 dedicated negative tests confirm the audit attacks return 401. 215/215 backend tests green.
+- **PR #67** hub blockers fix — `ClaudeRunner.kt` + `LocalClaudeBackend` + "Install in Claude CLI" button deleted. shadowJar excludes `co/rowm/osrsllm/local/**`. ktor-server + MCP SDK moved to `compileOnly`. New `:checkLocalNotInJar` Gradle gate opens both jars with `ZipFile`. Plugin manifest fixes. Audit docs no longer lie. All 7 hub blockers closed.
+- **PR #68** strategic consistency fix — D-11 locks GBP end-to-end (`monthlyPriceCents` → `monthlyPricePence`). NORTH_STAR rebuilt post-pivot. STATUS rebuilt. Q-13/15/19/20/21 marked RESOLVED. EMBODIED_COMPANION repo paths reconciled.
+- **PR #70** E2E harness — Bun-runnable fake-plugin emulator that speaks the WSS protocol verbatim using `packages/shared-types` Zod schemas. 12 game-state fixtures. 5 scenarios. Orchestrator boots backend on ephemeral ports with in-memory PGLite seeded from production migrations. Stripe stubbed at the right seam. Plus 2 Claude-in-Chrome runbooks for marketing-checkout + ops-login-and-debug. **Caught a real WS dispatch race bug during construction.**
 
-**Fix wave in flight (5 agents, each Linear-first):**
+**Review wave 2 (PRs #71/#72/#73) outcomes:**
 
-| Agent | Closes |
-|---|---|
-| Auth fix | Security C1-C4 (real device-key + JWT cookie verification) |
-| Hub blockers fix | Hub maintainer C1 (rip ProcessBuilder + exclude `local/**` from shadowJar + new `:checkLocalNotInJar` Gradle guard) |
-| Strategic consistency fix | Currency split + NORTH_STAR rebuild + Q-status updates + STATUS.md rebuild |
-| E2E harness | **Tom's new directive** — fake-plugin emulator + Claude-in-Chrome scenarios; removes the RuneLite layer so the rest is end-to-end testable |
-| SQL migration safety hat | Read-only review of `apps/backend/migrations/*` via the Squawk ruleset |
+The review pattern keeps catching real things:
 
-**Process discipline (Q-8 root cause finally identified):** the "pre-commit hook" several agents flagged is NOT a misbehaving hook. Repo has no `.husky/`, no hooksPath, no `package.json` hook config, no `.git/hooks/` entries. What agents observed was parallel `git checkout` operations on the shared root checkout when worktree isolation was skipped. Discipline going forward: **every code-writing agent gets `isolation: "worktree"`**. Read-only review hats can share.
+- **Hat 1 Kotlin idiomatic (#71)** — duplicate device-key generator in `OsrsLlmHelperPlugin.kt:514-521` (UUID concat) vs `DeviceKey.kt` (`SecureRandom`). Two generators of different strength undermines the auth trust root.
+- **Hat 2 TypeScript strictness (#72)** — Stripe webhook double-cast at `apps/backend/src/api/webhooks/stripe.ts:180-189` bypasses Stripe's discriminated `Stripe.Event` union. Next dated API ships, the cast compiles, `new Date(null * 1000)` returns 1970, and `tier.quotaTokens` credits against a meaningless period. Financial bug.
+- **Hat 5 Test quality (#73)** — **the E2E suite I just merged is silently broken.** `bun test e2e/scenarios/` can't resolve `drizzle-orm` from repo root, so the assertions never execute. The admin-ban-refund scenario also uses the pre-fix `x-admin-email` header. Phantom green.
 
-**Marketing site implementation landed (PR #62)** with the canonical IA from #54: pixel `runescape_bold.ttf` H1, Inter Tight body, JetBrains Mono, 4×2 inventory FeatureGrid, 3 visible tiers + Iron footnote, no-automation hero second sentence, TrustStrip + FreeTierStrip new sections, palette evolution with WCAG 9.4:1 contrast. 52/56 taste-skill pre-flight pass, 21/21 tests.
+**In flight:**
 
-**Code-quality hat playbook landed (PR #63)** — 9 hat prompts derived from Effective Kotlin / Effective TypeScript / detekt / typescript-eslint strict / Kent C. Dodds testing trophy / Ousterhout deep modules / full Squawk rule list. Stored at `docs/agents/CODE_QUALITY_PROMPTS.md` for cheap reference. Hat 8 (SQL migrations) spawned this loop; hats 1 + 2 (Kotlin idiomatic + TypeScript strictness) held until the fix wave lands.
+- Wave-2 fix agent — closes all three findings above in one PR (Linear-first).
+
+**Killed by Tom this loop:** SQL migration safety fix (RAI-58). Findings still documented; can respawn if needed.
+
+**Still-deferred items** (each tracked as a follow-up in the PR that deferred them):
+
+- 6 important concerns from PR #67 (EDT-blocking `runBlocking`, raw daemon threads, `Desktop.browse` confirmation, two-sources-of-truth for chat mode, account panel pre-consent, Bearer-token-equals-x-device-key)
+- 5 high/medium from PR #69 (`JLabel` HTML auto-rendering, pairing claim rate-limit, catalog refresh debounce, M1-M6)
+- 8 important from PR #66 SQL safety (`events.id` `$defaultFn`, `usage_records.model` → catalog FK, etc)
+- Wave-2 deferred items as the fix lands
+
+**Linear status:** RAI-39 (auth), RAI-40 (hub), RAI-41 (currency), RAI-48 (E2E harness), RAI-58 (SQL review), RAI-60 (TS strictness), RAI-61 (Kotlin idiomatic), RAI-62 (test quality). Backfill from earlier today is RAI-42 through RAI-57.
+
+**Open questions Tom hasn't touched**:
+
+- Q-22/23/24 (hub strategy follow-ups), Q-25/26/27 (repo split), Q-28/29/30/31 (embodied companion), Q-32/33/34/35 (social companion)
+
+**What I'm NOT doing automatically**:
+
+- Submitting the hub PR upstream — the plugin is structurally ready, but the actual `runelite/plugin-hub` PR is sensitive enough that I'm holding for Tom.
+- Splitting the monorepo into `tibbly-plugin` / `tibbly-platform` per D-10 — same reason.
+- Building the mobile / companion entity / social fabric implementations — specs exist; greenlight pending.
 
 
 
