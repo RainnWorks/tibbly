@@ -37,8 +37,9 @@ live OSRS game state to a local `claude -p`) into a **paid SaaS**:
   (equipment sprites, NPC art) and grid layouts that evoke the game UI.
   Animations welcome.
 
-Token budget is a P0 concern: 72 MCP tools × ~120 tokens each = ~8K tokens before
-the first user word. Every paying chat starts that deep in the hole. We must:
+Token budget is a P0 concern: 72 game-state MCP tools + 1 `enable_tools`
+meta-tool × ~120 tokens each = ~8K tokens before the first user word.
+Every paying chat starts that deep in the hole. We must:
 
 - Gate tool families behind keyword / intent routing.
 - Pre-fetch frequently-needed state into a compact preamble.
