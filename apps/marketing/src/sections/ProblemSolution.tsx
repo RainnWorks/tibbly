@@ -14,7 +14,7 @@ const CARDS: readonly Card[] = [
     title: "Stuck on a quest?",
     icon: questIcon,
     painSentence:
-      "Quest Helper sends 555K players a step ahead — but it can't see your bank, your inventory, or the antifire you forgot to grab.",
+      "Quest Helper sends 555K players a step ahead, but it cannot see your bank, your inventory, or the antifire you forgot to grab.",
     tibblyAnswer:
       "Tibbly already does. Asks once, answers with the items you actually own and the route you actually need.",
   },
@@ -22,7 +22,7 @@ const CARDS: readonly Card[] = [
     title: "Lost on a clue?",
     icon: clueIcon,
     painSentence:
-      "Emote clue, anagram, cryptic — every step is a wiki tab and a second-monitor squint while your character idles in the Wilderness.",
+      "Emote clue, anagram, cryptic. Every step is a wiki tab and a second-monitor squint while your character idles in the Wilderness.",
     tibblyAnswer:
       "Tibbly reads the scroll, names the NPC, marks the tile. You move. No tab-out.",
   },
@@ -53,8 +53,8 @@ export function ProblemSolution() {
             The wiki tab-out tax
           </p>
           <p className="mx-auto max-w-3xl text-2xl font-heading text-osrs-gold md:text-3xl">
-            Every quest, every clue, every slayer task — the answer lives in a
-            tab you don't have open.
+            Every quest, every clue, every slayer task. The answer lives in a
+            tab you do not have open.
           </p>
           <p className="mx-auto mt-3 max-w-2xl text-base text-osrs-text/80">
             Tibbly already read the wiki. Tibbly already sees your inventory.

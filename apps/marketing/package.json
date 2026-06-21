@@ -14,6 +14,8 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
+    "@fontsource-variable/inter-tight": "^5.2.7",
+    "@fontsource-variable/jetbrains-mono": "^5.2.8",
     "@osrs-llm-helper/osrs-assets": "workspace:*",
     "@tanstack/react-query": "^5.62.7",
     "react": "^18.3.1",

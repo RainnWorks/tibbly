@@ -3,18 +3,21 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { PricingTiers } from "./PricingTiers";
 
 describe("<PricingTiers />", () => {
-  it("renders four tiers with one highlighted", () => {
+  it("renders three visible tiers with no 'Most picked' badge", () => {
     render(<PricingTiers />);
     const list = screen.getByTestId("pricing-tiers-list");
     const tierItems = Array.from(list.children).filter(
       (el) => el.tagName === "LI",
     ) as HTMLElement[];
-    expect(tierItems).toHaveLength(4);
+    expect(tierItems).toHaveLength(3);
+    expect(screen.queryByText(/most picked/i)).not.toBeInTheDocument();
+  });
 
-    const highlighted = tierItems.filter(
-      (li) => li.getAttribute("data-highlighted") === "true",
-    );
-    expect(highlighted).toHaveLength(1);
+  it("kept Iron as a footnote under the visible grid", () => {
+    render(<PricingTiers />);
+    const footnote = screen.getByTestId("pricing-iron-footnote");
+    expect(footnote).toHaveTextContent(/Iron tier \(£49\)/);
+    expect(footnote).toHaveTextContent(/hello@tibbly\.app/);
   });
 
   describe("checkout wiring", () => {
@@ -36,11 +39,11 @@ describe("<PricingTiers />", () => {
       });
     });
 
-    it("free tier has no checkout slug — its CTA is plain", () => {
+    it("free tier has no checkout slug; its CTA is plain", () => {
       render(<PricingTiers />);
       const freeBtn = screen.getByTestId("pricing-cta-free");
       expect(freeBtn).toBeEnabled();
-      // No onClick wired ⇒ clicking does nothing observable; fetch is untouched.
+      // No onClick wired so clicking does nothing observable; fetch is untouched.
       const spy = vi.fn();
       global.fetch = spy;
       fireEvent.click(freeBtn);
@@ -71,7 +74,7 @@ describe("<PricingTiers />", () => {
       expect(init?.method).toBe("POST");
     });
 
-    it("surfaces an inline error when the backend rejects", async () => {
+    it("surfaces an inline error when the backend rejects (hobbyist)", async () => {
       const fetchMock = vi
         .fn()
         .mockResolvedValue(
@@ -83,7 +86,7 @@ describe("<PricingTiers />", () => {
       global.fetch = fetchMock;
 
       render(<PricingTiers />);
-      fireEvent.click(screen.getByTestId("pricing-cta-iron"));
+      fireEvent.click(screen.getByTestId("pricing-cta-hobbyist"));
 
       const alert = await screen.findByRole("alert");
       expect(alert.textContent).toMatch(/Checkout unavailable/);
