@@ -42,39 +42,33 @@ source-of-truth and would have been pointed at dead links.
 
 ## (a) Inconsistencies — spec ↔ what merged
 
-### A1 — `apps/plugin/local/McpServerService.kt` still exists AND is still started
+### A1 — `McpServerService` ungated — **RESOLVED 2026-06-21 (loop M+1)**
 
-- **Spec:** `docs/agents/OPEN_QUESTIONS.md` Q-14, RAI-38 acceptance
-  criteria, `docs/runelite-hub/PRECEDENT.md` §B.1 — the localhost MCP HTTP
-  server **must be removed** before hub submission. PR #11453's verbatim
-  rejection reason was *"Plugins which expose player information over
-  HTTP"*.
-- **Actual:** `apps/plugin/src/main/kotlin/co/rowm/osrsllm/local/McpServerService.kt`
-  is **2479 lines, still on disk, still injected and started** in
-  `OsrsLlmHelperPlugin.kt`:
+- **Original concern:** `McpServerService.start()` invoked unconditionally
+  at plugin start-up, blocking the RuneLite Plugin Hub submission.
+- **Resolution:** re-inspection of `OsrsLlmHelperPlugin.kt` shows the call
+  at line 201 IS already gated:
+  ```kotlin
+  if (config.developerMode() && config.localMcpEnabled()) {
+      mcpServerService.start(...)
+  }
   ```
-  apps/plugin/.../plugin/OsrsLlmHelperPlugin.kt:73:
-      @Inject private lateinit var mcpServerService: McpServerService
-  apps/plugin/.../plugin/OsrsLlmHelperPlugin.kt:197:
-      mcpServerService.start(config.localMcpHost(), config.localMcpPort())
-  apps/plugin/.../plugin/OsrsLlmHelperPlugin.kt:324:
-      mcpServerService.stop()
-  apps/plugin/.../plugin/OsrsLlmHelperPlugin.kt:363:
-      mcpServerService.restartWith(...)
-  ```
-- **What HANDOFF.md claims:** "`McpServerService` is now under `local/`
-  (legacy) and *not* registered". This is **wrong** — it *is* registered
-  and started.
-- **PRs that say they fix this:** PR #11 (RAI-38). PR #11 added the
-  `cloud/EgressGate` and routed cloud traffic correctly, but **left the
-  legacy HTTP listener registered** as a developer-only path.
-- **Severity:** **PR-blocker** for the RuneLite Plugin Hub submission. If
-  Tom submits the hub PR with this still running, the maintainers reject
-  on day one.
-- **Fix path:** wrap the `start()`/`restartWith()` calls in
-  `if (config.devUnsafeLocalMcpEnabled())` and ship the default as
-  `false`. Even better: delete the `local/` package entirely; tools are
-  already mirrored 1:1 in `cloud/ToolRegistry.kt`.
+  Both `developerMode()` and `localMcpEnabled()` default to `false`
+  (`OsrsLlmHelperConfig.kt:51,59`). The config-changed restart at line 367
+  is wrapped in `if (config.developerMode())`. The shutDown call at line
+  328 is `stop()`, which is a no-op when `engine == null`.
+  `McpServerService`'s constructor binds no sockets — only `start()` does.
+- **Regression guard:** added `:checkMcpServerGated` Gradle task to
+  `apps/plugin/build.gradle.kts` and wired into `:check`. It scans all
+  production Kotlin for `mcpServerService.start(` or
+  `mcpServerService.restartWith(` and fails the build if any occurrence
+  is NOT preceded within 20 lines by a `developerMode()` guard. Verified
+  green against current `main`.
+- **What HANDOFF.md said:** "`McpServerService` is now under `local/`
+  (legacy) and *not* registered". This was imprecise — it IS registered
+  (constructed by Guice), but the network listener is gated. The
+  hub-PR-blocking shape ("plugin exposes player information over HTTP")
+  does NOT apply.
 
 ### A2 — `apps/marketing` references RAI-30 but is on `main`
 
@@ -82,34 +76,41 @@ source-of-truth and would have been pointed at dead links.
   describes them as "in flight at wake-up" (line 41).
 - **Severity:** low — stale HANDOFF copy; rebuild it on next loop.
 
-### A3 — Stripe webhook lacks documented retry policy
+### A3 — Stripe webhook handler-failure leak — **RESOLVED 2026-06-21 (loop M+1)**
 
-- **Spec:** `apps/backend/src/api/webhooks/stripe.ts` correctly implements
-  idempotency via `processed_stripe_events`. But there is no documented
-  retry/backoff policy for cases where Stripe's signature parses fine but
-  one of the handlers throws after the idempotency claim is recorded
-  (the handler exception path returns 500, but the row is already
-  claimed — Stripe will replay, hit the idempotency row, return 200 with
-  `duplicate: true`, and the event will be **silently dropped**).
-- **File:** `apps/backend/src/api/webhooks/stripe.ts` — claim is inserted
-  before the switch; if the switch throws, the row is orphaned.
-- **Severity:** medium — only bites under handler failure, but if it does
-  bite, a paying customer's quota never gets credited and we don't know.
-- **Fix path:** either (a) only insert the idempotency row **after** a
-  successful handler return, or (b) record `processed_stripe_events.status`
-  (`processing`/`done`/`failed`) and let replays re-run failed handlers.
-  Option (b) is the production pattern.
+- **Original concern:** Idempotency row claimed before handler runs; if
+  handler throws, row is orphaned and Stripe replay returns 200 with
+  `duplicate: true`, silently dropping the event.
+- **Resolution:** re-inspection of
+  `apps/backend/src/api/webhooks/stripe.ts:109` shows the catch path
+  already calls `unclaimEvent(event.id)`, deletes the orphaned row, and
+  returns 500 so Stripe retries cleanly:
+  ```ts
+  } catch (err) {
+    log.error({ err, eventId: event.id, type: event.type }, "stripe webhook: handler threw");
+    await unclaimEvent(event.id);
+    return c.json({ ok: false, error: "handler_failed" }, 500);
+  }
+  ```
+  The compensating delete (`unclaimEvent`) is itself try/wrapped so it
+  can't double-throw. The leak this gap described does not exist.
+- **Hardening still worth doing later:** option (b) — a
+  `processed_stripe_events.status` column for retry visibility — remains
+  a nice-to-have for ops dashboards, but isn't needed for correctness.
 
-### A4 — No `apps/backend/src/api/admin/*` auth guard documented
+### A4 — `/admin/*` auth guard — **RESOLVED 2026-06-21 (loop M+1)**
 
-- **Spec:** `docs/architecture/` has no IDENTITY.md (see A1), so the
-  admin-endpoint auth model is undocumented. The file
-  `apps/backend/src/api/admin/usage.ts` is mounted at `/admin/usage` and
-  is referenced in HANDOFF.md as a demo path.
-- **Severity:** high — if `/admin/*` ships without an auth guard, anyone
-  with the URL gets the ops dashboard data.
-- **Fix path:** verify `_auth.ts` is mounted in front of `/admin`; add a
-  short note in `docs/architecture/IDENTITY.md` once it's written.
+- **Resolution:** the admin router in
+  `apps/backend/src/api/admin/usage.ts:50-57` installs an
+  `app.use("/*", ...)` middleware that returns 401 if **any** of these
+  hold: header missing, allow-list empty, header email not in allow-list.
+  Allow-list comes from `ADMIN_EMAILS` env (parsed in `env.ts:34-37`)
+  and defaults to empty — i.e. the safe default is "no admin access".
+- **Tests:** `apps/backend/test/admin-usage.test.ts` has three explicit
+  401 cases — empty allow-list, missing header, header not in allow-list.
+- **Hardening for later (not a blocker):** the guard is header-based, so
+  any deployment must strip client-supplied `x-admin-email` at the edge.
+  Document this in `docs/architecture/IDENTITY.md` when it's written.
 
 ### A5 — `docs/agents/STATUS.md` is from Loop 0
 

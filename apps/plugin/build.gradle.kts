@@ -182,6 +182,46 @@ tasks.register("checkNoPlaintextUrls") {
     }
 }
 
+// RuneLite Plugin Hub blocker guard: McpServerService binds a loopback HTTP
+// listener and is therefore DEVELOPER-ONLY. The release path must NEVER call
+// .start() or .restartWith() outside a `config.developerMode()` guard. This
+// task scans production Kotlin and fails the build if such a call exists
+// without a developerMode() check within the preceding 20 lines.
+tasks.register("checkMcpServerGated") {
+    group = "verification"
+    description = "Fails if McpServerService.start/restartWith is invoked outside a developerMode() guard."
+    doLast {
+        val callPattern = Regex("""mcpServerService\.(start|restartWith)\s*\(""")
+        val guardPattern = Regex("""developerMode\s*\(""")
+        val windowLines = 20
+        val violations = mutableListOf<String>()
+        productionKotlinTree.files
+            .filter { it.extension == "kt" }
+            .forEach { f ->
+                val lines = f.readLines()
+                lines.forEachIndexed { idx, line ->
+                    if (callPattern.containsMatchIn(line)) {
+                        val from = maxOf(0, idx - windowLines)
+                        val window = lines.subList(from, idx).joinToString("\n")
+                        if (!guardPattern.containsMatchIn(window)) {
+                            violations.add(
+                                "${f.relativeTo(projectDir)}:${idx + 1}  ←  ${line.trim()}",
+                            )
+                        }
+                    }
+                }
+            }
+        if (violations.isNotEmpty()) {
+            throw GradleException(
+                "checkMcpServerGated: McpServerService start/restartWith call not gated by " +
+                    "developerMode() within the preceding $windowLines lines. The local MCP " +
+                    "server is developer-only; ungated start would block RuneLite Plugin Hub " +
+                    "review.\n  " + violations.joinToString("\n  "),
+            )
+        }
+    }
+}
+
 // -----------------------------------------------------------------------------
 // RAI-36: secretsScan. Fails the build on anything that looks like a leaked
 // credential in src/main/. Tests can hold stub credentials (they need them
@@ -241,7 +281,13 @@ tasks.register("secretsScan") {
 }
 
 tasks.named("check") {
-    dependsOn("checkNoHttpServer", "checkNoReflection", "checkNoPlaintextUrls", "secretsScan")
+    dependsOn(
+        "checkNoHttpServer",
+        "checkNoReflection",
+        "checkNoPlaintextUrls",
+        "checkMcpServerGated",
+        "secretsScan",
+    )
 }
 
 tasks.register<JavaExec>("runRuneLite") {

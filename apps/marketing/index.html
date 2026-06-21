@@ -11,7 +11,9 @@
       content="A live in-game AI co-pilot for Old School RuneScape. Knows your bank, gear, quests, and slayer task. Answers in-client. No more wiki tab-out."
     />
 
-    <!-- Open Graph -->
+    <!-- Open Graph. og:image is emitted as 1200x630 PNG at build time
+         from public/og-card.svg via scripts/build-og.mjs; the SVG itself
+         remains the editable source. -->
     <meta property="og:type" content="website" />
     <meta property="og:title" content="Tibbly — your in-client co-pilot" />
     <meta
@@ -19,6 +21,10 @@
       content="A live AI co-pilot for Old School RuneScape that knows your bank, gear, and quests. Stop alt-tabbing. Start playing."
     />
     <meta property="og:image" content="/og-card.png" />
+    <meta property="og:image:type" content="image/png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Tibbly — a live in-client co-pilot for Old School RuneScape." />
     <meta property="og:url" content="https://osrs-llm-helper.com" />
     <meta property="og:site_name" content="Tibbly" />
 
@@ -30,6 +36,7 @@
       content="A live AI co-pilot for Old School RuneScape. Stop alt-tabbing. Start playing."
     />
     <meta name="twitter:image" content="/og-card.png" />
+    <meta name="twitter:image:alt" content="Tibbly — a live in-client co-pilot for Old School RuneScape." />
 
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="canonical" href="https://osrs-llm-helper.com" />

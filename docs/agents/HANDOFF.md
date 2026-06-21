@@ -1,6 +1,30 @@
 # Tom's wake-up briefing — 2026-06-21 morning
 
-*Final overnight refresh. First file Tom should read on wake-up. 90 seconds, then jump in.*
+*Refresh: loop M+1 (post-premature-stop recovery cycle). First file Tom should read on wake-up. 90 seconds, then jump in.*
+
+## What's new since the previous HANDOFF refresh
+
+- **GAPS.md A1 closed** — re-inspection found `McpServerService.start()`
+  is already gated by `if (config.developerMode() && config.localMcpEnabled())`
+  at `OsrsLlmHelperPlugin.kt:198` (both defaults `false`). The plugin is
+  structurally hub-PR-compliant. Belt-and-braces: added a Gradle
+  `checkMcpServerGated` task wired into `:check` that fails the build if
+  any production-source `mcpServerService.start(` or `.restartWith(` call
+  is missing a `developerMode()` guard within the preceding 20 lines.
+- **GAPS.md A3 closed** — Stripe webhook idempotency leak was already
+  fixed by `unclaimEvent()` in the catch path (`stripe.ts:109`).
+- **GAPS.md A4 closed** — `/admin/*` router uses a deny-by-default
+  middleware (`admin/usage.ts:50-57`) checking `x-admin-email` against
+  `ADMIN_EMAILS`, with 3 explicit 401 test cases in
+  `admin-usage.test.ts`. Header-based auth still wants a session
+  upgrade pre-launch — captured as a non-blocking hardening note.
+- **Marketing og:image polish** — added `apps/marketing/public/og-card.svg`
+  (1200x630 OSRS chat-window theme) and `scripts/build-og.mjs` to render
+  the PNG at build time via `@resvg/resvg-js`. Rendered PNG is 138 KB.
+  `index.html` now declares full `og:image` metadata (width/height/alt).
+- **RAI-5 catalog agent dispatched** — running in worktree; will land
+  `docs/research/runelite-api/catalog.md` (60+ tools) + `_SUMMARY.md`,
+  open a PR closing RAI-5, and add Linear completion notes.
 
 ## TL;DR (one paragraph)
 
