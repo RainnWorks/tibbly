@@ -42,33 +42,42 @@ source-of-truth and would have been pointed at dead links.
 
 ## (a) Inconsistencies -- spec ↔ what merged
 
-### A1 -- `McpServerService` ungated -- **RESOLVED 2026-06-21 (loop M+1)**
+### A1 — `McpServerService` ungated — **REOPENED + RESOLVED 2026-06-21 (loop M+11, RAI-40)**
 
 - **Original concern:** `McpServerService.start()` invoked unconditionally
   at plugin start-up, blocking the RuneLite Plugin Hub submission.
-- **Resolution:** re-inspection of `OsrsLlmHelperPlugin.kt` shows the call
-  at line 201 IS already gated:
-  ```kotlin
-  if (config.developerMode() && config.localMcpEnabled()) {
-      mcpServerService.start(...)
-  }
-  ```
-  Both `developerMode()` and `localMcpEnabled()` default to `false`
-  (`OsrsLlmHelperConfig.kt:51,59`). The config-changed restart at line 367
-  is wrapped in `if (config.developerMode())`. The shutDown call at line
-  328 is `stop()`, which is a no-op when `engine == null`.
-  `McpServerService`'s constructor binds no sockets -- only `start()` does.
-- **Regression guard:** added `:checkMcpServerGated` Gradle task to
-  `apps/plugin/build.gradle.kts` and wired into `:check`. It scans all
-  production Kotlin for `mcpServerService.start(` or
-  `mcpServerService.restartWith(` and fails the build if any occurrence
-  is NOT preceded within 20 lines by a `developerMode()` guard. Verified
-  green against current `main`.
-- **What HANDOFF.md said:** "`McpServerService` is now under `local/`
-  (legacy) and *not* registered". This was imprecise -- it IS registered
-  (constructed by Guice), but the network listener is gated. The
-  hub-PR-blocking shape ("plugin exposes player information over HTTP")
-  does NOT apply.
+- **Loop M+1 resolution (correct but incomplete):** runtime guard verified —
+  `if (config.developerMode() && config.localMcpEnabled()) mcpServerService.start(...)`
+  with both flags defaulting to off. The `:checkMcpServerGated` Gradle task
+  was added to enforce the guard on every build.
+- **What loop M+1 missed:** the hub maintainer's audit
+  (`docs/reviews/plugin-hub-readiness-001.md` blocker 3) called out a
+  deeper issue: even with the runtime gate, the listener class
+  (`co/rowm/osrsllm/local/McpServerService.class`) was still **inside the
+  shipped jar**. A maintainer running `unzip -l plugin.jar` finds it and
+  rejects on appearance. The `shadowJar` task did not carry any
+  `local/**` exclusion — only the grep gates did. The "package boundary"
+  claim in SECURITY_DESIGN.md §4 / THREAT_MODEL.md T5 was aspirational
+  and unverified.
+- **Loop M+11 (RAI-40) resolution:**
+  - Removed `McpServerService` and `claudeRunner` from
+    `OsrsLlmHelperPlugin.kt` — neither is constructed by Guice on the
+    plugin's lifecycle any more.
+  - Added `shadowJar.exclude("co/rowm/osrsllm/local/**")` and
+    `exclude("**/McpServerService*")` to `build.gradle.kts`.
+  - Moved the `io.modelcontextprotocol:kotlin-sdk` and `ktor-server-*`
+    dependencies from `implementation` to `compileOnly` so the runtime
+    libraries do not ship either.
+  - Added the `:checkLocalNotInJar` Gradle task that opens the produced
+    jar with `ZipFile` and fails the build if any forbidden entry slips
+    in. Wired into `:check`.
+  - Updated SECURITY_AUDIT.md row 14, THREAT_MODEL.md T5, and
+    SECURITY_DESIGN.md §3/§4 to describe what the build now actually
+    enforces, not what an earlier loop claimed.
+- **Status:** runtime gate AND artifact exclusion AND build-time
+  verification of both. The hub-PR-blocking shape ("plugin exposes
+  player information over HTTP") does not apply — the listener is not
+  in the jar at all.
 
 ### A2 -- `apps/marketing` references RAI-30 but is on `main`
 

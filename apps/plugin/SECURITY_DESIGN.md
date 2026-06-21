@@ -41,12 +41,16 @@ $ grep -rEn 'http://|ws://'    src/main/kotlin/co/rowm/osrsllm/cloud/   → 0 hi
 $ grep -rEn 'http://|ws://'    src/main/kotlin/co/rowm/osrsllm/plugin/  → 0 hits
 $ grep -rEn 'Class\.forName|URLClassLoader' src/main/kotlin/co/rowm/osrsllm/cloud/ → 0 hits
 $ grep -rEn 'Class\.forName|URLClassLoader' src/main/kotlin/co/rowm/osrsllm/plugin/ → 0 hits
+$ grep -rn 'ProcessBuilder'    src/main/                                → 0 hits
 ```
 
-The Gradle tasks `:checkNoHttpServer`, `:checkNoReflection`, and
-`:checkNoPlaintextUrls` enforce the same invariants on every build and are
-wired into `:check`. `co/rowm/osrsllm/local/**` is the only excluded path,
-because it is the developer-only code path documented in section 4.
+The Gradle tasks `:checkNoHttpServer`, `:checkNoReflection`,
+`:checkNoPlaintextUrls`, and `:checkNoSubprocess` enforce the same
+invariants on every build and are wired into `:check`.
+`co/rowm/osrsllm/local/**` is the only excluded path for the source-set
+grep gates, because it is the developer-only code path documented in
+section 4 — but it is NEVER excluded from `:checkNoSubprocess` (subprocess
+invocation is forbidden everywhere).
 
 ## 3a. Tier-2 BYO direct egress (`DirectChatRunner`)
 
@@ -80,12 +84,36 @@ description of the dropdown and the safer-key-handling guidance.
 ## 4. The developer-only path
 
 `co/rowm/osrsllm/local/McpServerService.kt` keeps the original
-MCP-over-HTTP implementation so we can still wire up a local `claude -p`
-session during plugin development. It is started **only when both**
-`developerMode = true` **and** `localMcpEnabled = true`. Both default to
-off and the developer-mode section in the config UI is closed by default.
-The Gradle gates exclude this path because the legibility claim applies to
-what ships to the Plugin Hub, not what developers run locally.
+MCP-over-HTTP implementation in-tree so a maintainer of this codebase
+can still wire up a local MCP session during plugin development. It does
+**not** ship to the hub.
+
+Two layers of defense keep the listener out of the artifact:
+
+1. **shadowJar excludes** — `apps/plugin/build.gradle.kts` carries
+   `exclude("co/rowm/osrsllm/local/**")` and `exclude("**/McpServerService*")`
+   on the shadowJar task. The runtime ktor-server and MCP-SDK dependencies
+   are declared `compileOnly` so they never enter the jar either. The
+   Gradle task `:checkLocalNotInJar` opens the produced jar with a
+   `ZipFile` reader and fails the build if any forbidden entry slips in.
+2. **Runtime gate** — `McpServerService.start(...)` is only called when
+   both `developerMode = true` AND `localMcpEnabled = true`. Both default
+   to off and the developer-mode config section is closed by default.
+   This is now defense-in-depth, since the class is not present in the
+   shipped artifact at all.
+
+The Gradle source-set grep gates (`:checkNoHttpServer`, `:checkNoReflection`,
+`:checkNoPlaintextUrls`) exclude `co/rowm/osrsllm/local/**` because the
+legibility claim applies to what ships to the Plugin Hub, not what
+developers run locally. The `:checkNoSubprocess` gate is NOT relaxed for
+`local/` — subprocess invocation is forbidden everywhere in production
+source, full stop.
+
+> The audit doc `docs/reviews/plugin-hub-readiness-001.md` (blocker 3) noted
+> that earlier revisions of this section claimed the local path was
+> "excluded from the shipped jar by package boundary". That phrasing was
+> aspirational and unverified — `shadowJar` had no such exclusion. RAI-40
+> fixed both the artifact and the documentation.
 
 ## 5. What the player sees
 
