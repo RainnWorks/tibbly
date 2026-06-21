@@ -1,5 +1,8 @@
 /**
- * Drizzle schema barrel.
+ * Drizzle schema barrel — production tables for the backend.
+ *
+ * Implements RAI-15: users, devices, osrs_accounts, pairing_codes, sessions,
+ * chats, messages, tool_calls, usage_records, subscriptions, token_balances.
  *
  * RAI-37 (Analytics) extends this with:
  *   - `events`              : append-only raw event log (jsonb payload).
@@ -8,14 +11,32 @@
  *   - `metrics_funnel_daily`      : per-day funnel step counts.
  *   - `metrics_errors_daily`      : per-day error category counters.
  *
+ * Conventions:
+ * - **IDs** are 21-char nanoid strings stored as `text`. Avoids the Postgres
+ *   UUID type so PGLite + Postgres behave identically, and so logs/URLs stay
+ *   URL-safe. Generated via `newId()` (helper exported below).
+ * - **Timestamps** use `timestamp({ withTimezone: true })` and default to
+ *   `now()` so retention sweepers and billing periods all share a single
+ *   clock semantics.
+ * - **Soft delete** lives on long-lived, user-owned content (users, chats,
+ *   messages) per docs/legal/DATA_RETENTION.md §"Soft delete vs hard delete".
+ *   `deleted_at IS NULL` is the canonical "live row" predicate.
+ * - **JSONB** is used for unbounded structured blobs (tool I/O); typed via
+ *   `$type<...>()` so reads return the right shape without a cast.
+ * - **Enums** are declared via `pgEnum` so migrations include CHECK-like
+ *   constraints and Drizzle types narrow properly.
+ *
+ * Stripe-customer preservation (see DATA_RETENTION.md §"Stripe-side billing
+ * carve-out"): when a user soft-deletes their account we keep the
+ * `stripe_customer_id` on the row so the retention sweeper can later detach
+ * PII on the Stripe object without re-resolving by email. The Stripe customer
+ * record itself is NOT deleted until the 6y/7y accounting window expires —
+ * that lifecycle is owned by the billing service, not this schema.
+ *
  * Raw `events` are retained for 30 days (see `src/jobs/retention-sweeper.ts`).
  * Materialised `metrics_*` rows are retained for 13 months — they're
  * already aggregated and free of raw payload PII, so the privacy budget
  * is small.
- *
- * NOTE: Other agents (RAI-15) add the canonical `users`, `chats`, etc.
- * tables to this same module. Keep table names unique and re-export
- * everything so `import * as schema from "./db/schema"` keeps working.
  */
 import { sql } from "drizzle-orm";
 import {
@@ -24,14 +45,463 @@ import {
   index,
   integer,
   jsonb,
+  pgEnum,
   pgTable,
   text,
   timestamp,
   uniqueIndex,
 } from "drizzle-orm/pg-core";
+import { customAlphabet } from "nanoid";
 
 /* -------------------------------------------------------------------------- */
-/*  Raw event log                                                             */
+/* ID generator                                                                */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * URL-safe alphabet (no `-` / `_`) so IDs can be dropped into shell args, URL
+ * paths, and log lines without quoting. 21 chars → ~149 bits of entropy,
+ * collision probability < 1 in a billion at 1B IDs.
+ */
+const ID_ALPHABET = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+const nanoid21 = customAlphabet(ID_ALPHABET, 21);
+export const newId = (): string => nanoid21();
+
+/* -------------------------------------------------------------------------- */
+/* Enums                                                                       */
+/* -------------------------------------------------------------------------- */
+
+export const userStatusEnum = pgEnum("user_status", ["active", "banned"]);
+
+export const osrsAccountTypeEnum = pgEnum("osrs_account_type", [
+  "main",
+  "ironman",
+  "hardcore_ironman",
+  "ultimate_ironman",
+  "group_ironman",
+  "hardcore_group_ironman",
+  "unranked_group_ironman",
+  "deadman",
+  "seasonal",
+  "fresh_start",
+  "unknown",
+]);
+
+export const osrsAccountStatusEnum = pgEnum("osrs_account_status", [
+  "pending",
+  "verified",
+  "revoked",
+]);
+
+export const messageRoleEnum = pgEnum("message_role", ["user", "assistant", "tool", "system"]);
+
+export const toolCallStatusEnum = pgEnum("tool_call_status", [
+  "pending",
+  "ok",
+  "error",
+  "timeout",
+]);
+
+export const subscriptionTierEnum = pgEnum("subscription_tier", ["hobbyist", "pro", "iron"]);
+
+export const subscriptionStatusEnum = pgEnum("subscription_status", [
+  "trialing",
+  "active",
+  "past_due",
+  "canceled",
+  "incomplete",
+  "incomplete_expired",
+  "unpaid",
+  "paused",
+]);
+
+/* -------------------------------------------------------------------------- */
+/* users                                                                       */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * The billing principal. May be created lazily on first chat — `email` is
+ * nullable to support the "frictionless" path where a device-key alone gates
+ * usage until the user pairs through the dashboard.
+ *
+ * **Stripe carve-out**: `stripe_customer_id` is preserved through soft-delete
+ * (the row's `deleted_at` is set, but `stripe_customer_id` is NOT cleared)
+ * so the retention sweeper can call `stripe.customers.update` to scrub PII
+ * on the Stripe side, then hard-delete this row once the accounting window
+ * (6y UK / 7y US, per docs/legal/DATA_RETENTION.md) elapses.
+ */
+export const users = pgTable(
+  "users",
+  {
+    id: text("id").primaryKey().$defaultFn(newId),
+    stripeCustomerId: text("stripe_customer_id"),
+    email: text("email"),
+    status: userStatusEnum("status").notNull().default("active"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+    /** Soft delete marker — see RAI-34 retention sweeper. */
+    deletedAt: timestamp("deleted_at", { withTimezone: true }),
+  },
+  (t) => [
+    uniqueIndex("users_email_unique").on(t.email).where(sql`${t.email} IS NOT NULL`),
+    uniqueIndex("users_stripe_customer_unique")
+      .on(t.stripeCustomerId)
+      .where(sql`${t.stripeCustomerId} IS NOT NULL`),
+    index("users_status_idx").on(t.status),
+    index("users_deleted_at_idx").on(t.deletedAt),
+  ],
+);
+
+export type User = typeof users.$inferSelect;
+export type NewUser = typeof users.$inferInsert;
+
+/* -------------------------------------------------------------------------- */
+/* devices                                                                     */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * A plugin install. `device_key_hash` is the Argon2id-hashed long-lived key
+ * the plugin generates on first launch (see docs/architecture/IDENTITY.md).
+ * Raw keys never live in this DB.
+ */
+export const devices = pgTable(
+  "devices",
+  {
+    id: text("id").primaryKey().$defaultFn(newId),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    deviceKeyHash: text("device_key_hash").notNull(),
+    displayName: text("display_name"),
+    /** In-game player name read from `Client.localPlayer.name` (RAI-18). */
+    playerName: text("player_name"),
+    lastSeenAt: timestamp("last_seen_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("devices_user_key_unique").on(t.userId, t.deviceKeyHash),
+    index("devices_user_idx").on(t.userId),
+    index("devices_last_seen_idx").on(t.lastSeenAt),
+  ],
+);
+
+export type Device = typeof devices.$inferSelect;
+export type NewDevice = typeof devices.$inferInsert;
+
+/* -------------------------------------------------------------------------- */
+/* osrs_accounts                                                               */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * OSRS character bound to a billing user. A single user may pair multiple
+ * characters (mains + alts + GIM members). `display_name` is the in-game
+ * player name read from `Client.localPlayer.name`.
+ */
+export const osrsAccounts = pgTable(
+  "osrs_accounts",
+  {
+    id: text("id").primaryKey().$defaultFn(newId),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    displayName: text("display_name").notNull(),
+    accountType: osrsAccountTypeEnum("account_type").notNull().default("unknown"),
+    lastVerifiedAt: timestamp("last_verified_at", { withTimezone: true }),
+    status: osrsAccountStatusEnum("status").notNull().default("pending"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("osrs_accounts_user_idx").on(t.userId),
+    uniqueIndex("osrs_accounts_user_name_unique").on(t.userId, t.displayName),
+  ],
+);
+
+export type OsrsAccount = typeof osrsAccounts.$inferSelect;
+export type NewOsrsAccount = typeof osrsAccounts.$inferInsert;
+
+/* -------------------------------------------------------------------------- */
+/* pairing_codes                                                               */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * One-time 6-digit code shown in-game so the user can pair a device to their
+ * billing account from the web dashboard. TTL 10 minutes; the API treats any
+ * row whose `expires_at < now()` OR whose `used_at IS NOT NULL` as spent.
+ */
+export const pairingCodes = pgTable(
+  "pairing_codes",
+  {
+    id: text("id").primaryKey().$defaultFn(newId),
+    code: text("code").notNull(),
+    /**
+     * `device_id` is nullable: the RAI-18 flow inserts the pairing row
+     * BEFORE the device row exists (the dashboard claim materialises both
+     * the user and the device). RAI-15's original API still binds an
+     * existing device on insert — both paths work.
+     */
+    deviceId: text("device_id").references(() => devices.id, { onDelete: "cascade" }),
+    /** Argon2id hash of the raw device key the plugin sent (RAI-18). */
+    deviceKeyHash: text("device_key_hash"),
+    /** In-game player name captured at request time (RAI-18). */
+    playerName: text("player_name"),
+    /** Set on successful claim, links the pairing row to the billing user (RAI-18). */
+    userId: text("user_id").references(() => users.id, { onDelete: "cascade" }),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    /** RAI-15 legacy "spent" marker — still set by the in-game pairing API. */
+    usedAt: timestamp("used_at", { withTimezone: true }),
+    /** RAI-18 dashboard-claim marker — set by `claimPairingCode`. */
+    claimedAt: timestamp("claimed_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("pairing_codes_code_unique").on(t.code),
+    index("pairing_codes_device_idx").on(t.deviceId),
+    index("pairing_codes_expires_idx").on(t.expiresAt),
+    index("pairing_codes_claimed_idx").on(t.claimedAt),
+  ],
+);
+
+export type PairingCode = typeof pairingCodes.$inferSelect;
+export type NewPairingCode = typeof pairingCodes.$inferInsert;
+
+/* -------------------------------------------------------------------------- */
+/* sessions                                                                    */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * A live WebSocket session between the plugin and the backend. At most one
+ * active session per device — enforced via the partial unique index on
+ * `(device_id) WHERE ended_at IS NULL`.
+ */
+export const sessions = pgTable(
+  "sessions",
+  {
+    id: text("id").primaryKey().$defaultFn(newId),
+    deviceId: text("device_id")
+      .notNull()
+      .references(() => devices.id, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    startedAt: timestamp("started_at", { withTimezone: true }).notNull().defaultNow(),
+    endedAt: timestamp("ended_at", { withTimezone: true }),
+    lastMessageAt: timestamp("last_message_at", { withTimezone: true }),
+  },
+  (t) => [
+    uniqueIndex("sessions_active_per_device_unique")
+      .on(t.deviceId)
+      .where(sql`${t.endedAt} IS NULL`),
+    index("sessions_device_idx").on(t.deviceId),
+    index("sessions_user_idx").on(t.userId),
+    index("sessions_started_at_idx").on(t.startedAt),
+  ],
+);
+
+export type Session = typeof sessions.$inferSelect;
+export type NewSession = typeof sessions.$inferInsert;
+
+/* -------------------------------------------------------------------------- */
+/* chats                                                                       */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * A chat thread within a session. Soft-deletable so the retention sweeper can
+ * archive chats older than the user's retention class (30d default, 90d if
+ * opted in — see docs/legal/DATA_RETENTION.md `chat-default` / `chat-extended`).
+ */
+export const chats = pgTable(
+  "chats",
+  {
+    id: text("id").primaryKey().$defaultFn(newId),
+    sessionId: text("session_id").references(() => sessions.id, { onDelete: "set null" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    title: text("title"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    archivedAt: timestamp("archived_at", { withTimezone: true }),
+    /** Soft delete marker — retention sweeper hard-deletes by age. */
+    deletedAt: timestamp("deleted_at", { withTimezone: true }),
+  },
+  (t) => [
+    index("chats_user_created_idx").on(t.userId, t.createdAt),
+    index("chats_session_idx").on(t.sessionId),
+    index("chats_deleted_at_idx").on(t.deletedAt),
+  ],
+);
+
+export type Chat = typeof chats.$inferSelect;
+export type NewChat = typeof chats.$inferInsert;
+
+/* -------------------------------------------------------------------------- */
+/* messages                                                                    */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * One message in a chat. Token counts live here per-turn so usage_records can
+ * be aggregated lazily. Soft-deletable so retention by chat-age cascades
+ * cleanly (sweeper marks `deleted_at`, hard-delete runs after grace).
+ */
+export const messages = pgTable(
+  "messages",
+  {
+    id: text("id").primaryKey().$defaultFn(newId),
+    chatId: text("chat_id")
+      .notNull()
+      .references(() => chats.id, { onDelete: "cascade" }),
+    role: messageRoleEnum("role").notNull(),
+    content: text("content").notNull().default(""),
+    model: text("model"),
+    promptTokens: integer("prompt_tokens").notNull().default(0),
+    completionTokens: integer("completion_tokens").notNull().default(0),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    deletedAt: timestamp("deleted_at", { withTimezone: true }),
+  },
+  (t) => [
+    index("messages_chat_created_idx").on(t.chatId, t.createdAt),
+    index("messages_deleted_at_idx").on(t.deletedAt),
+  ],
+);
+
+export type Message = typeof messages.$inferSelect;
+export type NewMessage = typeof messages.$inferInsert;
+
+/* -------------------------------------------------------------------------- */
+/* tool_calls                                                                  */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * A single MCP-style tool invocation attached to an assistant message. Inputs
+ * are structured (jsonb); outputs are either a text blob OR a structured
+ * payload — we keep both columns so callers can pick the cheapest read.
+ */
+export interface ToolCallInput {
+  /** Arbitrary JSON the tool was invoked with. */
+  [key: string]: unknown;
+}
+
+export interface ToolCallOutput {
+  [key: string]: unknown;
+}
+
+export const toolCalls = pgTable(
+  "tool_calls",
+  {
+    id: text("id").primaryKey().$defaultFn(newId),
+    messageId: text("message_id")
+      .notNull()
+      .references(() => messages.id, { onDelete: "cascade" }),
+    toolName: text("tool_name").notNull(),
+    input: jsonb("input").$type<ToolCallInput>().notNull().default({}),
+    outputText: text("output_text"),
+    outputJson: jsonb("output_json").$type<ToolCallOutput>(),
+    durationMs: integer("duration_ms"),
+    status: toolCallStatusEnum("status").notNull().default("pending"),
+    errorMessage: text("error_message"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("tool_calls_message_idx").on(t.messageId),
+    index("tool_calls_tool_name_idx").on(t.toolName),
+    index("tool_calls_status_idx").on(t.status),
+  ],
+);
+
+export type ToolCall = typeof toolCalls.$inferSelect;
+export type NewToolCall = typeof toolCalls.$inferInsert;
+
+/* -------------------------------------------------------------------------- */
+/* usage_records                                                               */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Per-turn usage rollup for billing. Cost is stored in micro-USD (1e-6 USD)
+ * as a `bigint` to avoid float drift across millions of low-cost turns.
+ */
+export const usageRecords = pgTable(
+  "usage_records",
+  {
+    id: text("id").primaryKey().$defaultFn(newId),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    chatId: text("chat_id").references(() => chats.id, { onDelete: "set null" }),
+    model: text("model").notNull(),
+    promptTokens: integer("prompt_tokens").notNull().default(0),
+    completionTokens: integer("completion_tokens").notNull().default(0),
+    costMicroUsd: bigint("cost_micro_usd", { mode: "number" }).notNull().default(0),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("usage_records_user_created_idx").on(t.userId, t.createdAt),
+    index("usage_records_chat_idx").on(t.chatId),
+    index("usage_records_model_idx").on(t.model),
+  ],
+);
+
+export type UsageRecord = typeof usageRecords.$inferSelect;
+export type NewUsageRecord = typeof usageRecords.$inferInsert;
+
+/* -------------------------------------------------------------------------- */
+/* subscriptions                                                               */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Mirror of the Stripe subscription objects we care about. `stripe_subscription_id`
+ * is unique. Billing webhooks upsert into this table; nothing else writes here.
+ */
+export const subscriptions = pgTable(
+  "subscriptions",
+  {
+    id: text("id").primaryKey().$defaultFn(newId),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    stripeSubscriptionId: text("stripe_subscription_id").notNull(),
+    tier: subscriptionTierEnum("tier").notNull(),
+    status: subscriptionStatusEnum("status").notNull(),
+    monthlyQuotaTokens: bigint("monthly_quota_tokens", { mode: "number" }).notNull().default(0),
+    currentPeriodStart: timestamp("current_period_start", { withTimezone: true }).notNull(),
+    currentPeriodEnd: timestamp("current_period_end", { withTimezone: true }).notNull(),
+    cancelAtPeriodEnd: integer("cancel_at_period_end").notNull().default(0),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("subscriptions_stripe_id_unique").on(t.stripeSubscriptionId),
+    index("subscriptions_user_idx").on(t.userId),
+    index("subscriptions_status_idx").on(t.status),
+    index("subscriptions_period_end_idx").on(t.currentPeriodEnd),
+  ],
+);
+
+export type Subscription = typeof subscriptions.$inferSelect;
+export type NewSubscription = typeof subscriptions.$inferInsert;
+
+/* -------------------------------------------------------------------------- */
+/* token_balances                                                              */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Live token budget per user. Decremented per OpenRouter call; topped up on
+ * Stripe webhook (`invoice.payment_succeeded`) or on monthly renewal.
+ * One row per user — `user_id` is the PK.
+ *
+ * `balance_tokens` is `bigint` so per-call decrements via atomic SQL won't
+ * overflow even after months of pro-tier use.
+ */
+export const tokenBalances = pgTable("token_balances", {
+  userId: text("user_id")
+    .primaryKey()
+    .references(() => users.id, { onDelete: "cascade" }),
+  balanceTokens: bigint("balance_tokens", { mode: "number" }).notNull().default(0),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export type TokenBalance = typeof tokenBalances.$inferSelect;
+export type NewTokenBalance = typeof tokenBalances.$inferInsert;
+
+/* -------------------------------------------------------------------------- */
+/*  Raw event log (RAI-37 analytics)                                          */
 /* -------------------------------------------------------------------------- */
 
 /**
@@ -68,7 +538,7 @@ export type EventRow = typeof events.$inferSelect;
 export type NewEventRow = typeof events.$inferInsert;
 
 /* -------------------------------------------------------------------------- */
-/*  Materialised daily metrics                                                */
+/*  Materialised daily metrics (RAI-37 analytics)                             */
 /* -------------------------------------------------------------------------- */
 
 /**
@@ -174,116 +644,13 @@ export const metricsErrorsDaily = pgTable(
 export type MetricsErrorsDailyRow = typeof metricsErrorsDaily.$inferSelect;
 
 /* -------------------------------------------------------------------------- */
-/*  Identity — users, devices, pairing codes (RAI-18)                         */
+/*  Identity — RAI-18 type aliases                                            */
 /* -------------------------------------------------------------------------- */
 
 /**
- * Billing principal. Created lazily on first successful pairing claim. A
- * single user can have many devices (one per RuneLite install) and many
- * OSRS characters (via `devices.player_name`).
- *
- * `stripe_customer_id` is what marries us to the billing world. The pairing
- * claim endpoint accepts a Stripe customer id (from the checkout success URL
- * redirect) and either finds the matching user or creates a fresh one.
- *
- * NOTE: RAI-15 lands a richer `users` table (status enum, soft delete,
- * timestamps). We provide the minimum shape here so RAI-18 ships standalone;
- * RAI-15 should ADD nullable columns rather than rename, so the merge is clean.
+ * RAI-18 originally introduced `PairingCodeRow` / `NewPairingCodeRow` aliases.
+ * The RAI-15 schema is now the canonical source; re-export the aliases so
+ * RAI-18 callers (auth/pairing.ts) keep compiling.
  */
-export const users = pgTable(
-  "users",
-  {
-    id: text("id").primaryKey(),
-    stripeCustomerId: text("stripe_customer_id"),
-    email: text("email"),
-    createdAt: timestamp("created_at", { withTimezone: true })
-      .notNull()
-      .default(sql`now()`),
-  },
-  (table) => ({
-    stripeCustomerUnique: uniqueIndex("users_stripe_customer_unique")
-      .on(table.stripeCustomerId)
-      .where(sql`${table.stripeCustomerId} IS NOT NULL`),
-    emailUnique: uniqueIndex("users_email_unique")
-      .on(table.email)
-      .where(sql`${table.email} IS NOT NULL`),
-  }),
-);
-
-export type User = typeof users.$inferSelect;
-export type NewUser = typeof users.$inferInsert;
-
-/**
- * A plugin install. `device_key_hash` is the Argon2id digest of the long-lived
- * device key the plugin generates on first launch (see
- * docs/architecture/IDENTITY.md). Raw keys are never persisted.
- *
- * `player_name` is the in-game name read from `Client.localPlayer.name` at
- * pairing request time. One device row per (user, device_key_hash) — a player
- * who reinstalls the plugin and pairs again will simply create a new device.
- */
-export const devices = pgTable(
-  "devices",
-  {
-    id: text("id").primaryKey(),
-    userId: text("user_id")
-      .notNull()
-      .references(() => users.id, { onDelete: "cascade" }),
-    deviceKeyHash: text("device_key_hash").notNull(),
-    playerName: text("player_name"),
-    lastSeenAt: timestamp("last_seen_at", { withTimezone: true }),
-    createdAt: timestamp("created_at", { withTimezone: true })
-      .notNull()
-      .default(sql`now()`),
-  },
-  (table) => ({
-    userIdx: index("devices_user_idx").on(table.userId),
-    keyHashIdx: index("devices_key_hash_idx").on(table.deviceKeyHash),
-  }),
-);
-
-export type Device = typeof devices.$inferSelect;
-export type NewDevice = typeof devices.$inferInsert;
-
-/**
- * One-time pairing code, generated by the plugin and surfaced in-game. The
- * user then enters it on the dashboard (or completes Stripe checkout) to
- * bind their freshly-paid account to the device.
- *
- * Lifecycle:
- *   1. `POST /v1/pairing/request` — plugin sends `{ deviceKey, playerName }`.
- *      Row inserted with `device_key_hash`, `player_name`, `code`,
- *      `expires_at = now() + 10m`. `user_id` + `device_id` are NULL.
- *   2. `POST /v1/pairing/claim` — dashboard sends `{ code, stripeCustomerId? }`.
- *      Backend creates/finds user, creates device, then sets `user_id`,
- *      `device_id`, `claimed_at` on the pairing row.
- *   3. Replay protection: any subsequent claim with the same code returns 410
- *      (`claimed_at IS NOT NULL`). Expired rows return 410 too.
- *
- * The plugin's raw deviceKey is intentionally not stored. Verification at
- * claim time happens against `device_key_hash` via argon2.
- */
-export const pairingCodes = pgTable(
-  "pairing_codes",
-  {
-    id: text("id").primaryKey(),
-    code: text("code").notNull(),
-    deviceKeyHash: text("device_key_hash").notNull(),
-    playerName: text("player_name"),
-    userId: text("user_id").references(() => users.id, { onDelete: "cascade" }),
-    deviceId: text("device_id").references(() => devices.id, { onDelete: "cascade" }),
-    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
-    claimedAt: timestamp("claimed_at", { withTimezone: true }),
-    createdAt: timestamp("created_at", { withTimezone: true })
-      .notNull()
-      .default(sql`now()`),
-  },
-  (table) => ({
-    codeUnique: uniqueIndex("pairing_codes_code_unique").on(table.code),
-    expiresIdx: index("pairing_codes_expires_idx").on(table.expiresAt),
-    claimedIdx: index("pairing_codes_claimed_idx").on(table.claimedAt),
-  }),
-);
-
-export type PairingCodeRow = typeof pairingCodes.$inferSelect;
-export type NewPairingCodeRow = typeof pairingCodes.$inferInsert;
+export type PairingCodeRow = PairingCode;
+export type NewPairingCodeRow = NewPairingCode;

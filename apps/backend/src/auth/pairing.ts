@@ -222,6 +222,10 @@ export async function claimPairingCode(
     }
 
     /* ------- create device -------------------------------------------- */
+    if (!row.deviceKeyHash) {
+      // Should never happen: createPairingRequest always sets a hash.
+      throw new Error("pairing row missing device_key_hash");
+    }
     const deviceId = nanoidId();
     await tx.insert(devices).values({
       id: deviceId,
