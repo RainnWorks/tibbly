@@ -503,6 +503,49 @@ tasks.register("checkNoKeyLeak") {
     }
 }
 
+// RAI-65: the embodied companion overlay must never egress without
+// consent. The orchestrator + interaction event + memory-hint emit
+// paths all funnel through `EgressGate.egress(...)`; this gate scans
+// the `companion/` package for any production source file that calls
+// `EgressGate.egress(...)` without a `consentAccepted()` (or
+// `consentSupplier()...accepted`) check in the same file. The match is
+// intentionally coarse (file-scope rather than control-flow-scope)
+// because the egress sites in CompanionDialogueOrchestrator already
+// gate on the consent supplier, and a future site that egresses
+// elsewhere is almost certainly a refactor that wants a second look.
+tasks.register("checkCompanionConsentGated") {
+    group = "verification"
+    description = "Fails if a companion/*.kt file calls EgressGate.egress without checking consentAccepted()."
+    doLast {
+        val companionTree = fileTree("src/main/kotlin/co/rowm/osrsllm/companion")
+        val violations = mutableListOf<String>()
+        companionTree.files
+            .filter { it.extension == "kt" }
+            .forEach { f ->
+                val text = f.readText()
+                // We only flag callsites that egress. Pure renderers
+                // never call the gate, so they don't need a consent line.
+                if (!text.contains("egressGate.egress")) return@forEach
+                val gated = text.contains("consentAccepted") ||
+                    text.contains("consentSupplier") ||
+                    text.contains("ConsentState.snapshot") ||
+                    text.contains("consent.accepted")
+                if (!gated) {
+                    violations += f.relativeTo(projectDir).toString()
+                }
+            }
+        if (violations.isNotEmpty()) {
+            throw GradleException(
+                "checkCompanionConsentGated: companion code emits via EgressGate.egress " +
+                    "without a consent gate. The companion subsystem must never send " +
+                    "data without consent.accepted. Re-route the call through " +
+                    "CompanionDialogueOrchestrator or guard the egress with a consent " +
+                    "check.\n  " + violations.joinToString("\n  "),
+            )
+        }
+    }
+}
+
 tasks.named("check") {
     dependsOn(
         "checkNoHttpServer",
@@ -512,6 +555,7 @@ tasks.named("check") {
         "checkAccountPanelNoRawTokens",
         "checkNoKeyLeak",
         "checkNoSubprocess",
+        "checkCompanionConsentGated",
         "secretsScan",
         "checkLocalNotInJar",
     )
