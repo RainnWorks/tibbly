@@ -343,6 +343,147 @@ class StateProbesTest {
         assertEquals(setOf("Rejuvenation", "Berserker"), out.ruinous.toSet())
     }
 
+    // ── get_farming_summary ──────────────────────────────────────────────
+
+    @Test
+    fun `farming_summary all empty gives total equals patch count`() {
+        val client = fakeClient(varbits = emptyMap())
+        val out = StateProbes.readFarmingSummary(client)
+        // Every patch reads 0 → EMPTY. Total should equal sum of all patch slots.
+        val expectedTotal = co.rowm.osrsllm.cloud.tools.FarmingTables.REGIONS.sumOf { it.patches.size }
+        assertEquals(expectedTotal, out.total)
+        assertEquals(expectedTotal, out.emptyPatches)
+        assertEquals(0, out.ready)
+        assertEquals(0, out.diseased)
+        assertEquals(0, out.dead)
+        assertEquals(0, out.growing)
+        assertEquals(0, out.unknown)
+    }
+
+    @Test
+    fun `farming_summary mixes ready growing diseased dead by varbit value`() {
+        // Catherby: Allotment North (FT_A=4771), Allotment South (FT_B=4772),
+        // Flower (FT_C=4773), Herb (FT_D=4774), Fruit Tree (FT_A=4771 reuse).
+        // Allotment value 10 → READY (potato harvestable band 10..12)
+        // Herb value 8 → READY (guam harvestable band 8..10)
+        // Flower value 8 → READY (8..15)
+        // Setting FT_A=10 also affects Catherby Fruit Tree (uses same varbit).
+        val client = fakeClient(
+            varbits = mapOf(
+                4771 to 10,  // FT_A — Allotment North = READY, Fruit Tree = READY (10 is in 6..15 band)
+                4772 to 17,  // FT_B — Allotment South onion harvestable
+                4773 to 8,   // FT_C — Flower ready
+                4774 to 8,   // FT_D — Herb guam ready
+            ),
+        )
+        val out = StateProbes.readFarmingSummary(client)
+        assertTrue("expected some READY patches, got $out", out.ready >= 1)
+        // 4771 is reused across Catherby Fruit Tree + Falador Tree + many others,
+        // so multiple patches share the same value 10. That's correct upstream
+        // behaviour while standing in a single region.
+    }
+
+    @Test
+    fun `farming_summary herb diseased value lands in diseased bucket`() {
+        // Herb varbit value 140 → RANARR DISEASED per upstream HERB.forVarbitValue
+        // (band 128..169 = various diseased herbs).
+        val client = fakeClient(varbits = mapOf(4774 to 140))
+        val out = StateProbes.readFarmingSummary(client)
+        assertTrue("expected diseased ≥ 1, got $out", out.diseased >= 1)
+    }
+
+    @Test
+    fun `farming_summary herb dead value lands in dead bucket`() {
+        // Herb varbit value 171 → dead herb (band 170..172).
+        val client = fakeClient(varbits = mapOf(4774 to 171))
+        val out = StateProbes.readFarmingSummary(client)
+        assertTrue("expected dead ≥ 1, got $out", out.dead >= 1)
+    }
+
+    @Test
+    fun `farming_summary json is compact and parseable`() {
+        val summary = StateProbes.FarmingSummary(
+            ready = 2, growing = 3, diseased = 1, dead = 0,
+            emptyPatches = 5, unknown = 0, total = 11,
+        )
+        val out = StateProbes.farmingSummary(summary)
+        assertFalse("compact JSON: no newlines", out.contains('\n'))
+        val parsed = json.parseToJsonElement(out).jsonObject
+        assertEquals(2, parsed["ready"]!!.jsonPrimitive.int)
+        assertEquals(3, parsed["growing"]!!.jsonPrimitive.int)
+        assertEquals(11, parsed["total"]!!.jsonPrimitive.int)
+    }
+
+    // ── get_farming_patches(region) ──────────────────────────────────────
+
+    @Test
+    fun `farming_patches catherby returns 5 patches`() {
+        val client = fakeClient(
+            varbits = mapOf(
+                4771 to 10,  // FT_A — Allotment North = READY (potato harvest)
+                4774 to 38,  // FT_D — Herb = READY (ranarr harvest, 36..38)
+            ),
+        )
+        val out = StateProbes.farmingPatchesString(client, "Catherby")
+        val parsed = json.parseToJsonElement(out).jsonObject
+        assertEquals("Catherby", parsed["region"]!!.jsonPrimitive.contentOrNull)
+        val patches = parsed["patches"]!!.jsonArray
+        assertEquals(5, patches.size)  // 2 allotments + flower + herb + fruit tree
+        // Find the herb patch entry.
+        val herb = patches.first { it.jsonObject["type"]!!.jsonPrimitive.content == "HERB" }
+        assertEquals("READY", herb.jsonObject["state"]!!.jsonPrimitive.content)
+        assertEquals(38, herb.jsonObject["rawVarbit"]!!.jsonPrimitive.int)
+    }
+
+    @Test
+    fun `farming_patches accepts region aliases case insensitive`() {
+        val client = fakeClient(varbits = emptyMap())
+        val out1 = StateProbes.farmingPatchesString(client, "CATHERBY")
+        val out2 = StateProbes.farmingPatchesString(client, "kandarin north")
+        assertTrue("uppercase matched", json.parseToJsonElement(out1).jsonObject.containsKey("region"))
+        assertTrue("alias matched", json.parseToJsonElement(out2).jsonObject.containsKey("region"))
+    }
+
+    @Test
+    fun `farming_patches unknown region returns error with knownRegions list`() {
+        val client = fakeClient(varbits = emptyMap())
+        val out = StateProbes.farmingPatchesString(client, "Atlantis")
+        val parsed = json.parseToJsonElement(out).jsonObject
+        assertNotNull("error key present", parsed["error"])
+        assertTrue(
+            "Atlantis named in error",
+            parsed["error"]!!.jsonPrimitive.content.contains("Atlantis"),
+        )
+        val known = parsed["knownRegions"]!!.jsonArray.map { it.jsonPrimitive.content }
+        assertTrue("Catherby is a known region", known.contains("Catherby"))
+        assertTrue("Farming Guild is a known region", known.contains("Farming Guild"))
+    }
+
+    @Test
+    fun `farming_patches farming guild includes herb tree fruit tree`() {
+        val client = fakeClient(varbits = emptyMap())
+        val out = StateProbes.farmingPatchesString(client, "Farming Guild")
+        val parsed = json.parseToJsonElement(out).jsonObject
+        val types = parsed["patches"]!!.jsonArray
+            .map { it.jsonObject["type"]!!.jsonPrimitive.content }
+            .toSet()
+        assertTrue("guild has HERB", types.contains("HERB"))
+        assertTrue("guild has TREE", types.contains("TREE"))
+        assertTrue("guild has FRUIT_TREE", types.contains("FRUIT_TREE"))
+        assertTrue("guild has BUSH", types.contains("BUSH"))
+    }
+
+    @Test
+    fun `farming_patches diseased herb varbit lands in DISEASED state`() {
+        val client = fakeClient(varbits = mapOf(4774 to 140))
+        val out = StateProbes.farmingPatchesString(client, "Catherby")
+        val parsed = json.parseToJsonElement(out).jsonObject
+        val herb = parsed["patches"]!!.jsonArray
+            .first { it.jsonObject["type"]!!.jsonPrimitive.content == "HERB" }
+            .jsonObject
+        assertEquals("DISEASED", herb["state"]!!.jsonPrimitive.content)
+    }
+
     // ── JSON envelope sanity ─────────────────────────────────────────────
 
     @Test

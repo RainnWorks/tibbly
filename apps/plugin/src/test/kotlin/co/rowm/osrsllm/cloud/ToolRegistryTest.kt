@@ -111,6 +111,16 @@ class ToolRegistryTest {
     }
 
     @Test
+    fun `farming tools appear in allow-list under FARMING family`() {
+        // RAI-5 Tier 0 (5/5) — get_farming_state split into summary + per-region.
+        assertEquals(ToolFamily.FARMING, ToolRegistry.familyOf("get_farming_summary"))
+        assertEquals(ToolFamily.FARMING, ToolRegistry.familyOf("get_farming_patches"))
+        val tools = ToolRegistry.allowedTools(setOf(ToolFamily.FARMING))
+        assertTrue("summary exposed when FARMING enabled", tools.contains("get_farming_summary"))
+        assertTrue("patches exposed when FARMING enabled", tools.contains("get_farming_patches"))
+    }
+
+    @Test
     fun `every family has at least one tool except deliberately-empty placeholders`() {
         // RAI-5 catalog (PR #31) reserved enum slots for families we plan to
         // fill incrementally. As each catalog tool ships, the family flips
@@ -118,7 +128,7 @@ class ToolRegistryTest {
         // in the same PR that adds the first tool.
         val expectedEmpty = setOf(
             ToolFamily.LEAGUES,     // Tier 1 §4.6 — seasonal-only
-            ToolFamily.FARMING,     // Tier 0 §3 (4/5) — queued for next loop
+            // FARMING populated PR #37 — get_farming_summary + get_farming_patches.
             ToolFamily.APPEARANCE,  // Tier 1 §4.11
             ToolFamily.AMBIENT,     // Tier 1 §4.7
             ToolFamily.PETS,        // Tier 1 §4.1 row 3

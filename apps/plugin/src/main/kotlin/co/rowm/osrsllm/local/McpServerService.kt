@@ -462,6 +462,63 @@ class McpServerService @Inject constructor(
             catch (t: Throwable) { "{\"error\":\"get_active_prayers failed: ${t.message}\"}" }
         }
 
+        // ── RAI-5 Tier 0 (5/5) — farming probes split into summary + detail.
+        // Implementation in cloud/tools/StateProbes.kt + FarmingTables.kt. The
+        // upstream `timetracking.farming` package is package-private so we
+        // mirror a slice of its patch→varbit map; see FarmingTables KDoc for
+        // covered regions and v2 deferred items.
+        addLoggedTool(server, "get_farming_summary",
+            "Region-agnostic farming snapshot. Returns " +
+                "{ready, growing, diseased, dead, emptyPatches, unknown, total, note}. " +
+                "Use to answer 'do I have anything to harvest' / 'are any of my patches " +
+                "diseased'. Reads live transmit varbits across every known region — " +
+                "patches in regions the player hasn't visited recently will report 0 " +
+                "(EMPTY). For per-region detail call get_farming_patches(region=)."
+        ) {
+            try { co.rowm.osrsllm.cloud.tools.StateProbes.farmingSummary(client, clientThread) }
+            catch (t: Throwable) { "{\"error\":\"get_farming_summary failed: ${t.message}\"}" }
+        }
+
+        server.addTool(
+            name = "get_farming_patches",
+            description = "Per-region farming patch detail. Required arg `region` (one of: " +
+                "Catherby, Falador, Morytania, Ardougne, Hosidius, Farming Guild, Gnome " +
+                "Stronghold, Tree Gnome Village, Brimhaven, Lletya, Lumbridge, Varrock, " +
+                "Taverley, Trollheim, Weiss, Prifddinas, Civitas illa Fortis — common " +
+                "aliases like 'ardy' / 'kourend' also accepted). Returns " +
+                "{region, patches: [{patchName, type, state, rawVarbit}]}. State is one " +
+                "of READY/GROWING/DISEASED/DEAD/EMPTY/UNKNOWN. Use for 'are my Catherby " +
+                "herbs ready' / 'anything in the Farming Guild fruit tree patch'.",
+            inputSchema = ToolSchema(
+                properties = buildJsonObject {
+                    putJsonObject("region") {
+                        put("type", "string")
+                        put("description", "Region name (canonical or alias, case-insensitive)")
+                    }
+                },
+                required = listOf("region"),
+            ),
+        ) { request ->
+            val region = request.arguments?.get("region")?.jsonPrimitive?.content?.takeIf { it.isNotBlank() }
+            val start = System.currentTimeMillis()
+            val result = if (region == null) {
+                "{\"error\":\"get_farming_patches requires a 'region' argument\"," +
+                    "\"knownRegions\":${
+                        co.rowm.osrsllm.cloud.tools.FarmingTables.knownRegionNames
+                            .joinToString(prefix = "[", postfix = "]") { "\"$it\"" }
+                    }}"
+            } else {
+                try {
+                    co.rowm.osrsllm.cloud.tools.StateProbes.farmingPatches(client, clientThread, region)
+                } catch (t: Throwable) {
+                    "{\"error\":\"get_farming_patches failed: ${t.message}\"}"
+                }
+            }
+            log.info("Tool get_farming_patches(region='{}') → {} chars in {}ms",
+                region, result.length, System.currentTimeMillis() - start)
+            CallToolResult(content = listOf(TextContent(result)))
+        }
+
         server.addTool(
             name = "get_quests",
             description = "Get quest progress. Optional argument: state (one of ALL, IN_PROGRESS, " +

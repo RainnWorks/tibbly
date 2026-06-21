@@ -256,6 +256,43 @@ class ContextRouterTest {
     }
 
     @Test
+    fun `farming keywords route to farming`() {
+        for (msg in listOf(
+            "are my herbs ready",
+            "anything in the Catherby fruit trees",
+            "fill my farming patches",
+            "is my ranarr patch diseased",
+            "snape grass yet",
+            "compost the allotments",
+            "torstol patch check",
+            "magic seed in the tree slot",
+        )) {
+            val out = router.route(msg)
+            assertTrue("[$msg] expected FARMING, got $out", out.contains(ToolFamily.FARMING))
+        }
+    }
+
+    @Test
+    fun `farming routeWire surfaces farming on the wire`() {
+        val wire = router.routeWire("are my herbs ready in Catherby")
+        assertTrue("farming on the wire", wire.contains("farming"))
+        assertTrue("core on the wire", wire.contains("core"))
+    }
+
+    @Test
+    fun `farming non-keywords stay out of farming`() {
+        // Sanity: messages without any farming keyword don't pull FARMING in.
+        for (msg in listOf(
+            "what's the ge price of dragon bones",
+            "open my bank please",
+            "starting a raid",
+        )) {
+            val out = router.route(msg)
+            assertFalse("[$msg] should not pull FARMING, got $out", out.contains(ToolFamily.FARMING))
+        }
+    }
+
+    @Test
     fun `loot drop stack routes to groundstate`() {
         for (msg in listOf(
             "is there any loot worth picking up",

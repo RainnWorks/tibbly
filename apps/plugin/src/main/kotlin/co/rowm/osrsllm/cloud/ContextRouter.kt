@@ -134,6 +134,25 @@ class ContextRouter @Inject constructor() {
         // loot / drop / stack → groundstate
         rule(setOf(ToolFamily.GROUNDSTATE),
             "loot", "looting", "drop", "drops", "stack", "stacks", "pile"),
+
+        // farm / patch / herb / tree / allotment / compost → farming
+        // (RAI-5 catalog §3 — supports get_farming_summary + get_farming_patches.)
+        // "tree" overlaps slightly with NAV-talk ("the spirit tree at Falador")
+        // but the brief explicitly calls it out — we accept the recall bias.
+        rule(setOf(ToolFamily.FARMING),
+            "farm", "farms", "farming", "farmer",
+            "patch", "patches",
+            "herb", "herbs",
+            "tree", "trees",
+            "allotment", "allotments",
+            "compost", "supercompost", "ultracompost",
+            "tithe",
+            "ranarr", "snapdragon", "torstol", "irit", "kwuarm", "toadflax",
+            "harralander", "lantadyme", "avantoe", "dwarf",
+            "fruit"),
+        phraseRule(setOf(ToolFamily.FARMING),
+            "snape grass", "fruit tree", "spirit tree", "magic seed",
+            "palm tree", "calquat", "hardwood"),
     )
 
     /**

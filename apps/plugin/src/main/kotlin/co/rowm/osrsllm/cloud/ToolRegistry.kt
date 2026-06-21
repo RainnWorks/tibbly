@@ -144,6 +144,10 @@ object ToolRegistry {
 
         // ── RAIDS (RAI-5 Tier 0) ──────────────────────────────────────────
         "get_raid_layout" to ToolFamily.RAIDS,
+
+        // ── FARMING (RAI-5 Tier 0 — split from get_farming_state) ─────────
+        "get_farming_summary" to ToolFamily.FARMING,
+        "get_farming_patches" to ToolFamily.FARMING,
     )
 
     /**
@@ -187,6 +191,8 @@ object ToolRegistry {
         "get_poh", "get_buffs", "get_player_state",
         // RAI-5 Tier 0 state-probes (see cloud/tools/StateProbes.kt)
         "get_account_identity", "get_raid_layout", "get_target_projectiles", "get_active_prayers",
+        // RAI-5 Tier 0 (5/5) — farming split (see cloud/tools/FarmingTables.kt)
+        "get_farming_summary", "get_farming_patches",
         // registerHighlightTools — 4 families × 3 verbs
         "add_npc_highlights", "remove_npc_highlight", "list_npc_highlights",
         "add_object_highlights", "remove_object_highlight", "list_object_highlights",
