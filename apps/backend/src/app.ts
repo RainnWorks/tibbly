@@ -159,6 +159,16 @@ export function createApp(options: CreateAppOptions = {}): Hono {
 
   app.get("/version", (c) => c.json({ version }));
 
+  // adminLogin MUST mount before any gated `/admin/*` router so the
+  // unauthenticated /admin/login + /admin/session + /admin/logout routes
+  // win Hono's first-match. The admin usage router below applies
+  // `adminGate` on `/admin/*`, which would otherwise 401 the login path
+  // before the login handler could run.
+  if (options.adminLogin) {
+    const loginOpts = options.adminLogin === "auto" ? {} : options.adminLogin;
+    app.route("/admin", createAdminLoginRouter(loginOpts));
+  }
+
   if (options.admin) {
     const adminOpts = options.admin === "auto" ? {} : options.admin;
     app.route("/admin", createAdminUsageRouter(adminOpts));
@@ -174,11 +184,6 @@ export function createApp(options: CreateAppOptions = {}): Hono {
 
   if (options.adminCatalog) {
     app.route("/admin/catalog", createAdminCatalogRouter(options.adminCatalog));
-  }
-
-  if (options.adminLogin) {
-    const loginOpts = options.adminLogin === "auto" ? {} : options.adminLogin;
-    app.route("/admin", createAdminLoginRouter(loginOpts));
   }
 
   if (options.pairing) {

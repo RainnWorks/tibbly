@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { PricingTiers } from "./PricingTiers";
 
@@ -18,6 +18,30 @@ describe("<PricingTiers />", () => {
     const footnote = screen.getByTestId("pricing-iron-footnote");
     expect(footnote).toHaveTextContent(/Iron tier \(£49\)/);
     expect(footnote).toHaveTextContent(/hello@tibbly\.app/);
+  });
+
+  it("Hobbyist lists the full companion as its lead feature", () => {
+    render(<PricingTiers />);
+    const list = screen.getByTestId("pricing-tiers-list");
+    const hobbyist = within(list).getByText("Hobbyist").closest("li");
+    expect(hobbyist).not.toBeNull();
+    expect(hobbyist!).toHaveTextContent(/full companion/i);
+    expect(hobbyist!).toHaveTextContent(/voice, memory, reactive lines/i);
+  });
+
+  it("Pro names multi-OSRS-account companion memory", () => {
+    render(<PricingTiers />);
+    const list = screen.getByTestId("pricing-tiers-list");
+    const pro = within(list).getByText("Pro").closest("li");
+    expect(pro).not.toBeNull();
+    expect(pro!).toHaveTextContent(/multi-OSRS-account companion memory/i);
+  });
+
+  it("Iron footnote names companion priority routing at boss attempts", () => {
+    render(<PricingTiers />);
+    const features = screen.getByTestId("pricing-iron-features");
+    expect(features).toHaveTextContent(/companion priority routing/i);
+    expect(features).toHaveTextContent(/boss attempts/i);
   });
 
   describe("checkout wiring", () => {

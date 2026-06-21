@@ -1,0 +1,81 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" width="1200" height="630" role="img" aria-label="Tibbly, your OSRS companion. She watches what you watch and speaks when there is something to say.">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#1c130a" />
+      <stop offset="55%" stop-color="#100a05" />
+      <stop offset="100%" stop-color="#0a0604" />
+    </linearGradient>
+    <linearGradient id="bubble" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#3f2c17" />
+      <stop offset="100%" stop-color="#241809" />
+    </linearGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#ffe7a8" />
+      <stop offset="50%" stop-color="#f3c75a" />
+      <stop offset="100%" stop-color="#a37412" />
+    </linearGradient>
+    <pattern id="grid" x="0" y="0" width="32" height="32" patternUnits="userSpaceOnUse">
+      <path d="M32 0H0V32" fill="none" stroke="#5a3e1a" stroke-width="0.5" opacity="0.32"/>
+    </pattern>
+    <filter id="softShadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feGaussianBlur stdDeviation="6"/>
+    </filter>
+  </defs>
+
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <rect width="1200" height="630" fill="url(#grid)"/>
+
+  <!-- Eyebrow + headline, left-aligned. The companion sticker sits right. -->
+  <g transform="translate(72,108)">
+    <text font-family="'IBM Plex Mono','Courier New',monospace" font-size="22" fill="#c8a04f" letter-spacing="6">TIBBLY · YOUR OSRS COMPANION</text>
+    <text y="80" font-family="Georgia,serif" font-size="64" font-weight="700" fill="url(#gold)" filter="url(#softShadow)">Your OSRS friend</text>
+    <text y="146" font-family="Georgia,serif" font-size="64" font-weight="700" fill="#ffe7a8">who actually knows.</text>
+    <text y="220" font-family="'IBM Plex Mono','Courier New',monospace" font-size="22" fill="#cbb88a" letter-spacing="0.5">She walks with you in the RuneLite overlay.</text>
+    <text y="252" font-family="'IBM Plex Mono','Courier New',monospace" font-size="22" fill="#cbb88a" letter-spacing="0.5">She watches what you watch. She speaks when</text>
+    <text y="284" font-family="'IBM Plex Mono','Courier New',monospace" font-size="22" fill="#cbb88a" letter-spacing="0.5">there is something to say.</text>
+  </g>
+
+  <!--
+    Probe sprite + speech bubble. The sprite is the same floating
+    robot Probe rendered by CompanionSprite.tsx, scaled up so it
+    reads at og:image size. Speech bubble carries one of the five
+    magical-moment lines verbatim.
+  -->
+  <g transform="translate(796,170)">
+    <!-- Speech bubble. -->
+    <g transform="translate(-440,40)">
+      <rect x="0" y="0" width="420" height="170" rx="8" fill="url(#bubble)" stroke="#5a3e1a" stroke-width="2"/>
+      <rect x="6" y="6" width="408" height="158" rx="6" fill="none" stroke="#a37412" stroke-width="1" opacity="0.55"/>
+      <text x="22" y="38" font-family="'IBM Plex Mono','Courier New',monospace" font-size="13" fill="#c8a04f" letter-spacing="3">TIBBLY</text>
+      <text x="22" y="78" font-family="Georgia,serif" font-size="22" fill="#f4e9c1">Protect magic. She nukes 50s</text>
+      <text x="22" y="108" font-family="Georgia,serif" font-size="22" fill="#f4e9c1">the second the orb spawns.</text>
+      <!-- Tail pointing toward the sprite. -->
+      <polygon points="400,120 440,150 400,140" fill="url(#bubble)" stroke="#5a3e1a" stroke-width="2"/>
+    </g>
+
+    <!-- Probe (floating robot) sprite, scaled. -->
+    <g transform="translate(0,0) scale(4)">
+      <ellipse cx="32" cy="58" rx="13" ry="2.2" fill="rgba(0,0,0,0.55)"/>
+      <line x1="32" y1="14" x2="32" y2="9" stroke="#5a3e1a" stroke-width="1.5" stroke-linecap="round"/>
+      <circle cx="32" cy="8" r="1.4" fill="#f3c75a"/>
+      <circle cx="32" cy="30" r="16" fill="#3a2d1a" stroke="#5a3e1a" stroke-width="1.5"/>
+      <path d="M19 24 Q 24 18, 36 19" fill="none" stroke="#7a5824" stroke-width="1.2" stroke-linecap="round" opacity="0.7"/>
+      <circle cx="32" cy="32" r="9" fill="#0b0703" stroke="#5a3e1a" stroke-width="1.2"/>
+      <circle cx="32" cy="32" r="6" fill="#f3c75a" opacity="0.95"/>
+      <circle cx="29.5" cy="29.5" r="1.6" fill="#fff8d6" opacity="0.85"/>
+      <rect x="26" y="40" width="12" height="4" rx="1" fill="#0b0703" stroke="#5a3e1a" stroke-width="0.8"/>
+      <rect x="28" y="41.5" width="2" height="1" fill="#f3c75a" opacity="0.9"/>
+      <rect x="32" y="41.5" width="2" height="1" fill="#f3c75a" opacity="0.6"/>
+      <rect x="36" y="41.5" width="0.8" height="1" fill="#f3c75a" opacity="0.9"/>
+      <ellipse cx="17" cy="33" rx="2.2" ry="3" fill="#0b0703"/>
+      <ellipse cx="47" cy="33" rx="2.2" ry="3" fill="#0b0703"/>
+      <ellipse cx="17" cy="34.5" rx="1.4" ry="1.4" fill="#f3c75a" opacity="0.55"/>
+      <ellipse cx="47" cy="34.5" rx="1.4" ry="1.4" fill="#f3c75a" opacity="0.55"/>
+    </g>
+  </g>
+
+  <!-- Footer wordmark + url -->
+  <g transform="translate(72,560)">
+    <text font-family="'IBM Plex Mono','Courier New',monospace" font-size="18" fill="#a08a5a" letter-spacing="3">tibbly.app  ·  helps you play. never plays for you.</text>
+  </g>
+</svg>

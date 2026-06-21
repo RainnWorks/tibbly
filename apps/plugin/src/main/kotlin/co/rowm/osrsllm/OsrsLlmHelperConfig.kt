@@ -1,5 +1,8 @@
 package co.rowm.osrsllm
 
+import co.rowm.osrsllm.companion.CompanionConfig
+import co.rowm.osrsllm.companion.PersonalityArchetype
+import co.rowm.osrsllm.companion.Starter
 import net.runelite.client.config.Config
 import net.runelite.client.config.ConfigGroup
 import net.runelite.client.config.ConfigItem
@@ -16,6 +19,13 @@ import net.runelite.client.config.Range
  * companion below — RuneLite's `getDeclaredFields()` scan finds it there.
  */
 public const val CHAT_MODE_SECTION: String = "chatMode"
+
+/**
+ * Stable section id for the embodied Tibbly companion group in the
+ * RuneLite config UI. Mirrors the [CompanionConfig.SECTION_KEY] constant
+ * so the wire-in and the config-item annotations agree.
+ */
+public const val COMPANION_SECTION: String = "tibblyCompanion"
 
 @ConfigGroup("osrsllm")
 interface OsrsLlmHelperConfig : Config {
@@ -110,6 +120,90 @@ interface OsrsLlmHelperConfig : Config {
     // Default OFF. Only meaningful when developerMode is also on.
     // -------------------------------------------------------------------------
 
+    // -------------------------------------------------------------------------
+    // Embodied companion (RAI-65) — the Tibbly companion that walks beside the
+    // player. See docs/product/EMBODIED_COMPANION.md for the strategy doc and
+    // apps/plugin/docs/CONFIG.md for the player-facing description.
+    //
+    // The companion is GATED on `consentAccepted` AND `companionEnabled`. With
+    // either off the renderer / state machine / orchestrator are never wired
+    // up; the `:checkCompanionConsentGated` gradle task scans the companion/
+    // package and fails on any code path that bypasses `consentAccepted()`.
+    // -------------------------------------------------------------------------
+
+    @ConfigItem(
+        keyName = "companionEnabled",
+        name = "Show Tibbly companion",
+        description = "Renders Tibbly walking beside your character as a screen overlay. " +
+            "Plugin is fully local until you also enable consent and a chat mode.",
+        position = 40,
+        section = COMPANION_SECTION,
+    )
+    fun companionEnabled(): Boolean = true
+
+    @ConfigItem(
+        keyName = "companionStarter",
+        name = "Companion form",
+        description = "Pick which Tibbly form walks beside you. Veteran is the default hooded humanoid.",
+        position = 41,
+        section = COMPANION_SECTION,
+    )
+    fun companionStarter(): Starter = Starter.VETERAN
+
+    @ConfigItem(
+        keyName = "companionName",
+        name = "Companion name",
+        description = "Optional. Used by the personality engine as your companion's name. Leave blank to be prompted on first launch.",
+        position = 42,
+        section = COMPANION_SECTION,
+    )
+    fun companionName(): String = ""
+
+    @ConfigItem(
+        keyName = "companionArchetype",
+        name = "Personality archetype",
+        description = "Voice style. Each starter has a sensible default but you can pick any.",
+        position = 43,
+        section = COMPANION_SECTION,
+    )
+    fun companionArchetype(): PersonalityArchetype = PersonalityArchetype.DRY_WIKI_VETERAN
+
+    @ConfigItem(
+        keyName = "companionSpeechVerbosity",
+        name = "Speech verbosity",
+        description = "How often the companion speaks proactively. 1 mostly silent, 5 chatty.",
+        position = 44,
+        section = COMPANION_SECTION,
+    )
+    @Range(min = CompanionConfig.MIN_VERBOSITY, max = CompanionConfig.MAX_VERBOSITY)
+    fun companionSpeechVerbosity(): Int = CompanionConfig.DEFAULT_VERBOSITY
+
+    @ConfigItem(
+        keyName = "companionProactiveTriggersEnabled",
+        name = "Proactive lines",
+        description = "When off, Tibbly never speaks without being asked. Cooldown discipline still applies when on.",
+        position = 45,
+        section = COMPANION_SECTION,
+    )
+    fun companionProactiveTriggersEnabled(): Boolean = true
+
+    /**
+     * Snapshot the player's companion preferences. Wire-in reads this on
+     * startup so internal companion state always reflects the persisted
+     * config without scattering reads across files.
+     */
+    fun companionConfig(): CompanionConfig = CompanionConfig(
+        companionEnabled = companionEnabled(),
+        starter = companionStarter(),
+        companionName = companionName(),
+        archetype = companionArchetype(),
+        speechVerbosity = companionSpeechVerbosity().coerceIn(
+            CompanionConfig.MIN_VERBOSITY,
+            CompanionConfig.MAX_VERBOSITY,
+        ),
+        proactiveTriggersEnabled = companionProactiveTriggersEnabled(),
+    )
+
     @ConfigItem(
         keyName = "developerMode",
         name = "Developer mode (advanced)",
@@ -163,6 +257,17 @@ interface OsrsLlmHelperConfig : Config {
             closedByDefault = true,
         )
         public val chatModeSectionAnnotationCarrier: String = CHAT_MODE_SECTION
+
+        @JvmField
+        @ConfigSection(
+            name = "Tibbly Companion",
+            description = "Show Tibbly walking beside your character. " +
+                "Memory and personality live behind the backend; this " +
+                "section controls only the renderer and proactive lines.",
+            position = 40,
+            closedByDefault = false,
+        )
+        public val companionSectionAnnotationCarrier: String = COMPANION_SECTION
     }
 
     /**

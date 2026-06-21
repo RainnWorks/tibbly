@@ -1,4 +1,6 @@
 import { type SkillIconKey } from "@osrs-llm-helper/osrs-assets";
+import { CompanionSprite } from "./CompanionSprite";
+import { SpeechBubble } from "./SpeechBubble";
 import attackIcon from "@osrs-llm-helper/osrs-assets/skill_icons/attack.png";
 import strengthIcon from "@osrs-llm-helper/osrs-assets/skill_icons/strength.png";
 import defenceIcon from "@osrs-llm-helper/osrs-assets/skill_icons/defence.png";
@@ -83,6 +85,18 @@ const HERO_SAMPLE_TOOLS: ReadonlyArray<{ name: string; icon: string }> = [
   { name: "get_inventory", icon: hitpointsIcon },
 ];
 
+// The five "magical moment" lines from docs/product/EMBODIED_COMPANION.md.
+// These are the lines that have to make a cold visitor say "I want that."
+// Same five lines used verbatim in the dedicated Companion section, so
+// the hero sets the hook and the section pays it off.
+export const COMPANION_MAGICAL_LINES: readonly string[] = [
+  "Protect magic. She nukes 50s the second the orb spawns.",
+  "Still want that fire cape? Forty-seven minutes in. Want me to watch the wave timer?",
+  "How'd that Sins of the Father attempt go?",
+  "You don't need an antifire this time. Your fire cape's plenty.",
+  "You hit 99 Slayer ten minutes ago. I noticed.",
+];
+
 export function Hero() {
   return (
     <section
@@ -149,17 +163,55 @@ export function Hero() {
               <span aria-hidden="true">▶</span> see the demo
             </a>
           </div>
+
+          {/*
+            Mobile-only companion strip. The desktop sticker rides on the
+            hero-right aside which is hidden below lg. Phones still need
+            the marketing grab, so the same sprite + bubble pair shows up
+            inline below the CTAs at smaller breakpoints.
+          */}
+          <div
+            data-testid="hero-companion-mobile"
+            className="mt-10 flex items-end gap-3 lg:hidden"
+          >
+            <CompanionSprite size={72} />
+            <SpeechBubble
+              lines={COMPANION_MAGICAL_LINES}
+              tail="left"
+              className="flex-1"
+            />
+          </div>
         </div>
 
         {/*
          * Hero-right placeholder per IA Phase 4: worn-parchment chatbox snippet
          * with a real exchange in the brand voice. One-file swap when the
-         * commissioned 1600x1200 WebP arrives.
+         * commissioned 1600x1200 WebP arrives. The companion sticker
+         * sits as a deliberate corner overlay so the sample exchange
+         * still anchors the right column.
          */}
         <aside
           aria-label="Sample chat with Tibbly"
+          data-testid="hero-aside"
           className="relative hidden border border-osrs-border bg-osrs-parchment/30 p-6 shadow-[inset_0_0_28px_rgba(0,0,0,0.45)] lg:block"
         >
+          {/*
+            Companion sticker: the most visible product surface, anchored
+            to the top-right of the hero card. The rotating speech bubble
+            is the marketing grab. Mobile users see the bubble in a
+            stacked layout further down (see the mobile companion strip).
+          */}
+          <div
+            data-testid="hero-companion-sticker"
+            className="pointer-events-none absolute -top-12 -right-2 z-10 flex items-end gap-3"
+          >
+            <SpeechBubble
+              lines={COMPANION_MAGICAL_LINES}
+              tail="down"
+              className="pointer-events-auto max-w-[18rem]"
+            />
+            <CompanionSprite size={88} />
+          </div>
           <p className="mb-4 font-mono text-[10px] uppercase tracking-[0.32em] text-osrs-gold-dim">
             sample · brand voice
           </p>

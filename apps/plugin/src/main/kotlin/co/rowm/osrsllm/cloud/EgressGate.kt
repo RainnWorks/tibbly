@@ -53,7 +53,7 @@ open class EgressGate @Inject constructor(
      * @param consent the consent snapshot captured at plugin startup.
      * @param cloudChatEnabled the current value of the `cloudChatEnabled` config flag.
      */
-    fun egress(
+    open fun egress(
         payload: OutboundPayload,
         consent: ConsentState,
         cloudChatEnabled: Boolean,

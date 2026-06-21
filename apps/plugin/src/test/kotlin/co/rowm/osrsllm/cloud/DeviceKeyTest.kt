@@ -162,4 +162,37 @@ class DeviceKeyTest {
         val device = DeviceKey(store)
         assertNotNull(device.getOrCreate())
     }
+
+    /**
+     * Audit-shield: this is the canonical generator now that the duplicate
+     * `OsrsLlmHelperPlugin.deviceKeyForAuth()` (two concatenated UUIDs, no
+     * length / alphabet check) has been deleted. Any future regression
+     * that re-introduces a weaker generator must fail this contract.
+     *
+     * Per the auth-fix design (PR #69, audit C1 closed): the device key is
+     * the trust root for both the WS handshake AND the `Authorization:
+     * Bearer` HTTP path. The brief requires it to satisfy
+     * `^[A-Za-z0-9_-]+$` (URL-safe nanoid alphabet) and be at least 32
+     * characters long.
+     */
+    @Test
+    fun `getOrCreate returns a value matching the URL-safe alphabet contract`() {
+        val store = FakeStore()
+        val device = DeviceKey(store)
+        val first = device.getOrCreate()
+        val second = device.getOrCreate()
+        // (a) idempotent: two calls return the persisted value.
+        assertEquals("getOrCreate must be idempotent on subsequent calls", first, second)
+        assertEquals("write must happen exactly once", 1, store.writes)
+        // (b) shape: at least 32 chars, URL-safe nanoid alphabet only.
+        assertTrue(
+            "device key must be at least 32 chars (got ${first.length})",
+            first.length >= 32,
+        )
+        val urlSafeAlphabet = Regex("^[A-Za-z0-9_-]+$")
+        assertTrue(
+            "device key must satisfy ^[A-Za-z0-9_-]+\$ (got '$first')",
+            urlSafeAlphabet.matches(first),
+        )
+    }
 }

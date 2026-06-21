@@ -18,7 +18,7 @@ import { eq } from "drizzle-orm";
 import { events as eventsTable } from "../../apps/backend/src/db/schema";
 import { connectFakePlugin, makeDeviceKey } from "../harness/fake-plugin";
 import { bootOrchestrator, type OrchestratorContext } from "../orchestrator/boot";
-import { pairUser, getBalance } from "../orchestrator/seed";
+import { assertHarnessHealthy, getBalance, pairUser } from "../orchestrator/seed";
 
 let ctx: OrchestratorContext;
 
@@ -32,6 +32,7 @@ afterEach(async () => {
 
 describe("01 pair chat bill", () => {
   it("pairs a user, drives a chat turn through the WS, decrements balance, writes events", async () => {
+    await assertHarnessHealthy(ctx);
     const deviceKey = makeDeviceKey();
     const paired = await pairUser(ctx, {
       deviceKey,
@@ -93,6 +94,7 @@ describe("01 pair chat bill", () => {
   });
 
   it("rejects an unknown device with auth_error", async () => {
+    await assertHarnessHealthy(ctx);
     const plugin = await connectFakePlugin({
       wsUrl: ctx.wsUrl,
       deviceKey: makeDeviceKey("DEVKEY_unknown_"),
@@ -102,6 +104,7 @@ describe("01 pair chat bill", () => {
   });
 
   it("rejects a paired device with zero balance as balance_exhausted", async () => {
+    await assertHarnessHealthy(ctx);
     const deviceKey = makeDeviceKey();
     await pairUser(ctx, { deviceKey, tier: "hobbyist", creditTokens: 0 });
     const plugin = await connectFakePlugin({ wsUrl: ctx.wsUrl, deviceKey });

@@ -45,6 +45,7 @@ const TIERS: readonly Tier[] = [
     icon: attackIcon,
     tagline: "Your main account, sorted.",
     features: [
+      "Full companion: voice, memory, reactive lines",
       "Casual daily play, no maths",
       "Full tool surface, tile marks, NPC highlights",
       "Quest, clue, slayer, bank, gear",
@@ -59,14 +60,26 @@ const TIERS: readonly Tier[] = [
     icon: slayerIcon,
     tagline: "Iron mains, GIM groups, creators.",
     features: [
-      "Heavy daily play",
-      "Deep mode on hard questions",
+      "Everything in Hobbyist",
+      "Multi-OSRS-account companion memory",
+      "Heavy daily play, deep mode on hard questions",
       "Group iron state sharing",
-      "Stream overlay mode, priority routing",
+      "Stream overlay mode",
     ],
     cta: "Choose Pro",
     checkoutSlug: "pro",
   },
+];
+
+// Iron tier is hidden from the visible grid (IA §2.7 footnote). The
+// feature copy below is rendered in the footnote so Iron's value prop
+// still reads on the page, including the boss-attempt routing call-out
+// recommended by EMBODIED_COMPANION Q-30.
+const IRON_FOOTNOTE_FEATURES: readonly string[] = [
+  "Everything in Pro",
+  "Companion priority routing. Fastest responses at boss attempts.",
+  "Deepest model escalation on the hardest steps",
+  "12-month plans, quest-cape pilots, raid prep",
 ];
 
 async function startCheckout(slug: CheckoutSlug): Promise<{ url?: string; error?: string }> {
@@ -205,20 +218,35 @@ export function PricingTiers() {
           ))}
         </ul>
 
-        <p
+        <div
           data-testid="pricing-iron-footnote"
-          className="mx-auto mt-10 max-w-3xl text-center text-sm text-osrs-text/80"
+          className="mx-auto mt-10 max-w-3xl border border-osrs-border bg-osrs-surface/40 p-6 text-sm text-osrs-text/85"
         >
-          Iron tier (£49) exists for quest cape pilots, raid prep, and
-          12-month plans. Email{" "}
-          <a
-            href="mailto:hello@tibbly.app?subject=Iron%20tier"
-            className="text-osrs-gold-dim hover:text-osrs-gold"
+          <p className="mb-3">
+            <span className="font-bold text-osrs-gold">Iron tier (£49)</span>{" "}
+            for quest cape pilots, raid prep, and 12-month plans. Email{" "}
+            <a
+              href="mailto:hello@tibbly.app?subject=Iron%20tier"
+              className="text-osrs-gold-dim hover:text-osrs-gold"
+            >
+              hello@tibbly.app
+            </a>{" "}
+            if you want it.
+          </p>
+          <ul
+            data-testid="pricing-iron-features"
+            className="grid gap-2 text-sm text-osrs-text/90 sm:grid-cols-2"
           >
-            hello@tibbly.app
-          </a>{" "}
-          if you want it.
-        </p>
+            {IRON_FOOTNOTE_FEATURES.map((feat) => (
+              <li
+                key={feat}
+                className="flex gap-2 before:text-osrs-gold-dim before:content-['+']"
+              >
+                <span>{feat}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
         <p className="mx-auto mt-4 max-w-3xl text-center text-xs text-osrs-muted">
           One paying customer covers any number of OSRS accounts. Cancel
           inside 14 days for a full refund (UK CCR Reg. 37).

@@ -32,6 +32,8 @@ then jump as needed.
 - [`product/PRICING.md`](product/PRICING.md) — tiers + sample math
 - [`product/EMBODIED_COMPANION.md`](product/EMBODIED_COMPANION.md) — strategic spec for the client-side companion entity *(loop M+9)*
 - [`product/SOCIAL_COMPANION.md`](product/SOCIAL_COMPANION.md) — social-fabric layer stacked on the solo embodied companion *(loop M+9)*
+- [`product/COMPANION_VISUAL_BIBLE.md`](product/COMPANION_VISUAL_BIBLE.md) — visual bible + 3D source pipeline for the four Probe variants *(loop M+15 / M+16, RAI-64 + RAI-71)*
+- [`product/COMPANION_3D_SOURCE.md`](product/COMPANION_3D_SOURCE.md) — CC0 3D source pick (Quaternius) + rejected runners-up + license posture for the Probe *(loop M+16, RAI-71)*
 
 ## Architecture
 
