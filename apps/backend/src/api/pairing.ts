@@ -24,6 +24,35 @@ import {
   PairingGoneError,
   PairingNotFoundError,
 } from "../auth/pairing";
+import { rateLimit, type RateLimitOptions } from "../middleware/rateLimit";
+
+/**
+ * Defaults tuned for the launch traffic shape:
+ *  - `request` — plugin pairs once per install; legitimate IPs hit this
+ *    very rarely. Tight enough to choke a code-flooding attacker without
+ *    affecting a real user.
+ *  - `claim`   — dashboard / success-page submits one code per pair. A
+ *    real user might retry on fat-finger. Tightish so a brute-force
+ *    crawl from one IP can't sweep the 6-char keyspace inside any
+ *    individual code's 10-min window.
+ *  - `redeemLink` — Stripe success URL click. One per checkout; same
+ *    profile as `claim`.
+ *
+ * Numbers are intentionally per-route: a user hitting `claim` shouldn't
+ * burn their `request` budget and vice-versa.
+ */
+const DEFAULT_REQUEST_LIMIT = { capacity: 5, refillPerSecond: 0.1 } as const;
+const DEFAULT_CLAIM_LIMIT = { capacity: 10, refillPerSecond: 0.2 } as const;
+const DEFAULT_REDEEM_LIMIT = { capacity: 10, refillPerSecond: 0.2 } as const;
+
+export interface PairingRateLimits {
+  /** POST /v1/pairing/request — plugin-side. */
+  request?: Pick<RateLimitOptions, "capacity" | "refillPerSecond"> | "off";
+  /** POST /v1/pairing/claim — dashboard / web-side. */
+  claim?: Pick<RateLimitOptions, "capacity" | "refillPerSecond"> | "off";
+  /** POST /v1/pairing/redeem-link — Stripe magic-link click. */
+  redeemLink?: Pick<RateLimitOptions, "capacity" | "refillPerSecond"> | "off";
+}
 
 export interface CreatePairingRouterOptions {
   db: DbClient;
@@ -34,6 +63,17 @@ export interface CreatePairingRouterOptions {
    * ({ code }) }` shim. Returning `null` triggers a 401 from the route.
    */
   verifyMagicLink?: (token: string) => Promise<{ code: string; email?: string } | null>;
+  /**
+   * Per-route rate-limit overrides. Pass `"off"` per-route to disable in
+   * tests, or `"off"` at top level to disable all three. Defaults are
+   * tuned for prod traffic; see comments above for the rationale.
+   */
+  rateLimits?: PairingRateLimits | "off";
+  /**
+   * Clock override forwarded to the rate-limit buckets. Tests use this
+   * to drive refill behaviour without `setTimeout`.
+   */
+  rateLimitClock?: () => number;
 }
 
 const requestSchema = z.object({
@@ -61,6 +101,24 @@ const redeemSchema = z.object({
 export function createPairingRouter(options: CreatePairingRouterOptions): Hono {
   const { db } = options;
   const app = new Hono();
+
+  // Rate-limit gates. Resolved per-route so a single `"off"` at the top
+  // wipes all three but per-route overrides are still possible.
+  const rl = options.rateLimits;
+  const requestCfg = rl === "off" ? "off" : (rl?.request ?? DEFAULT_REQUEST_LIMIT);
+  const claimCfg = rl === "off" ? "off" : (rl?.claim ?? DEFAULT_CLAIM_LIMIT);
+  const redeemCfg = rl === "off" ? "off" : (rl?.redeemLink ?? DEFAULT_REDEEM_LIMIT);
+  const clock = options.rateLimitClock;
+  const buildLimiter = (cfg: typeof requestCfg, name: string) =>
+    cfg === "off"
+      ? null
+      : rateLimit({ ...cfg, name, ...(clock ? { clock } : {}) });
+  const requestLimiter = buildLimiter(requestCfg, "pairing.request");
+  const claimLimiter = buildLimiter(claimCfg, "pairing.claim");
+  const redeemLimiter = buildLimiter(redeemCfg, "pairing.redeemLink");
+  if (requestLimiter) app.use("/request", requestLimiter);
+  if (claimLimiter) app.use("/claim", claimLimiter);
+  if (redeemLimiter) app.use("/redeem-link", redeemLimiter);
 
   /* ----- POST /request -------------------------------------------------- */
   app.post("/request", zValidator("json", requestSchema), async (c) => {
