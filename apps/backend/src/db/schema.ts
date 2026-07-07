@@ -926,3 +926,60 @@ export const companionMemories = pgTable(
 
 export type CompanionMemory = typeof companionMemories.$inferSelect;
 export type NewCompanionMemory = typeof companionMemories.$inferInsert;
+
+/* -------------------------------------------------------------------------- */
+/* auth_magic_links                                                            */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Magic-link sign-in records.
+ *
+ * One row per "send me a magic link" request. The raw token is generated
+ * server-side, sent to the user's inbox, and never stored — only its
+ * SHA-256 hash is persisted. Verifying a click means hashing the token
+ * in the URL and comparing.
+ *
+ * Hardening:
+ *  - `consumed_at` flips the row to single-use; a second click is rejected
+ *    even if the TTL hasn't elapsed.
+ *  - `pending_session_id` binds the link to the browser that requested it,
+ *    so opening the email on a phone and clicking there doesn't sign you
+ *    in on the PC tab you started from (and vice-versa). Set to NULL to
+ *    explicitly opt out (we expose this for the cross-device fallback).
+ *  - `request_ip` is logged for abuse triage; the rate-limit middleware is
+ *    the live defence, not this column.
+ */
+export const authMagicLinks = pgTable(
+  "auth_magic_links",
+  {
+    id: text("id").primaryKey().$defaultFn(newId),
+    email: text("email").notNull(),
+    /** SHA-256 hex of the raw URL token. Raw token never persisted. */
+    tokenHash: text("token_hash").notNull(),
+    /**
+     * Random opaque ID set in a `pending_auth` cookie by `/start`. The
+     * `/verify` handler refuses the link if the requesting browser
+     * doesn't present the same cookie. NULL = unbound (cross-device).
+     */
+    pendingSessionId: text("pending_session_id"),
+    /** Source IP when the link was requested. Triage only. */
+    requestIp: text("request_ip"),
+    /**
+     * Optional device-flow `user_code` chain. When set, a successful
+     * verify auto-approves the corresponding device authorization
+     * request — keeps the plugin pair flow to a single click.
+     */
+    userCode: text("user_code"),
+    consumedAt: timestamp("consumed_at", { withTimezone: true }),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("auth_magic_links_token_hash_unique").on(t.tokenHash),
+    index("auth_magic_links_email_idx").on(t.email),
+    index("auth_magic_links_expires_idx").on(t.expiresAt),
+  ],
+);
+
+export type AuthMagicLink = typeof authMagicLinks.$inferSelect;
+export type NewAuthMagicLink = typeof authMagicLinks.$inferInsert;
