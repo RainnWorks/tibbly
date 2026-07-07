@@ -24,7 +24,7 @@ describe("RouteLogin", () => {
 
   it("shows 'not authorised' on 401 from the backend", async () => {
     restore = installFetchMock({
-      "POST /api/admin/login": () => ({ ok: false, error: "unauthorized" }),
+      "POST /admin/login": () => ({ ok: false, error: "unauthorized" }),
     });
     // 401 path: override mock to return a non-OK response.
     const originalFetch = globalThis.fetch;

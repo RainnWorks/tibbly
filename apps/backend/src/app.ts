@@ -10,6 +10,8 @@
  *
  * Real routes (auth, chat WS, billing webhooks) attach in later issues.
  */
+import path from "node:path";
+
 import { Hono } from "hono";
 import { secureHeaders } from "hono/secure-headers";
 
@@ -17,6 +19,7 @@ import { createAccountRouter } from "./api/account";
 import type { CreateAccountRouterOptions } from "./api/account";
 import { createAccountsRouter } from "./api/accounts";
 import type { CreateAccountsRouterOptions } from "./api/accounts";
+import { createAuthEmailRouter, type CreateAuthEmailRouterOptions } from "./api/auth/email";
 import { createAdminCatalogRouter, type CreateAdminCatalogOptions } from "./api/admin/catalog";
 import { createAdminLoginRouter, type CreateAdminLoginOptions } from "./api/admin/login";
 import { createAdminOpenRouterRouter, type CreateAdminOpenRouterOptions } from "./api/admin/openrouter";
@@ -42,6 +45,16 @@ import { log } from "./lib/log";
 
 /** Process boot time in ms — uptime is computed from this. */
 const BOOT_AT = Date.now();
+
+/**
+ * Default `apps/ops/dist` location, resolved relative to this source file
+ * so it doesn't depend on the process cwd. From `apps/backend/src/app.ts`
+ * the relative climb is `../../../ops/dist` (src → backend → apps → ops).
+ */
+function resolveOpsStaticRoot(override?: string): string {
+  if (override) return override;
+  return path.resolve(import.meta.dir, "..", "..", "ops", "dist");
+}
 
 export interface CreateAppOptions {
   /** Override version (handy for tests). Defaults to `env.VERSION`. */
@@ -125,6 +138,22 @@ export interface CreateAppOptions {
    * deletion/export. Requires `requireUser` auth (header-gated for now).
    */
   me?: CreateMeRouterOptions | "auto";
+  /**
+   * End-user magic-link auth (Resend + JWT session cookie). Mounts at
+   * `/api/auth/*`. Omit in tests that don't exercise auth.
+   */
+  authEmail?: CreateAuthEmailRouterOptions;
+  /**
+   * Serve the built ops SPA at `/ops/*`. Defaults to ON; pass `false`
+   * for tests that just exercise the API.
+   */
+  opsStatic?: boolean;
+  /**
+   * Absolute path to the built ops `dist/` directory. Defaults to the
+   * checked-in monorepo location (`apps/ops/dist`) resolved relative to
+   * this source file.
+   */
+  opsStaticRoot?: string;
 }
 
 export function createApp(options: CreateAppOptions = {}): Hono {
@@ -221,6 +250,38 @@ export function createApp(options: CreateAppOptions = {}): Hono {
   if (options.me) {
     const meOpts = options.me === "auto" ? {} : options.me;
     app.route("/v1/me", createMeRouter(meOpts));
+  }
+
+  if (options.authEmail) {
+    app.route("/api/auth", createAuthEmailRouter(options.authEmail));
+  }
+
+  // Ops SPA — served same-origin so cookies + admin API just work.
+  // Resolves the dist dir relative to THIS source file (not cwd) so it
+  // works whether bun is started from the repo root or apps/backend/.
+  if (options.opsStatic !== false) {
+    const opsRoot = resolveOpsStaticRoot(options.opsStaticRoot);
+    app.get("/ops", (c) => c.redirect("/ops/", 308));
+    app.get("/ops/*", async (c) => {
+      const rel = c.req.path.replace(/^\/ops\/?/, "") || "index.html";
+      const filePath = path.join(opsRoot, rel);
+      // SPA fallback: only assets get served as-is; anything missing or
+      // not a static asset returns index.html so client-side routing wins.
+      const file = Bun.file(filePath);
+      if (await file.exists()) {
+        return new Response(file);
+      }
+      const indexFile = Bun.file(path.join(opsRoot, "index.html"));
+      if (await indexFile.exists()) {
+        return new Response(indexFile, {
+          headers: { "content-type": "text/html; charset=utf-8" },
+        });
+      }
+      return c.json(
+        { ok: false, error: "ops_dist_missing", hint: "run `bun run -F @osrs-llm-helper/ops build`" },
+        503,
+      );
+    });
   }
 
   app.notFound((c) => c.json({ ok: false, error: "not_found" }, 404));

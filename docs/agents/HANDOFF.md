@@ -1,6 +1,27 @@
 # Tom's wake-up briefing — 2026-06-21 afternoon
 
-*Refresh: loop M+18. Launch-blockers closed (0 critical security, 0 hub blockers, 0 currency hazard); companion build in flight; deferred items captured as RAI-68/69/70 umbrella issues. 30+ PRs merged today.*
+*Refresh: loop M+19. **Real ops login + real OpenRouter chat round-trip both proven E2E** this loop (phantom-green gap closed). Launch-blockers still 0 across all three categories. 30+ PRs merged today.*
+
+## 🟢 Live state (verified 13:29 UTC)
+
+- **Ops console:** `http://localhost:8787/ops/` — backend serves the built SPA same-origin; login with `thomas@rainn.works` mints `ops_session` cookie; all dashboard endpoints (users, openrouter spend, realtime, catalog, chat-daily) return real data.
+- **Marketing:** `http://localhost:5173/` — vite dev server still running standalone.
+- **Backend:** `:8787` — `bun --hot src/server.ts`. Drizzle migrations now auto-apply on boot. PGLite local DB has events/model_catalog/messages/etc populated.
+- **Real LLM proof:** `/tmp/probe-real-chat.ts` opens `ws://localhost:8787/ws/plugin`, auths with `DEVKEY_dev_probe001`, sends "Reply with exactly the four characters: PONG", gets back `PONG` from real OpenRouter in ~1s, 86+6 tokens, 348µUSD. Dashboard's `/admin/chat-daily` now shows the rolled-up cost (696µUSD across 2 probe runs).
+
+### What this loop fixed (Tom flagged "I still can't login on the backend / actually maybe we haven't tested it e2e")
+
+1. **Ops dev port was a dead end** — vite 5174 had no proxy to the backend on 8787, so every POST `/api/admin/login` 404'd at vite.
+2. **Phantom `/api/admin/*` prefix** — the ops client defaulted to `getBackendUrl() = "/api"` and all 7 test files mocked `/api/admin/*` URLs that the real backend never served. Tests were green; the live console had never reached the backend. Classic phantom-green pattern.
+3. **No migrations on boot** — PGLite DB was missing `events`, `model_catalog`, etc., so every gated admin endpoint 500'd against "relation does not exist."
+4. **Many routers not mounted** — server.ts only enabled `admin: "auto"` + `adminLogin` + `adminCatalog`. `adminUsers`, `adminOpenRouter`, `account`, `accounts`, `pairing`, `usage`, `me` were never instantiated.
+
+**Fix shape:** backend serves `apps/ops/dist/*` under `/ops/*` with SPA fallback (`hono` route + `Bun.file`); ops vite `base: "/ops/"` + tanstack router `basepath: "/ops"`; `getBackendUrl()` default → `""` (same-origin, no prefix); `applyMigrations()` runs on every boot; server.ts mounts every available router. Test mocks corrected to the real paths and all 12 ops tests green.
+
+### What's left on the gap Tom called out
+
+- `/admin/openrouter/spend` widget reads from `messages` table; the WS handler logs to events bus but doesn't persist to `messages`/`chats`. So that one widget shows £0 even though chat-daily shows the rolled-up cost. Real fix: have the WS handler INSERT a `chats` row on first turn + `messages` rows per turn. **Deferred to a separate PR.**
+- Plugin Kotlin compile is **NOT broken** (`./gradlew compileKotlin` → BUILD SUCCESSFUL, deprecation warnings only). The PR #83 agent's "unresolved Starter/AnimationState/Direction" report referenced a stale worktree state.
 
 ## Where we are right now (loop M+18)
 

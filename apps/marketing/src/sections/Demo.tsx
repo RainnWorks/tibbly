@@ -103,35 +103,44 @@ export function Demo() {
             </div>
           </div>
 
-          {/* Live activity panel: player-friendly proxy, no model name, no token math. */}
+          {/* What Tibbly just looked at: player-centric, not billing-centric. */}
           <aside
             className="border border-osrs-border bg-osrs-bg p-6"
-            aria-label="Live activity"
+            aria-label="What Tibbly looked at"
           >
             <p className="mb-1 font-mono text-xs uppercase tracking-widest text-osrs-gold-dim">
-              This turn
-            </p>
-            <p className="mb-5 text-3xl text-osrs-gold live-glow">
-              Deep mode.
+              Tibbly just glanced at
             </p>
 
-            <dl className="space-y-3 text-sm">
-              <div className="flex justify-between border-b border-osrs-border pb-2">
-                <dt className="text-osrs-muted">Tools called</dt>
-                <dd className="font-mono text-osrs-text">3</dd>
-              </div>
-              <div className="flex justify-between border-b border-osrs-border pb-2">
-                <dt className="text-osrs-muted">Tier</dt>
-                <dd className="font-mono text-osrs-text">Hobbyist</dd>
-              </div>
-              <div className="flex justify-between">
-                <dt className="text-osrs-muted">Today</dt>
-                <dd className="font-mono text-osrs-success">Plenty left</dd>
-              </div>
-            </dl>
+            <ul className="mt-4 space-y-3 text-sm">
+              <li className="flex items-baseline justify-between border-b border-osrs-border pb-2">
+                <span className="text-osrs-text">your quest log</span>
+                <span className="font-mono text-[10px] uppercase tracking-widest text-osrs-muted">
+                  Dragon Slayer II
+                </span>
+              </li>
+              <li className="flex items-baseline justify-between border-b border-osrs-border pb-2">
+                <span className="text-osrs-text">your gear</span>
+                <span className="font-mono text-[10px] uppercase tracking-widest text-osrs-muted">
+                  full melee
+                </span>
+              </li>
+              <li className="flex items-baseline justify-between border-b border-osrs-border pb-2">
+                <span className="text-osrs-text">your inventory</span>
+                <span className="font-mono text-[10px] uppercase tracking-widest text-osrs-muted">
+                  bones, brews, prayer pots
+                </span>
+              </li>
+              <li className="flex items-baseline justify-between">
+                <span className="text-osrs-text">the wiki page for Vorkath</span>
+                <span className="font-mono text-[10px] uppercase tracking-widest text-osrs-muted">
+                  the acid phase
+                </span>
+              </li>
+            </ul>
 
             <p className="mt-6 font-mono text-[10px] uppercase tracking-widest text-osrs-muted">
-              Capped per tier. No surprise bills.
+              You. Tibbly. The wiki. That's it.
             </p>
           </aside>
         </div>

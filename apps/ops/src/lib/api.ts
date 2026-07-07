@@ -33,7 +33,11 @@ export function getBackendUrl(): string {
   if (typeof fromEnv === "string" && fromEnv.length > 0) {
     return fromEnv.replace(/\/+$/, "");
   }
-  return "/api";
+  // Same-origin: backend serves the ops SPA AND owns /admin/* routes, so
+  // requests like apiFetch("/admin/login") land directly on the backend
+  // mount without any prefix. The legacy "/api" default was a phantom —
+  // backend never mounted routes under that prefix.
+  return "";
 }
 
 export async function apiFetch<T = unknown>(
@@ -43,15 +47,19 @@ export async function apiFetch<T = unknown>(
   const { headers, ...rest } = options;
 
   const base = getBackendUrl();
-  // jsdom's fetch refuses relative URLs; resolve against the document
-  // origin when we have one, otherwise leave the relative path alone.
-  const resolvedBase =
+  // Build the final URL without doubling a separator. `base` may be
+  // empty (same-origin, no prefix), an absolute http(s) URL, or a
+  // root-relative prefix like "/api". jsdom's fetch refuses relative
+  // URLs, so when we have a window we resolve against its origin.
+  const origin =
     base.startsWith("http") || typeof window === "undefined"
-      ? base
-      : `${window.location.origin}${base.startsWith("/") ? base : `/${base}`}`;
+      ? ""
+      : window.location.origin;
+  const normalisedBase = base === "" || base === "/" ? "" : base;
+  const normalisedPath = path.startsWith("/") ? path : `/${path}`;
   const url = path.startsWith("http")
     ? path
-    : `${resolvedBase}${path.startsWith("/") ? path : `/${path}`}`;
+    : `${origin}${normalisedBase}${normalisedPath}`;
 
   const email = getOperatorEmail();
 

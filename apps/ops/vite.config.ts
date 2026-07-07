@@ -8,6 +8,10 @@ import path from "node:path";
 // plugin array avoids a transient type mismatch across the duplicated
 // vite installs. Runtime is unaffected.
 export default defineConfig({
+  // The backend serves this SPA under /ops/* in dev and prod (single
+  // origin = no CORS, cookies just work). All built asset URLs must
+  // resolve against that prefix.
+  base: "/ops/",
   plugins: [react(), tailwindcss()] as never,
   resolve: {
     alias: {

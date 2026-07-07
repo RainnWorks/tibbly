@@ -16,7 +16,7 @@ describe("RouteOpenRouter", () => {
 
   it("renders spend tiles and per-model rows", async () => {
     restore = installFetchMock({
-      "GET /api/admin/openrouter/spend": () => ({
+      "GET /admin/openrouter/spend": () => ({
         ok: true,
         windows: {
           today: { spendMicroUsd: 100 },
@@ -32,7 +32,7 @@ describe("RouteOpenRouter", () => {
           },
         },
       }),
-      "GET /api/admin/openrouter/revenue": () => ({
+      "GET /admin/openrouter/revenue": () => ({
         ok: true,
         currency: "gbp",
         mrrPence: 1900,

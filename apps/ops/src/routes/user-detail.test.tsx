@@ -63,7 +63,7 @@ describe("RouteUserDetail", () => {
 
   it("renders identity, balance and subscription tier", async () => {
     restore = installFetchMock({
-      "GET /api/admin/users/u123": () => SAMPLE,
+      "GET /admin/users/u123": () => SAMPLE,
     });
     await renderRoute("/users/$id", "/users/u123", RouteUserDetail);
     await waitFor(() => {
