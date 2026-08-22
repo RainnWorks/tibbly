@@ -79,6 +79,13 @@ interface OsrsLlmHelperConfig : Config {
 
     fun companionEnabled(): Boolean = true
 
+    // RAI-73: keyName stays `companionStarter` to preserve persisted player
+    // configs. Player-facing copy is reframed from "Companion form" (which
+    // implied four different creatures) to "Companion personality". The
+    // visual is always the same Probe; the four values pick the voice.
+    // The row itself lives in the panel — see
+    // `co.rowm.osrsllm.ui.sections.CompanionSection`, CompanionConfig.kt
+    // KDoc and apps/plugin/docs/CONFIG.md for the post-pivot framing.
     fun companionStarter(): Starter = Starter.VETERAN
 
     fun companionName(): String = ""

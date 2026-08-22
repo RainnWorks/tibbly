@@ -10,10 +10,21 @@ package co.rowm.osrsllm.companion
  * `companionEnabled` (added below). Both default to off after consent,
  * and the wire-in refuses to instantiate the renderer until both are on.
  *
+ * **2026-06-21 framing (RAI-73, cold-OSRS-player audit RAI-72).** The
+ * companion has ONE visual identity (a floating Probe) and FOUR voice
+ * personalities. The legacy [Starter] enum is kept for backwards
+ * compatibility with persisted RuneLite configs but the player-facing
+ * label is now "Personality" (see [OsrsLlmHelperConfig.companionStarter]
+ * `name` / `description`). Player-facing copy never calls these
+ * "starters" because that word implied four different creatures, which
+ * is not what we ship. Each [Starter] value maps to a default
+ * [PersonalityArchetype] via [defaultArchetypeFor].
+ *
  * Knobs:
  *  - [companionEnabled] - master switch.
- *  - [starter] - visual form. `Veteran` (default hooded humanoid),
- *    `Fox`, `Wisp`, `Golem`.
+ *  - [starter] - persisted enum value backing the personality picker.
+ *    Defaults to [Starter.VETERAN] which surfaces as the
+ *    [PersonalityArchetype.DRY_WIKI_VETERAN] voice.
  *  - [companionName] - player-chosen nickname; passed to backend
  *    personality preamble.
  *  - [archetype] - voice archetype. Pre-set per starter but overridable.
@@ -36,9 +47,13 @@ data class CompanionConfig(
     }
 
     /**
-     * Default archetype derived from the starter when the player hasn't
-     * overridden. Used by the in-game first-run picker so the dropdown
-     * shows a sensible match.
+     * Default archetype derived from the (legacy-named) [Starter] value
+     * when the player hasn't overridden. Used by the in-game first-run
+     * picker so the dropdown shows a sensible match.
+     *
+     * Note (RAI-73): the [Starter] enum names are persisted-config-only;
+     * the player-facing label is "Personality" / "Voice" and the four
+     * values surface as the four personality archetypes below.
      */
     companion object {
         const val MIN_VERBOSITY: Int = 1

@@ -36,22 +36,22 @@ type Vignette = {
 
 const VIGNETTES: readonly Vignette[] = [
   {
-    situation: "Vorkath, phase 2 about to spawn",
+    situation: "Vorkath, zombified spawn just dropped",
     line: COMPANION_MAGICAL_LINES[0]!,
     side: "left",
   },
   {
-    situation: "Forty-five minutes into a Wintertodt AFK loop",
+    situation: "Fight Caves wave 47, two brews left",
     line: COMPANION_MAGICAL_LINES[1]!,
     side: "right",
   },
   {
-    situation: "Logs in for the first time in three days",
+    situation: "Re-opens Sins of the Father after a week off",
     line: COMPANION_MAGICAL_LINES[2]!,
     side: "left",
   },
   {
-    situation: "Banking before a fresh trip to King Black Dragon",
+    situation: "Banking for another Vorkath trip",
     line: COMPANION_MAGICAL_LINES[3]!,
     side: "right",
   },
@@ -107,9 +107,21 @@ export function Companion() {
             Your OSRS friend who actually knows what is going on.
           </h2>
           <p className="mx-auto mt-4 max-w-2xl text-osrs-text/85">
-            Tibbly is a small character that walks beside you in the
+            Tibbly is a small floating Probe that walks beside you in the
             RuneLite overlay. It watches what you watch. It speaks when
             there is something to say.
+          </p>
+          {/*
+            Honest framing (RAI-73 / audit §What bounces me #7). The
+            visual is one Probe in four chassis tints; the differentiation
+            is voice. Surfaced up front so the in-plugin config panel is
+            not a surprise.
+          */}
+          <p
+            data-testid="companion-honest-framing"
+            className="mx-auto mt-3 max-w-2xl font-mono text-xs uppercase tracking-[0.32em] text-osrs-gold-dim"
+          >
+            same Probe. four voices. you pick how it talks to you.
           </p>
         </header>
 

@@ -9,7 +9,7 @@ import co.rowm.osrsllm.ui.TibblySettings
 import javax.swing.JPanel
 
 /**
- * Companion section — variant, name, personality, verbosity, proactive
+ * Companion section — personality, name, voice override, verbosity, proactive
  * lines master toggle. The fine-grained trigger toggles (boss tips,
  * slayer hints, etc.) live in their own Triggers section.
  *
@@ -37,7 +37,14 @@ internal object CompanionSection {
             val sel = variant.selectedItem as? Starter ?: return@addActionListener
             settings.companionStarter = sel
         }
-        body.add(FormBuilder.row("Variant", variant, "Visual form. Cosmetic only — personality is separate."))
+        body.add(
+            FormBuilder.row(
+                label = "Personality",
+                input = variant,
+                help = "Same Probe, four voices. Pick the one you'd rather have next to you. " +
+                    "Wiki veteran is the default.",
+            ),
+        )
 
         val nameField = FormBuilder.textField(settings.companionName)
         nameField.addActionListener { settings.companionName = nameField.text }
@@ -55,7 +62,13 @@ internal object CompanionSection {
             val sel = personality.selectedItem as? PersonalityArchetype ?: return@addActionListener
             settings.companionArchetype = sel
         }
-        body.add(FormBuilder.row("Personality", personality, "Voice style."))
+        body.add(
+            FormBuilder.row(
+                label = "Voice override",
+                input = personality,
+                help = "Each personality has a sensible default; this dial lets you pick any voice on top.",
+            ),
+        )
 
         val verbosity = FormBuilder.slider(
             CompanionConfig.MIN_VERBOSITY,
