@@ -56,6 +56,35 @@ const EnvSchema = z.object({
    * and the boot path logs a loud warning when it is on.
    */
   ALLOW_DEV_HEADERS: z.string().optional(),
+  /**
+   * Resend API key for transactional email (magic-link sign-in, billing
+   * notifications). When unset, the email sender falls back to a
+   * console-logging stub — fine for local dev where you'd otherwise
+   * just read the printed link from the terminal. Prod refuses to send
+   * if unset.
+   */
+  RESEND_API_KEY: z.string().optional(),
+  /**
+   * From-address used for every transactional email. Must be on a
+   * domain with verified SPF + DKIM + DMARC inside the Resend dashboard,
+   * otherwise Gmail / Outlook will spam-folder every link.
+   * Default is a placeholder so local dev still boots.
+   */
+  EMAIL_FROM: z.string().email().default("Tibbly <noreply@tibbly.dev>"),
+  /**
+   * HMAC-SHA256 secret for the `tibbly_session` JWT cookie that magic-link
+   * verify mints. Distinct from `OPS_JWT_SECRET` (different audience —
+   * ops console vs end-user marketing site / plugin) so a key rotation
+   * of one doesn't invalidate the other.
+   * Length: at least 32 characters. Required in production.
+   */
+  AUTH_JWT_SECRET: z.string().optional(),
+  /**
+   * Base URL the user's browser will hit when they click a magic link.
+   * Backend prefixes verify-token paths with this. Default points at
+   * the local marketing dev server.
+   */
+  WEB_BASE_URL: z.string().url().default("http://localhost:5173"),
 });
 
 export type Env = z.infer<typeof EnvSchema>;

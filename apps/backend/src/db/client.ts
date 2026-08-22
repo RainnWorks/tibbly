@@ -10,9 +10,13 @@
  * The real schema lands in RAI-15. Until then the typed `db` instance has an
  * empty schema and only the raw drivers are useful.
  */
+import path from "node:path";
+
 import { PGlite } from "@electric-sql/pglite";
 import { drizzle as drizzlePglite } from "drizzle-orm/pglite";
+import { migrate as migratePglite } from "drizzle-orm/pglite/migrator";
 import { drizzle as drizzlePostgresJs } from "drizzle-orm/postgres-js";
+import { migrate as migratePostgresJs } from "drizzle-orm/postgres-js/migrator";
 import postgres from "postgres";
 
 import { env } from "../env";
@@ -80,4 +84,33 @@ let cached: DbHandle | undefined;
 export function getDb(): DbHandle {
   if (!cached) cached = createDb();
   return cached;
+}
+
+/**
+ * Resolve the on-disk `migrations/` directory relative to this source
+ * file so it works regardless of the runtime cwd. From
+ * `apps/backend/src/db/client.ts` the climb is `../../migrations`.
+ */
+function resolveMigrationsFolder(): string {
+  return path.resolve(import.meta.dir, "..", "..", "migrations");
+}
+
+/**
+ * Apply pending Drizzle migrations. Safe to call on every boot —
+ * `drizzle.__drizzle_migrations` tracks the journal so already-applied
+ * files are skipped. Returns the absolute folder it scanned so logs
+ * stay self-explaining.
+ */
+export async function applyMigrations(handle: DbHandle = getDb()): Promise<string> {
+  const folder = resolveMigrationsFolder();
+  if (handle.driver === "pglite") {
+    await migratePglite(handle.db as ReturnType<typeof drizzlePglite<AppSchema>>, {
+      migrationsFolder: folder,
+    });
+  } else {
+    await migratePostgresJs(handle.db as ReturnType<typeof drizzlePostgresJs<AppSchema>>, {
+      migrationsFolder: folder,
+    });
+  }
+  return folder;
 }

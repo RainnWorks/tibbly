@@ -1,21 +1,26 @@
 package co.rowm.osrsllm
 
 import net.runelite.client.config.ConfigItem
-import net.runelite.client.config.ConfigSection
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * Pin the BYOK config surface — the player-facing dropdown, the secret key
- * field, the section grouping, and the `chatMode()` round-trip — so a future
- * refactor can't silently break the hub-release strategy (Tier 2 BYO).
+ * Pin the BYOK config surface — default values, the `chatMode()`
+ * round-trip, and the secret-leak shield — so a future refactor can't
+ * silently break the hub-release strategy (Tier 2 BYO).
  *
- * Each test is a load-bearing invariant. If you change one of these you are
- * almost certainly also touching `docs/runelite-hub/DATA_DISCLOSURE.md` and
- * `docs/architecture/HUB_RELEASE_STRATEGY.md` — keep them in sync.
+ * History: this used to assert annotation invariants on the legacy
+ * RuneLite-rendered config form (every getter carried `@ConfigItem`,
+ * the API-key field was `secret = true`, etc.). The whole settings UI
+ * moved inside the plugin panel (see `co.rowm.osrsllm.ui.TibblyPanel`)
+ * so only ONE `@ConfigItem` remains — a pointer that tells the player
+ * where the real settings live. The reflected invariants below pin
+ * that pointer plus the absence of the legacy decorations, and the
+ * separate `TibblyPanelTest` covers the password-masked rendering.
  */
 class OsrsLlmHelperConfigTest {
 
@@ -49,41 +54,31 @@ class OsrsLlmHelperConfigTest {
         assertFalse(cfg.byoTelemetryOptIn())
     }
 
-    // -------------------------------------------------------------------------
-    // ChatMode enum round-trip — every variant parses both ways.
-    // -------------------------------------------------------------------------
-
     @Test
-    fun `every ChatModeChoice round-trips to a ChatMode subtype`() {
-        for (choice in ChatModeChoice.values()) {
-            val mode = choice.toChatMode()
-            assertEquals(
-                "config value mismatch for $choice",
-                choice.configValue,
-                mode.configValue,
-            )
-            assertEquals(
-                "fromConfigValue round-trip failed for $choice",
-                mode,
-                ChatMode.fromConfigValue(choice.configValue),
-            )
-        }
+    fun `consentAccepted defaults to false`() {
+        val cfg = StubConfig()
+        assertFalse(cfg.consentAccepted())
     }
 
     @Test
-    fun `ChatMode-fromConfigValue is lenient on unknown input`() {
-        // An unknown / hand-edited config string must NEVER throw. The plugin
-        // would crash before showing the consent dialog. Default to Cloud and
-        // let the startup logger flag the typo.
-        assertEquals(ChatMode.Cloud, ChatMode.fromConfigValue(null))
-        assertEquals(ChatMode.Cloud, ChatMode.fromConfigValue(""))
-        assertEquals(ChatMode.Cloud, ChatMode.fromConfigValue("not-a-mode"))
+    fun `cloudChatEnabled defaults to false`() {
+        val cfg = StubConfig()
+        assertFalse(cfg.cloudChatEnabled())
     }
 
     @Test
-    fun `ChatMode-fromConfigValue is whitespace and case tolerant`() {
-        assertEquals(ChatMode.ByoOpenAi, ChatMode.fromConfigValue(" BYO-OPENAI "))
-        assertEquals(ChatMode.ByoOpenRouter, ChatMode.fromConfigValue("Byo-OpenRouter"))
+    fun `backendUrl defaults to a wss URL`() {
+        val cfg = StubConfig()
+        assertTrue(
+            "backend URL must be wss:// — plaintext is rejected at startup",
+            cfg.backendUrl().startsWith("wss://"),
+        )
+    }
+
+    @Test
+    fun `developerMode defaults to false`() {
+        val cfg = StubConfig()
+        assertFalse(cfg.developerMode())
     }
 
     @Test
@@ -96,56 +91,62 @@ class OsrsLlmHelperConfigTest {
     }
 
     // -------------------------------------------------------------------------
-    // RuneLite annotation invariants — the bits the hub reviewer eyeballs.
+    // New invariants — the settings-live-in-panel pivot.
     // -------------------------------------------------------------------------
 
     @Test
-    fun `byoApiKey is annotated secret = true`() {
-        val method = OsrsLlmHelperConfig::class.java.getMethod("byoApiKey")
-        val item = method.getAnnotation(ConfigItem::class.java)
-        assertNotNull("byoApiKey() must carry a @ConfigItem annotation", item)
+    fun `settings-live-in-panel pointer item exists and is the only ConfigItem`() {
+        val configItemMethods = OsrsLlmHelperConfig::class.java.methods
+            .filter { it.getAnnotation(ConfigItem::class.java) != null }
+        assertEquals(
+            "exactly one @ConfigItem is permitted on the config — the panel pointer",
+            1,
+            configItemMethods.size,
+        )
+        val pointer = configItemMethods.single()
+        val annotation = pointer.getAnnotation(ConfigItem::class.java)
+        assertEquals(
+            "the surviving @ConfigItem must be the panel pointer",
+            "_settingsLiveInPanel",
+            annotation.keyName,
+        )
         assertTrue(
-            "byoApiKey() must be annotated secret = true so RuneLite renders it password-masked",
-            item.secret,
+            "pointer description must direct the player into the panel",
+            annotation.description.contains("panel"),
         )
     }
 
     @Test
-    fun `byoApiKey lives in the chat-mode section`() {
-        val method = OsrsLlmHelperConfig::class.java.getMethod("byoApiKey")
-        val item = method.getAnnotation(ConfigItem::class.java)
-        assertEquals(CHAT_MODE_SECTION, item.section)
-    }
-
-    @Test
-    fun `chat-mode section annotation is present`() {
-        val sections = OsrsLlmHelperConfig::class.java.declaredFields
-            .mapNotNull { it.getAnnotation(ConfigSection::class.java) }
-        // The annotation lives on the synthetic field for the `val chatModeSection`
-        // property. We can't easily look it up by getter (interface vals on JVM
-        // become methods, but the annotation target is FIELD on the impl) — so
-        // we look at the underlying chatMode-grouped @ConfigItem section ids and
-        // additionally verify the constant exists.
-        val byApiKeyItem = OsrsLlmHelperConfig::class.java
-            .getMethod("byoApiKey")
-            .getAnnotation(ConfigItem::class.java)
-        val chatModeItem = OsrsLlmHelperConfig::class.java
-            .getMethod("chatModeChoice")
-            .getAnnotation(ConfigItem::class.java)
-        assertEquals(byApiKeyItem.section, chatModeItem.section)
-        assertEquals(CHAT_MODE_SECTION, byApiKeyItem.section)
-        // Quiet "unused": sections list is read only for the side effect of
-        // proving the annotation class loads on the test classpath.
-        assertNotNull(sections)
-    }
-
-    @Test
-    fun `secret flag is false on non-secret fields`() {
-        // Spot-check a sibling so we know the reflection actually reads the
-        // annotation rather than constant-folding `true`.
-        val method = OsrsLlmHelperConfig::class.java.getMethod("byoModel")
-        val item = method.getAnnotation(ConfigItem::class.java)
-        assertFalse("byoModel is not secret", item.secret)
+    fun `legacy settings methods are no longer decorated with @ConfigItem`() {
+        // Pick representative legacy settings: each used to carry a
+        // @ConfigItem; the new shape persists them via ConfigManager
+        // through TibblySettings.
+        val keys = listOf(
+            "consentAccepted",
+            "cloudChatEnabled",
+            "backendUrl",
+            "chatModeChoice",
+            "byoApiKey",
+            "byoModel",
+            "byoTelemetryOptIn",
+            "companionEnabled",
+            "companionStarter",
+            "companionName",
+            "companionArchetype",
+            "companionSpeechVerbosity",
+            "companionProactiveTriggersEnabled",
+            "developerMode",
+            "localMcpEnabled",
+            "localMcpHost",
+            "localMcpPort",
+        )
+        for (k in keys) {
+            val m = OsrsLlmHelperConfig::class.java.getMethod(k)
+            assertNull(
+                "legacy form should be stripped — $k still has @ConfigItem",
+                m.getAnnotation(ConfigItem::class.java),
+            )
+        }
     }
 
     // -------------------------------------------------------------------------
@@ -154,10 +155,6 @@ class OsrsLlmHelperConfigTest {
 
     @Test
     fun `key value never appears in stringified config snapshot`() {
-        // We construct a snapshot the same way the plugin would for logs,
-        // diagnostics, or audit dumps — by stringifying each getter result.
-        // The byoApiKey value MUST be excluded by callers; this test pins
-        // the policy.
         val leaked = "sk-LEAK-this-must-never-appear"
         val cfg = StubConfig(byoApiKeyValue = leaked)
         val snapshot = stringifySnapshot(cfg)
@@ -172,22 +169,12 @@ class OsrsLlmHelperConfigTest {
     }
 
     // -------------------------------------------------------------------------
-    // Helpers — a hand-rolled stub of the Config interface for default-value
-    // checks. RuneLite's ConfigManager is not on the test classpath, so we
-    // exercise the interface defaults directly.
+    // Helpers.
     // -------------------------------------------------------------------------
 
-    /**
-     * Stub implementation that takes all default-method values. Default
-     * methods on Kotlin interfaces with `= …` are compiled to method bodies
-     * on the interface class, so calling them through a concrete subtype is
-     * the cleanest way to assert defaults without instantiating ConfigManager.
-     */
     private class StubConfig(
         private val byoApiKeyValue: String = "",
     ) : OsrsLlmHelperConfig {
-        // Override only the leak-test path. Every other getter falls through
-        // to the interface default declared in [OsrsLlmHelperConfig].
         override fun byoApiKey(): String = byoApiKeyValue
     }
 
@@ -203,9 +190,12 @@ class OsrsLlmHelperConfigTest {
         appendLine("chatMode=${cfg.chatMode()::class.simpleName}")
         appendLine("byoModel=${cfg.byoModel()}")
         appendLine("byoTelemetryOptIn=${cfg.byoTelemetryOptIn()}")
-        // NOTE: byoApiKey() is deliberately NOT included. That's the policy
-        // this test pins — secret fields stay out of stringified snapshots.
+        // NOTE: byoApiKey() is deliberately NOT included.
         appendLine("developerMode=${cfg.developerMode()}")
         appendLine("localMcpEnabled=${cfg.localMcpEnabled()}")
+    }
+
+    init {
+        assertNotNull("guard against the StubConfig test helper being optimised out", StubConfig::class.java)
     }
 }

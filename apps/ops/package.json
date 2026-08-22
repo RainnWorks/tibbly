@@ -5,7 +5,8 @@
   "description": "Tibbly internal ops console (React + Vite + Tailwind): user search, ban toggle, refund/credit-grant, paying-customer debug, RAI-37 analytics. Whole-site auth-gated; not for end users. See docs/agents/DECISION_LOG.md D-8.",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "vite build --watch",
+    "dev:standalone": "vite",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "test": "vitest run",

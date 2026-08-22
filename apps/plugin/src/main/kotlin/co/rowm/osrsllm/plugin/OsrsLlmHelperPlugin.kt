@@ -4,7 +4,10 @@ import co.rowm.osrsllm.ChatMode
 import co.rowm.osrsllm.GameStateStore
 import co.rowm.osrsllm.LoggingSetup
 import co.rowm.osrsllm.OsrsLlmHelperConfig
-import co.rowm.osrsllm.OsrsLlmHelperPanel
+// OsrsLlmHelperPanel was the legacy status sidebar — folded into
+// `TibblyPanel`. Left out of the imports intentionally; the class still
+// exists on disk for the rollback path until the deletion lands.
+// import co.rowm.osrsllm.OsrsLlmHelperPanel
 import co.rowm.osrsllm.banktags.BankTagService
 import co.rowm.osrsllm.chat.ChatBackend
 import co.rowm.osrsllm.chat.ChatBackendSelector
@@ -124,7 +127,6 @@ class OsrsLlmHelperPlugin : Plugin() {
     @Inject private lateinit var deviceKey: DeviceKey
 
     private var navButton: NavigationButton? = null
-    private var panel: OsrsLlmHelperPanel? = null
     private var chatNavButton: NavigationButton? = null
     private var chatPanel: ChatPanel? = null
     private var managedNavButton: NavigationButton? = null
@@ -197,17 +199,6 @@ class OsrsLlmHelperPlugin : Plugin() {
         eventBus.register(hitsplatHistoryService)
         eventBus.register(widgetTracker)
 
-        val sidebar = OsrsLlmHelperPanel(gameStateStore, pairingFlow)
-        panel = sidebar
-        val button = NavigationButton.builder()
-            .tooltip("OSRS LLM Helper")
-            .icon(createStatusIcon())
-            .priority(7)
-            .panel(sidebar)
-            .build()
-        navButton = button
-        clientToolbar.addNavigation(button)
-
         // Build the chat-panel backend. The legacy local `claude -p` subprocess path
         // was removed ahead of the RuneLite Plugin Hub submission (audit blocker 1 —
         // subprocess invocation is forbidden in production source). The shipped
@@ -230,14 +221,24 @@ class OsrsLlmHelperPlugin : Plugin() {
         activeBackendSelector = backendSelector
         val chat = ChatPanel(chatStore, backendSelector)
         chatPanel = chat
-        val chatBtn = NavigationButton.builder()
-            .tooltip("OSRS LLM Chat")
+
+        // Unified Tibbly side panel — chat + cog-toggled config in one
+        // navigation button. Replaces the legacy split between the
+        // status panel, the chat panel, and the standalone account
+        // panel (all three folded inside `TibblyConfigView`).
+        val settings = co.rowm.osrsllm.ui.TibblySettings(
+            config,
+            co.rowm.osrsllm.ui.SettingsSink.forConfigManager(configManager),
+        )
+        val tibblyPanel = co.rowm.osrsllm.ui.TibblyPanel(chat, settings, pairingFlow)
+        val tibblyBtn = NavigationButton.builder()
+            .tooltip("Tibbly")
             .icon(createChatIcon())
-            .priority(8)
-            .panel(chat)
+            .priority(7)
+            .panel(tibblyPanel)
             .build()
-        chatNavButton = chatBtn
-        clientToolbar.addNavigation(chatBtn)
+        chatNavButton = tibblyBtn
+        clientToolbar.addNavigation(tibblyBtn)
 
         // No local listening socket exists in this build. The `local/McpServerService`
         // class is excluded from the shipped artifact by the shadowJar configuration
@@ -566,8 +567,6 @@ class OsrsLlmHelperPlugin : Plugin() {
         chatNavButton = null
         managedNavButton = null
         accountNavButton = null
-        panel?.stop()
-        panel = null
         chatPanel?.detach()
         chatPanel = null
         managedPanel?.detach()

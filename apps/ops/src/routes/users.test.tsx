@@ -16,7 +16,7 @@ describe("RouteUsers", () => {
 
   it("renders an empty state when there are no users", async () => {
     restore = installFetchMock({
-      "GET /api/admin/users": () => ({
+      "GET /admin/users": () => ({
         ok: true,
         rows: [],
         total: 0,
@@ -34,7 +34,7 @@ describe("RouteUsers", () => {
 
   it("renders rows with email and balance", async () => {
     restore = installFetchMock({
-      "GET /api/admin/users": () => ({
+      "GET /admin/users": () => ({
         ok: true,
         rows: [
           {

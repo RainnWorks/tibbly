@@ -16,7 +16,7 @@ describe("RouteAnalytics", () => {
 
   it("renders the tool-usage and funnel cards", async () => {
     restore = installFetchMock({
-      "GET /api/admin/tool-usage": () => ({
+      "GET /admin/tool-usage": () => ({
         ok: true,
         summary: {
           totalCalls: 42,
@@ -24,11 +24,11 @@ describe("RouteAnalytics", () => {
           byTool: { get_inventory: 30, get_bank: 12 },
         },
       }),
-      "GET /api/admin/funnel": () => ({
+      "GET /admin/funnel": () => ({
         ok: true,
         summary: { byStep: { first_message: 14, first_paid: 3 } },
       }),
-      "GET /api/admin/errors": () => ({
+      "GET /admin/errors": () => ({
         ok: true,
         summary: { byKind: { openrouter: 1 } },
       }),

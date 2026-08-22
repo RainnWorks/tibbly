@@ -16,7 +16,7 @@ describe("RouteDashboard", () => {
 
   it("renders MRR and spend stat tiles", async () => {
     restore = installFetchMock({
-      "GET /api/admin/openrouter/spend": () => ({
+      "GET /admin/openrouter/spend": () => ({
         ok: true,
         windows: {
           today: { spendMicroUsd: 1_234_567 },
@@ -32,7 +32,7 @@ describe("RouteDashboard", () => {
           },
         },
       }),
-      "GET /api/admin/openrouter/revenue": () => ({
+      "GET /admin/openrouter/revenue": () => ({
         ok: true,
         currency: "gbp",
         mrrPence: 4_900,
@@ -43,14 +43,14 @@ describe("RouteDashboard", () => {
         approxWeek: { revenuePence: 1142 },
         approxMonth: { revenuePence: 4900 },
       }),
-      "GET /api/admin/realtime": () => ({
+      "GET /admin/realtime": () => ({
         ok: true,
         windowSeconds: 60,
         eventCount: 7,
         byType: { "chat.message.sent": 5, "auth.pairing.claimed": 2 },
         connectedPlugins: 4,
       }),
-      "GET /api/admin/chat-daily": () => ({
+      "GET /admin/chat-daily": () => ({
         ok: true,
         range: { since: "2026-05-22", until: "2026-06-21" },
         rows: [],

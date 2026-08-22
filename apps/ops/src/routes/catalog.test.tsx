@@ -16,7 +16,7 @@ describe("RouteCatalog", () => {
 
   it("renders the table from the mocked /admin/catalog/models response", async () => {
     restore = installFetchMock({
-      "GET /api/admin/catalog/models": () => ({
+      "GET /admin/catalog/models": () => ({
         ok: true,
         count: 2,
         models: [
@@ -48,7 +48,7 @@ describe("RouteCatalog", () => {
           },
         ],
       }),
-      "GET /api/admin/catalog/diff": () => ({
+      "GET /admin/catalog/diff": () => ({
         ok: true,
         since: new Date().toISOString(),
         threshold: 0.1,
@@ -68,12 +68,12 @@ describe("RouteCatalog", () => {
 
   it("shows added / retired / price-change groups from the diff endpoint", async () => {
     restore = installFetchMock({
-      "GET /api/admin/catalog/models": () => ({
+      "GET /admin/catalog/models": () => ({
         ok: true,
         count: 0,
         models: [],
       }),
-      "GET /api/admin/catalog/diff": () => ({
+      "GET /admin/catalog/diff": () => ({
         ok: true,
         since: new Date().toISOString(),
         threshold: 0.1,
@@ -115,12 +115,12 @@ describe("RouteCatalog", () => {
   it("triggers a POST when the refresh button is clicked", async () => {
     let refreshCount = 0;
     restore = installFetchMock({
-      "GET /api/admin/catalog/models": () => ({
+      "GET /admin/catalog/models": () => ({
         ok: true,
         count: 0,
         models: [],
       }),
-      "GET /api/admin/catalog/diff": () => ({
+      "GET /admin/catalog/diff": () => ({
         ok: true,
         since: new Date().toISOString(),
         threshold: 0.1,
@@ -128,7 +128,7 @@ describe("RouteCatalog", () => {
         retired: [],
         priceChanges: [],
       }),
-      "POST /api/admin/catalog/refresh": () => {
+      "POST /admin/catalog/refresh": () => {
         refreshCount += 1;
         return { ok: true, added: 2, updated: 5, retired: 1 };
       },

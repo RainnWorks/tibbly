@@ -1,6 +1,6 @@
 /**
  * Install a route-matched fetch mock for the duration of a test. The
- * `handlers` map is { "GET /api/admin/users": () => responseJson, ... }.
+ * `handlers` map is { "GET /admin/users": () => responseJson, ... }.
  *
  * Match key is `${METHOD} ${url.pathname}` so query strings are
  * ignored.

@@ -13,7 +13,7 @@ import { warnIfDevHeadersOn } from "./api/_auth";
 import { createApp } from "./app";
 import { createTokenMeter } from "./billing/meter";
 import { meterToBalancePort } from "./billing/ws-adapter";
-import { getDb } from "./db/client";
+import { applyMigrations, getDb } from "./db/client";
 import { env } from "./env";
 import { startAggregationCron } from "./events/aggregate";
 import { attachEventPersister, getDefaultBus } from "./events";
@@ -35,6 +35,19 @@ const presenceTracker = getDefaultPresenceTracker();
 // RAI-37: spin up the analytics pipeline. The bus + persister + crons are
 // in-process; an external bus swap-in stays a future concern.
 const { db } = getDb();
+
+// Apply pending Drizzle migrations on every boot. Idempotent — the
+// __drizzle_migrations journal table tracks what's applied. Without this
+// the dev PGLite DB never gets the `events`, `model_catalog`, `users`,
+// etc. tables, and every admin endpoint 500s.
+await applyMigrations().then(
+  (folder) => log.info({ folder }, "db: migrations applied"),
+  (err) => {
+    log.error({ err: { message: (err as Error).message } }, "db: migrations failed");
+    throw err;
+  },
+);
+
 attachEventPersister(getDefaultBus(), { db });
 const aggregationCron = startAggregationCron({ db });
 const retentionCron = startRetentionCron({ db });
@@ -58,8 +71,15 @@ const balanceMeter: BalanceMeter = useRealMeter ? meterToBalancePort(meter) : de
 const app = createApp({
   admin: "auto",
   adminLogin: "auto",
-  presence: { tracker: presenceTracker },
+  adminUsers: { db },
+  adminOpenRouter: { db },
   adminCatalog: { db },
+  presence: { tracker: presenceTracker },
+  account: { db },
+  accounts: { db },
+  pairing: { db },
+  usage: { db },
+  me: "auto",
   ...(useRealMeter ? { stripeWebhook: { db, meter, bus: getDefaultBus() } } : {}),
 });
 

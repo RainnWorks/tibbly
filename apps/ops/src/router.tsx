@@ -71,6 +71,8 @@ const routeTree = rootRoute.addChildren([
 export const router = createRouter({
   routeTree,
   defaultPreload: "intent",
+  // Backend serves this SPA under /ops/*; matches vite.config.ts `base`.
+  basepath: "/ops",
 });
 
 declare module "@tanstack/react-router" {
