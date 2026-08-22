@@ -41,6 +41,7 @@
 import { sql } from "drizzle-orm";
 import {
   bigint,
+  check,
   date,
   doublePrecision,
   index,
@@ -513,11 +514,25 @@ export type NewTokenBalance = typeof tokenBalances.$inferInsert;
  * against this table before crediting tokens; a double-replay returns "already
  * processed" and credits exactly zero. PK on `event_id` enforces the contract.
  */
-export const processedStripeEvents = pgTable("processed_stripe_events", {
-  eventId: text("event_id").primaryKey(),
-  eventType: text("event_type").notNull(),
-  processedAt: timestamp("processed_at", { withTimezone: true }).notNull().defaultNow(),
-});
+export const processedStripeEvents = pgTable(
+  "processed_stripe_events",
+  {
+    eventId: text("event_id").primaryKey(),
+    eventType: text("event_type").notNull(),
+    processedAt: timestamp("processed_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    /**
+     * RAI-59: bound the dedup key. A malformed webhook payload must not be
+     * able to push a multi-megabyte string into the PK btree. Migration
+     * `0006_rai59_migration_safety.sql`.
+     */
+    eventIdShape: check(
+      "processed_stripe_events_event_id_shape",
+      sql`${table.eventId} ~ '^evt_[A-Za-z0-9_-]+$' AND length(${table.eventId}) <= 64`,
+    ),
+  }),
+);
 
 export type ProcessedStripeEvent = typeof processedStripeEvents.$inferSelect;
 export type NewProcessedStripeEvent = typeof processedStripeEvents.$inferInsert;
@@ -583,7 +598,7 @@ export const metricsToolUsageDaily = pgTable(
       .default(sql`now()`),
   },
   (table) => ({
-    pk: index("metrics_tool_usage_daily_pk").on(
+    pk: uniqueIndex("metrics_tool_usage_daily_pk").on(
       table.date,
       table.toolName,
       table.family,
@@ -614,7 +629,7 @@ export const metricsChatDaily = pgTable(
       .default(sql`now()`),
   },
   (table) => ({
-    pk: index("metrics_chat_daily_pk").on(table.date, table.userId),
+    pk: uniqueIndex("metrics_chat_daily_pk").on(table.date, table.userId),
     dateIdx: index("metrics_chat_daily_date_idx").on(table.date),
   }),
 );
@@ -638,7 +653,7 @@ export const metricsFunnelDaily = pgTable(
       .default(sql`now()`),
   },
   (table) => ({
-    pk: index("metrics_funnel_daily_pk").on(table.date, table.step),
+    pk: uniqueIndex("metrics_funnel_daily_pk").on(table.date, table.step),
   }),
 );
 
@@ -659,7 +674,7 @@ export const metricsErrorsDaily = pgTable(
       .default(sql`now()`),
   },
   (table) => ({
-    pk: index("metrics_errors_daily_pk").on(table.date, table.kind),
+    pk: uniqueIndex("metrics_errors_daily_pk").on(table.date, table.kind),
   }),
 );
 
