@@ -127,6 +127,15 @@ async function post(
   );
 }
 
+/**
+ * Stripe event ids are `evt_` + an alphanumeric token — the shape the
+ * `processed_stripe_events_event_id_shape` CHECK (RAI-59) enforces. Keep the
+ * fixtures on that shape rather than dotted `Math.random()` output.
+ */
+function randomSuffix(): string {
+  return Math.random().toString(36).slice(2, 12);
+}
+
 function subEvent(
   type: "customer.subscription.created" | "customer.subscription.updated" | "customer.subscription.deleted",
   overrides: Partial<{
@@ -138,7 +147,7 @@ function subEvent(
     cancelAtPeriodEnd: boolean;
   }> = {},
 ): Stripe.Event {
-  const id = overrides.id ?? `evt_${type.replace(/\./g, "_")}_${Math.random()}`;
+  const id = overrides.id ?? `evt_${type.replace(/\./g, "_")}_${randomSuffix()}`;
   const subscriptionId = overrides.subscriptionId ?? "sub_test_001";
   const customerId = overrides.customerId ?? "cus_test_001";
   const priceId = overrides.priceId ?? ENV_FIXTURE.STRIPE_PRICE_PRO;
@@ -184,7 +193,7 @@ function invoiceEvent(
     priceId: string;
   }> = {},
 ): Stripe.Event {
-  const id = overrides.id ?? `evt_${type.replace(/\./g, "_")}_${Math.random()}`;
+  const id = overrides.id ?? `evt_${type.replace(/\./g, "_")}_${randomSuffix()}`;
   return {
     id,
     type,

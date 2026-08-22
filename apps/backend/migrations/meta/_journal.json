@@ -43,6 +43,13 @@
       "when": 1782386533945,
       "tag": "0005_auth_magic_links",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1782500000000,
+      "tag": "0006_rai59_migration_safety",
+      "breakpoints": true
     }
   ]
 }
