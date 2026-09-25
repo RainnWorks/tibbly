@@ -8,11 +8,11 @@ The three release images are in `assets/`:
 | `hero.png`         | 1800 × 1000 | `hero.svg`         |
 | `how-it-works.png` | 1800 × 700  | `how-it-works.svg` |
 
-All artwork is vector-authored, including the probe, gear, original sprite-like
-key piece and pendant, text, and arrows. No image-generation model was used.
-`prompts.md` preserves the exact supplied design brief. The hero is an illustrated
-panel using the requested branding and controls from `TibblyPanel.kt` and
-`ChatPanel.kt`.
+Panels, text, lines, the probe and gear are vector-authored. The hero embeds real
+item sprites from `items/`, scaled with nearest-neighbour sampling. No
+image-generation model was used. `prompts.md` preserves both supplied design
+briefs. The hero illustrates the Tibbly panel creating a Vorkath Bank Tags tab,
+with eleven worn-equipment items and a 28-slot inventory.
 
 ## Rebuild
 
@@ -24,8 +24,9 @@ node assets/src/generate.mjs
 node assets/src/render.mjs
 ```
 
-`generate.mjs` contains the editable geometry, text, colors and item art. It writes
-three self-contained SVGs, embedding the bundled fonts for browser previews.
+`generate.mjs` contains the editable geometry, text, colors and item placements.
+It writes three self-contained SVGs, embedding the bundled fonts and item PNGs
+for offline browser previews.
 `render.mjs` rasterizes those SVGs with the locked version of resvg and explicitly
 loads the bundled fonts; system fonts and network access are not used to render.
 To rasterize a directly edited SVG, run only `render.mjs`.
@@ -37,6 +38,20 @@ node assets/src/render.mjs --previews
 This also writes review copies under `/tmp/tibbly-images-review/`: the icon at
 16, 32 and 128 px, the hero at 390 and 900 px wide, and the workflow at 900 px wide.
 The icon has transparent corners outside its rounded brown background.
+
+## Item sprites
+
+Item sprites: [OSRS Wiki](https://oldschool.runescape.wiki/)
+([CC BY-NC-SA 3.0](https://creativecommons.org/licenses/by-nc-sa/3.0/));
+Old School RuneScape item artwork © Jagex Ltd.
+
+The 16 original PNGs are bundled in `items/`. Each was downloaded with a
+`Tibbly-README-assets/1.0` User-Agent and checked for an `image/png` response.
+Source URLs are `https://oldschool.runescape.wiki/images/` plus the filename
+(URL-encoded as needed). The bolts use `Ruby_dragon_bolts_(e)_5.png`, the stack
+sprite. Sprites are embedded without alteration and displayed at 2× native size;
+SVG nearest-neighbour rendering preserves their pixels. Rebuilding does not
+fetch any assets.
 
 ## Fonts
 
@@ -58,7 +73,12 @@ Exact download URLs:
 
 ## Visual review
 
-The final PNGs were reviewed with `view_image`, including the icon at actual
+The revised hero was reviewed with `view_image` at 1800, 900 and 390 px wide.
+Its equipment positions and 4 × 7 inventory order were checked; the icon and
+workflow remain byte-for-byte unchanged. A repeat build produced identical
+hero SVG and PNG files, and a pixel check confirmed nearest-neighbour scaling.
+
+The original PNGs were reviewed with `view_image`, including the icon at actual
 16 px and 32 px and the hero at 390 px and 900 px wide. The workflow has five
 boxes, an explicit conditional branch after Model, and separate request and
 return arrows. The RuneLite plugin box has a gold border. All prescribed chat

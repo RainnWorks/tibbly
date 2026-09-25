@@ -1,4 +1,4 @@
-// All artwork, typography, marks and connectors are authored SVG.
+// Panels, typography, marks and connectors are authored SVG; item sprites are bundled PNGs.
 import { readFileSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 const root = fileURLToPath(new URL(".", import.meta.url));
@@ -25,8 +25,6 @@ const probe = (x, y, r, stroke = 3) =>
 const svg = (w, h, title, desc, body) =>
   `<?xml version="1.0" encoding="UTF-8"?>\n<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" role="img" aria-labelledby="title desc"><title id="title">${esc(title)}</title><desc id="desc">${esc(desc)}</desc><defs><style>${css}</style><marker id="arrow" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="10" markerHeight="10" orient="auto"><path d="M2 2 L10 6 L2 10" fill="none" stroke="${C.gold}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></marker></defs>${body}</svg>\n`;
 const background = (w, h) => `<rect width="${w}" height="${h}" fill="${C.bg}"/>`;
-const key = `<g shape-rendering="crispEdges"><path d="M8 18 H24 V8 H48 V16 H60 V36 H50 V48 H38 V62 H48 V74 H36 V66 H24 V78 H12 V64 H20 V52 H28 V40 H16 V32 H8Z" fill="#795323"/><path d="M12 18 H28 V12 H46 V20 H54 V34 H44 V46 H32 V60 H40 V66 H32 V60 H24 V70 H18 V62 H24 V50 H34 V36 H20 V28 H12Z" fill="#C79B54"/><path d="M26 20 H42 V32 H26Z" fill="#251B07"/><path d="M14 18 H24 V22 H14Z M30 12 H44 V16 H30Z M22 50 H30 V56 H22Z" fill="#E8C780"/></g>`;
-const pendant = `<g shape-rendering="crispEdges"><path d="M10 6 H18 V14 H10Z M18 14 H26 V30 H18Z M26 30 H34 V46 H26Z M58 6 H66 V14 H58Z M50 14 H58 V30 H50Z M42 30 H50 V46 H42Z M30 42 H46 V54 H30Z" fill="#C99A43"/><path d="M26 52 H50 V60 H58 V80 H50 V88 H26 V80 H18 V60 H26Z" fill="#E8B33C"/><path d="M28 58 H48 V64 H52 V76 H44 V82 H30 V76 H24 V64Z" fill="#AB3D32"/><path d="M28 58 H42 V66 H28 V74 H24 V64Z" fill="#DF7960"/><path d="M42 66 H52 V76 H44 V82 H32 V76 H42Z" fill="#722E24"/></g>`;
 // One contour: a circular probe whose lower-left edge becomes a speech tail.
 const icon = `<rect width="1024" height="1024" rx="224" fill="${C.bg}"/><path d="M512 232 A264 264 0 1 1 365 715 L244 780 L285 641 A264 264 0 0 1 512 232Z" fill="none" stroke="${C.gold}" stroke-width="64" stroke-linejoin="round"/><circle cx="512" cy="496" r="80" fill="${C.gold}"/>`;
 writeFileSync(
@@ -39,65 +37,90 @@ writeFileSync(
     icon,
   ),
 );
+// Embed the original Wiki PNGs at an integer scale with nearest-neighbour sampling.
+// optimizeSpeed is the SVG nearest-neighbour hint supported by the resvg pipeline.
+// PNG IHDR dimensions keep differently sized item sprites centered without distortion.
+const item = (name, x, y, size, filename = name.replaceAll(" ", "_") + ".png") => {
+  const png = readFileSync(root + "items/" + filename);
+  const w = png.readUInt32BE(16) * 2;
+  const h = png.readUInt32BE(20) * 2;
+  return `<g><title>${esc(name)}</title><image x="${x + (size - w) / 2}" y="${y + (size - h) / 2}" width="${w}" height="${h}" image-rendering="optimizeSpeed" href="data:image/png;base64,${png.toString("base64")}"/></g>`;
+};
+const slot = (x, y, size) =>
+  `<rect x="${x}" y="${y}" width="${size}" height="${size}" rx="3" fill="#352C1C" stroke="#645238" stroke-width="2"/><path d="M${x + 2} ${y + size - 2} V${y + 2} H${x + size - 2}" fill="none" stroke="#FAF2E0" stroke-opacity=".08"/>`;
 let hero = background(1800, 1000);
-hero += card(48, 48, 1080, 904);
-hero += `<path d="M48 160 H1128" stroke="${C.ink}" stroke-opacity=".1"/>`;
+hero += card(48, 48, 800, 904);
+hero += `<path d="M48 160 H848" stroke="${C.ink}" stroke-opacity=".1"/>`;
 hero += probe(112, 105, 24, 3) + text(158, 123, "Tibbly", 52, "heading");
-hero += card(1020, 76, 64, 60);
+hero += card(740, 76, 64, 60);
 // Vector gear button: avoids platform-specific emoji substitution.
-hero += `<g transform="translate(1052 106)" fill="none" stroke="${C.ink}" stroke-width="3" stroke-linejoin="round" aria-label="⚙"><path d="M-6-19 H6 L8-13 L13-10 L19-11 L24-1 L19 3 L18 9 L21 14 L13 21 L8 17 H2 L-3 21 L-12 16 L-11 10 L-15 5 L-21 4 L-22-7 L-16-10 L-13-15 L-13-20Z" transform="scale(.8)"/><circle r="7"/></g>`;
-hero += text(98, 201, "YOU", 25, "label muted");
-hero += `<rect x="98" y="224" width="980" height="210" rx="12" fill="${C.ink}" fill-opacity=".08"/>`;
+hero += `<g transform="translate(772 106)" fill="none" stroke="${C.ink}" stroke-width="3" stroke-linejoin="round" aria-label="⚙"><path d="M-6-19 H6 L8-13 L13-10 L19-11 L24-1 L19 3 L18 9 L21 14 L13 21 L8 17 H2 L-3 21 L-12 16 L-11 10 L-15 5 L-21 4 L-22-7 L-16-10 L-13-15 L-13-20Z" transform="scale(.8)"/><circle r="7"/></g>`;
+hero += text(88, 208, "YOU", 25, "label muted");
+hero += `<rect x="88" y="232" width="720" height="176" rx="12" fill="${C.ink}" fill-opacity=".08"/>`;
+hero += lines(120, 298, ["Make me a Vorkath tab", "from my bank."], 52, 61);
+hero += text(88, 466, "TIBBLY", 25, "label gold");
+hero += `<rect x="88" y="490" width="720" height="296" rx="12" fill="${C.gold}" fill-opacity=".10" stroke="${C.gold}" stroke-opacity=".25"/>`;
 hero += lines(
-  132,
-  282,
-  ["Stuck on Dragon Slayer II", "after the Vorkath cutscene.", "Where do I go?"],
-  52,
-  61,
+  120, 552,
+  ["Done. Your Vorkath tab", "has your best ranged gear,", "laid out as you wear it."],
+  52, 72,
 );
-hero += text(98, 478, "TIBBLY", 25, "label gold");
-hero += `<rect x="98" y="502" width="980" height="284" rx="12" fill="${C.gold}" fill-opacity=".10" stroke="${C.gold}" stroke-opacity=".25"/>`;
-hero += lines(
-  132,
-  561,
-  [
-    "The dragon key piece is in your",
-    "bank, tab 3. Take your digsite",
-    "pendant back to the Lithkren",
-    "vault.",
-  ],
-  52,
-  61,
-);
-hero +=
-  card(98, 838, 782, 76) +
-  `<path d="M126 861 V891" stroke="${C.ink}" stroke-opacity=".55" stroke-width="2"/>`;
-hero +=
-  `<rect x="900" y="838" width="178" height="76" rx="12" fill="${C.gold}"/>` +
-  text(989, 888, "Send", 39, "heading", 'text-anchor="middle" style="fill:#251B07"');
-hero += `<g class="wire" stroke-opacity=".75"><path d="M1256 324 H1190 V550 H1078"/><path d="M1256 547 H1220 V611 H1078"/><path d="M1256 770 H1160 V733 H1078"/></g><g fill="${C.gold}"><circle cx="1078" cy="550" r="5"/><circle cx="1078" cy="611" r="5"/><circle cx="1078" cy="733" r="5"/></g>`;
-hero += card(1256, 230, 496, 188) + text(1288, 276, "BANK · TAB 3", 35, "label gold");
-hero +=
-  `<g transform="translate(1288 295) scale(1.17)">${key}</g>` +
-  lines(1401, 335, ["Dragon key", "piece"], 40, 43, "heading");
-hero +=
-  card(1256, 453, 496, 188) +
-  text(1288, 496, "QUEST", 35, "label gold") +
-  text(1288, 553, "Dragon Slayer II", 40, "heading");
-hero +=
-  `<circle cx="1296" cy="598" r="7" fill="${C.gold}"/>` +
-  text(1318, 606, "IN PROGRESS", 28, "label muted");
-hero += card(1256, 676, 496, 188) + text(1288, 720, "INVENTORY", 35, "label gold");
-hero +=
-  `<g transform="translate(1287 737) scale(1.05)">${pendant}</g>` +
-  lines(1401, 783, ["Digsite", "pendant"], 40, 43, "heading");
+hero += card(88, 838, 522, 76) +
+  `<path d="M116 861 V891" stroke="${C.ink}" stroke-opacity=".55" stroke-width="2"/>`;
+hero += `<rect x="630" y="838" width="178" height="76" rx="12" fill="${C.gold}"/>` +
+  text(719, 888, "Send", 39, "heading", 'text-anchor="middle" style="fill:#251B07"');
+// The single connection makes the result of the chat explicit.
+hero += `<path class="wire" d="M808 620 H920"/><circle cx="808" cy="620" r="5" fill="${C.gold}"/>`;
+// Bank Tags tab, with the familiar worn-equipment silhouette beside a 4 × 7 inventory.
+hero += card(920, 48, 832, 904);
+hero += text(960, 108, "BANK TAB", 30, "label gold");
+hero += text(960, 170, "Vorkath", 56, "heading");
+hero += text(1640, 108, "RUNELITE", 23, "label muted", 'text-anchor="end"');
+hero += `<path d="M1694 88 L1714 108 M1714 88 L1694 108" stroke="${C.ink}" stroke-opacity=".55" stroke-width="3" stroke-linecap="round"/>`;
+hero += `<path d="M920 202 H1752" stroke="${C.ink}" stroke-opacity=".1"/><path d="M960 202 H1172" stroke="${C.gold}" stroke-width="3"/>`;
+hero += text(1136, 262, "EQUIPMENT", 27, "label muted", 'text-anchor="middle"');
+hero += text(1536, 262, "INVENTORY", 27, "label muted", 'text-anchor="middle"');
+hero += `<path d="M1320 292 V912" stroke="${C.ink}" stroke-opacity=".1"/>`;
+const equipment = [
+  { position: "Head", name: "Armadyl helmet", col: 1, row: 0 },
+  { position: "Cape", name: "Ava's assembler", col: 0, row: 1 },
+  { position: "Neck", name: "Necklace of anguish", col: 1, row: 1 },
+  { position: "Ammo", name: "Ruby dragon bolts (e)", col: 2, row: 1, filename: "Ruby_dragon_bolts_(e)_5.png" },
+  { position: "Weapon", name: "Dragon hunter crossbow", col: 0, row: 2 },
+  { position: "Body", name: "Armadyl chestplate", col: 1, row: 2 },
+  { position: "Shield", name: "Dragonfire ward", col: 2, row: 2 },
+  { position: "Legs", name: "Armadyl chainskirt", col: 1, row: 3 },
+  { position: "Hands", name: "Barrows gloves", col: 0, row: 4 },
+  { position: "Feet", name: "Pegasian boots", col: 1, row: 4 },
+  { position: "Ring", name: "Archers ring (i)", col: 2, row: 4 },
+];
+hero += '<g id="equipment">';
+for (const { position, name, col, row, filename } of equipment) {
+  const x = 974 + col * 114;
+  const y = 320 + row * 116;
+  hero += `<g aria-label="${position}: ${name}">${slot(x, y, 96)}${item(name, x, y, 96, filename)}</g>`;
+}
+hero += '</g>';
+const inventory = [
+  "Divine ranging potion(4)", "Extended super antifire(4)",
+  "Extended super antifire(4)", "Rune pouch",
+  ...Array(4).fill("Prayer potion(4)"),
+  ...Array(20).fill("Manta ray"),
+];
+hero += '<g id="inventory">';
+for (const [i, name] of inventory.entries()) {
+  const x = 1364 + (i % 4) * 88;
+  const y = 296 + Math.floor(i / 4) * 88;
+  hero += `<g aria-label="Slot ${i + 1}: ${name}">${slot(x, y, 80)}${item(name, x, y, 80)}</g>`;
+}
+hero += '</g>';
 writeFileSync(
   root + "hero.svg",
   svg(
     1800,
     1000,
-    "Tibbly in RuneLite",
-    "A branded illustration of the Tibbly panel. The player asks: Stuck on Dragon Slayer II after the Vorkath cutscene. Where do I go? Tibbly answers: The dragon key piece is in your bank, tab 3. Take your digsite pendant back to the Lithkren vault. Gold lines connect the answer to bank tab 3, the Dragon Slayer II quest, and a digsite pendant in the inventory.",
+    "Tibbly creates a Vorkath bank tab from your bank",
+    "The player asks: Make me a Vorkath tab from my bank. Tibbly answers: Done. Your Vorkath tab has your best ranged gear, laid out as you wear it. A thin gold line connects the answer to a RuneLite Bank Tags tab named Vorkath. On the left, eleven items occupy their worn-equipment positions: Armadyl helmet, Ava's assembler, Necklace of anguish, Ruby dragon bolts (e), Dragon hunter crossbow, Armadyl chestplate, Dragonfire ward, Armadyl chainskirt, Barrows gloves, Pegasian boots and Archers ring (i). On the right, a four-column, seven-row inventory contains a Divine ranging potion(4), two Extended super antifire(4), a Rune pouch, four Prayer potion(4) and twenty Manta rays, in that order.",
     hero,
   ),
 );

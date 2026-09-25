@@ -4,24 +4,49 @@
 
 <h1 align="center">Tibbly</h1>
 
-<p align="center">Ask about Old School RuneScape inside RuneLite and get answers from your own bank, quests and gear.</p>
+<p align="center">An Old School RuneScape helper in RuneLite that answers from your game and builds bank tabs of your best gear for the job.</p>
 
 > [!NOTE]
 > Tibbly is a work in progress. This README describes the product as it will ship.
 > [Status](#status) lists what works today.
 
-![The Tibbly panel answering a Dragon Slayer II question, with lines to the bank tab, quest and inventory it read](assets/hero.png)
+![Asked for a Vorkath tab, Tibbly builds a bank tab with the player's best ranged gear on the left and potions, food and a rune pouch in the inventory on the right](assets/hero.png)
 
 ## Getting started
 
 1. **Install Tibbly.** In RuneLite, open the **Plugin Hub**, search for Tibbly and click **Install**.
 2. **Open the panel.** Click the gold speech bubble in the RuneLite sidebar. The **Tibbly** panel opens on your chats.
 3. **Pair this device.** Click ⚙, then **Pair this device** under **Account**. Tibbly shows a code such as `ABC-123`. Enter it on your Tibbly account page. The panel then shows **Paired · @your-name**.
-4. **Ask something.** Click **+ New chat** and type "What's in my bank?". Tibbly answers from your bank, not from a guide.
+4. **Ask for a bank tab.** Open your bank once, click **+ New chat** and type "Make me a Vorkath tab from my bank." Tibbly picks your best gear for the job and adds a **Vorkath** tab, laid out the way you wear it.
 
 The free plan gives 30 messages a day and needs no card. Tibbly runs inside RuneLite, and RuneLite updates it through the Plugin Hub.
 
 ## Use
+
+### Bank tabs
+
+Ask for a tab for any job:
+
+```text
+Make me a Vorkath tab from my bank.
+Set up a Barrows tab with my best magic gear.
+Save what I'm wearing as my Zulrah tab.
+```
+
+Tibbly ranks the gear in your bank for that job, then saves the tab with RuneLite's Bank Tags plugin. Worn gear goes on the left and the inventory on the right, as you will carry it.
+
+Before every change Tibbly backs up your bank tags. It keeps the last 10 in `~/.runelite/osrs-llm-helper/banktag-backups/`, and you can ask it to restore one. To see or remove what Tibbly added, click the blue **AI** button in the sidebar.
+
+### Questions
+
+Click **+ New chat** and ask anything about your account: a quest step, what to bring, what you are missing. You can also ask from the chatbox:
+
+```text
+::ai how many prayer potions do I have?
+!ai what do I need for Monkey Madness?
+```
+
+### Settings
 
 Open the settings with ⚙ at the top of the Tibbly panel. ← goes back to your chats.
 
@@ -36,16 +61,9 @@ Open the settings with ⚙ at the top of the Tibbly panel. ← goes back to your
 | Verbosity             | 3                      | 1 to 5: how often Tibbly speaks unprompted                                                |
 | Allow proactive lines | on                     | Lets the companion speak without being asked                                              |
 
-The **Direct** modes send your question straight to that provider with your own key. Tibbly never sees the request. In these modes the model gets a summary of your game state but cannot ask for more.
+The **Direct** modes send your question straight to that provider with your own key. Tibbly never sees the request. In these modes the model gets a summary of your game state but cannot ask for more or build bank tabs.
 
-You can also ask from the chatbox:
-
-```text
-::ai how many prayer potions do I have?
-!ai what do I need for Monkey Madness?
-```
-
-Plans:
+### Plans
 
 | Plan     | Price       | Model                               |
 | -------- | ----------- | ----------------------------------- |
@@ -58,11 +76,12 @@ Plans:
 
 ![A question flows from the Tibbly panel to the Tibbly backend and the model, which asks the RuneLite plugin for game state before the answer comes back to the panel](assets/how-it-works.png)
 
-Your game state stays in RuneLite. With each question, the plugin sends a short summary and the groups of tools your words point to. For example, "slayer" or "task" adds the slayer and combat tools. When the model needs more, such as the contents of a bank tab, it asks the plugin. The plugin reads that one thing from the game and replies. Sending only the tools a question needs keeps each message small and cheap.
+Your game state stays in RuneLite. With each question, the plugin sends a short summary and the groups of tools your words point to. For example, "slayer" or "task" adds the slayer and combat tools. When the model needs more, such as the gear in your bank, it asks the plugin. The plugin reads that one thing from the game and replies. To build a bank tab, the model sends the items and layout back, and the plugin saves the tab. Sending only the tools a question needs keeps each message small and cheap.
 
 ## Limits
 
-- **Tibbly only reads.** It never moves your character, clicks a tile or types in chat. RuneLite plugins that act for the player break the game's rules.
+- **Tibbly never plays for you.** It never moves your character, clicks a tile or types in chat, because RuneLite plugins that act for the player break the game's rules. It changes only RuneLite's own things: bank tabs, highlights and tile markers.
+- **Bank tabs use what you own.** Tibbly picks from your bank and cannot buy what is missing.
 - **It knows what RuneLite can see.** Anything the client has not loaded, such as a bank you have not opened this session, is unknown to it.
 - **The Direct modes have no tools and no chat history.** Each question is sent on its own with a game-state summary.
 
@@ -79,7 +98,7 @@ Not done yet:
 - **The plugin does not build.** Three types used by the companion code (`Starter`, `CompanionAtlasLoader`, `Direction`) were deleted in #80.
 - **Tibbly is not on the Plugin Hub.** Today you build the jar and run RuneLite in developer mode.
 - **The data-sharing consent has no switch.** Cloud chat, Direct chat and the companion all wait on it, so they stay off.
-- **Tool calls are not connected.** The plugin answers every tool call with `not_yet_wired`, and the server gives the model no tools.
+- **Tool calls are not connected.** The plugin answers every tool call with `not_yet_wired`, and the server gives the model no tools. The bank-tab code runs only through the developer-only local MCP server.
 - **Pairing cannot finish.** No web page takes the code, and the plugin polls `/v1/pairing/status`, which does not exist.
 - **The backend accepts only dev device keys** (those starting `DEVKEY_dev_`). It refuses to start with `NODE_ENV=production`.
 - **Checkout, the billing portal and email sign-in are written but not mounted** in `apps/backend/src/server.ts`. The free plan limit is not enforced.
